@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Control, ControlType, Page, ToolDefinition, ControlProps, MacroStep } from './types';
+import { Control, ControlType, Page, ToolDefinition } from './types';
 import { ControlRenderer } from './control-renderer';
-import { v4 as uuidv4 } from 'uuid';
 
 interface FormDesignerProps {
   workspaceId: string;
@@ -40,14 +39,26 @@ export default function FormDesigner({
   const [controls, setControls] = useState<Control[]>([]);
   const [selectedTool, setSelectedTool] = useState<ControlType>('select');
   const [selectedControlId, setSelectedControlId] = useState<string | null>(null);
+
+  // Drawing states
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null);
-  const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
+  const [drawRect, setDrawRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+
+  // Dragging states
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number; controlX: number; controlY: number } | null>(null);
+
+  // Resize states
+  const [isResizing, setIsResizing] = useState(false);
   const [resizeHandle, setResizeHandle] = useState<string | null>(null);
+  const [resizeStart, setResizeStart] = useState<any>(null);
+
   const [showGrid, setShowGrid] = useState(true);
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [isPreview, setIsPreview] = useState(false);
   const [showMacroBuilder, setShowMacroBuilder] = useState(false);
+
   const canvasRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
@@ -64,7 +75,7 @@ export default function FormDesigner({
   }, [currentPageId]);
 
   const loadPages = async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('pages')
       .select('*')
       .eq('workspace_id', workspaceId)
@@ -73,8 +84,7 @@ export default function FormDesigner({
     if (data && data.length > 0) {
       setPages(data);
       setCurrentPageId(data[0].id);
-    } else if (!error) {
-      // Create default page
+    } else {
       await createPage('Home', true);
     }
   };
@@ -95,7 +105,7 @@ export default function FormDesigner({
     const slug = name.toLowerCase().replace(/\s+/g, '-');
     const displayOrder = pages.length;
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('pages')
       .insert({
         workspace_id: workspaceId,
@@ -118,8 +128,12 @@ export default function FormDesigner({
     return Math.round(value / GRID_SIZE) * GRID_SIZE;
   };
 
+  // ===== DRAWING NEW CONTROLS =====
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!canvasRef.current || selectedTool === 'select' || isPreview) return;
+
+    e.preventDefault();
+    e.stopPropagation();
 
     const rect = canvasRef.current.getBoundingClientRect();
     const x = snap(e.clientX - rect.left);
@@ -127,102 +141,131 @@ export default function FormDesigner({
 
     setIsDrawing(true);
     setDrawStart({ x, y });
+    setDrawRect({ x, y, w: 0, h: 0 });
   };
 
-  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+  // Window mousemove for drawing
+  useEffect(() => {
     if (!isDrawing || !drawStart || !canvasRef.current) return;
 
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = snap(e.clientX - rect.left);
-    const y = snap(e.clientY - rect.top);
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = canvasRef.current!.getBoundingClientRect();
+      const currentX = e.clientX - rect.left;
+      const currentY = e.clientY - rect.top;
 
-    // Visual feedback while drawing (you could add a preview rect here)
-  };
+      const x = Math.min(drawStart.x, currentX);
+      const y = Math.min(drawStart.y, currentY);
+      const w = Math.abs(currentX - drawStart.x);
+      const h = Math.abs(currentY - drawStart.y);
 
-  const handleCanvasMouseUp = async (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDrawing || !drawStart || !canvasRef.current || !currentPageId) return;
-
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x2 = snap(e.clientX - rect.left);
-    const y2 = snap(e.clientY - rect.top);
-
-    const tool = TOOLS.find((t) => t.type === selectedTool);
-    if (!tool) return;
-
-    const x = Math.min(drawStart.x, x2);
-    const y = Math.min(drawStart.y, y2);
-    const w = Math.max(Math.abs(x2 - drawStart.x), tool.defaultWidth);
-    const h = Math.max(Math.abs(y2 - drawStart.y), tool.defaultHeight);
-
-    // Create new control
-    const newControl: Partial<Control> = {
-      page_id: currentPageId,
-      control_type: selectedTool,
-      x,
-      y,
-      w,
-      h,
-      props: {
-        caption: tool.label,
-        backgroundColor: selectedTool === 'button' ? '#4f46e5' : 'transparent',
-        textColor: selectedTool === 'button' ? '#fff' : '#000',
-        borderRadius: selectedTool === 'button' ? 6 : 0,
-        fontSize: 14,
-        bold: false,
-      },
-      macro_steps: [],
-      display_order: controls.length,
+      setDrawRect({ x: snap(x), y: snap(y), w: snap(w), h: snap(h) });
     };
 
-    const { data, error } = await supabase
-      .from('controls')
-      .insert(newControl)
-      .select()
-      .single();
+    const handleMouseUp = async (e: MouseEvent) => {
+      if (!drawRect || !currentPageId) {
+        setIsDrawing(false);
+        setDrawStart(null);
+        setDrawRect(null);
+        return;
+      }
 
-    if (data) {
-      setControls([...controls, data as Control]);
-      setSelectedControlId(data.id);
-    }
+      // Only create if dragged more than 10px
+      if (drawRect.w < 10 || drawRect.h < 10) {
+        setIsDrawing(false);
+        setDrawStart(null);
+        setDrawRect(null);
+        return;
+      }
 
-    setIsDrawing(false);
-    setDrawStart(null);
-    setSelectedTool('select');
-  };
+      const tool = TOOLS.find((t) => t.type === selectedTool);
+      if (!tool) return;
 
+      // Create new control
+      const newControl: any = {
+        page_id: currentPageId,
+        control_type: selectedTool,
+        x: drawRect.x,
+        y: drawRect.y,
+        w: Math.max(drawRect.w, tool.defaultWidth),
+        h: Math.max(drawRect.h, tool.defaultHeight),
+        props: {
+          caption: tool.label,
+          backgroundColor: selectedTool === 'button' ? '#4f46e5' : 'transparent',
+          textColor: selectedTool === 'button' ? '#fff' : '#000',
+          borderRadius: selectedTool === 'button' ? 6 : 0,
+          fontSize: selectedTool === 'heading' ? 24 : 14,
+          bold: selectedTool === 'heading',
+        },
+        macro_steps: [],
+        display_order: controls.length,
+      };
+
+      const { data } = await supabase
+        .from('controls')
+        .insert(newControl)
+        .select()
+        .single();
+
+      if (data) {
+        setControls([...controls, data as Control]);
+        setSelectedControlId(data.id);
+      }
+
+      setIsDrawing(false);
+      setDrawStart(null);
+      setDrawRect(null);
+      setSelectedTool('select');
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDrawing, drawStart, drawRect, currentPageId, selectedTool, controls, snapToGrid]);
+
+  // ===== MOVING CONTROLS =====
   const handleControlMouseDown = (e: React.MouseEvent, controlId: string) => {
     if (isPreview || selectedTool !== 'select') return;
+
+    e.preventDefault();
     e.stopPropagation();
 
     setSelectedControlId(controlId);
     const control = controls.find((c) => c.id === controlId);
-    if (control) {
-      setDragOffset({
-        x: e.clientX - control.x,
-        y: e.clientY - control.y,
-      });
-    }
+    if (!control || !canvasRef.current) return;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX,
+      y: e.clientY,
+      controlX: control.x,
+      controlY: control.y,
+    });
   };
 
-  const handleControlDrag = useCallback(
-    (e: MouseEvent) => {
-      if (!dragOffset || !selectedControlId || !canvasRef.current) return;
+  // Window mousemove for dragging
+  useEffect(() => {
+    if (!isDragging || !dragStart || !selectedControlId || !canvasRef.current) return;
 
-      const rect = canvasRef.current.getBoundingClientRect();
-      const x = snap(e.clientX - rect.left - dragOffset.x);
-      const y = snap(e.clientY - rect.top - dragOffset.y);
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - dragStart.x;
+      const deltaY = e.clientY - dragStart.y;
+
+      const newX = snap(dragStart.controlX + deltaX);
+      const newY = snap(dragStart.controlY + deltaY);
 
       setControls((prev) =>
         prev.map((c) =>
-          c.id === selectedControlId ? { ...c, x, y } : c
+          c.id === selectedControlId ? { ...c, x: newX, y: newY } : c
         )
       );
-    },
-    [dragOffset, selectedControlId, snapToGrid]
-  );
+    };
 
-  const handleMouseUp = useCallback(async () => {
-    if (dragOffset && selectedControlId) {
+    const handleMouseUp = async () => {
       const control = controls.find((c) => c.id === selectedControlId);
       if (control) {
         await supabase
@@ -230,23 +273,105 @@ export default function FormDesigner({
           .update({ x: control.x, y: control.y })
           .eq('id', selectedControlId);
       }
-    }
-    setDragOffset(null);
-    setResizeHandle(null);
-  }, [dragOffset, selectedControlId, controls]);
 
+      setIsDragging(false);
+      setDragStart(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragStart, selectedControlId, controls, snapToGrid]);
+
+  // ===== RESIZE HANDLES =====
+  const handleResizeMouseDown = (e: React.MouseEvent, handle: string) => {
+    if (!selectedControlId) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const control = controls.find((c) => c.id === selectedControlId);
+    if (!control) return;
+
+    setIsResizing(true);
+    setResizeHandle(handle);
+    setResizeStart({
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      x: control.x,
+      y: control.y,
+      w: control.w,
+      h: control.h,
+    });
+  };
+
+  // Window mousemove for resizing
   useEffect(() => {
-    if (dragOffset) {
-      window.addEventListener('mousemove', handleControlDrag);
-      window.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        window.removeEventListener('mousemove', handleControlDrag);
-        window.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [dragOffset, handleControlDrag, handleMouseUp]);
+    if (!isResizing || !resizeHandle || !resizeStart || !selectedControlId) return;
 
-  const updateControlProps = async (props: Partial<ControlProps>) => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - resizeStart.mouseX;
+      const deltaY = e.clientY - resizeStart.mouseY;
+
+      let newX = resizeStart.x;
+      let newY = resizeStart.y;
+      let newW = resizeStart.w;
+      let newH = resizeStart.h;
+
+      // Resize based on handle
+      if (resizeHandle.includes('e')) {
+        newW = Math.max(20, resizeStart.w + deltaX);
+      }
+      if (resizeHandle.includes('w')) {
+        newW = Math.max(20, resizeStart.w - deltaX);
+        newX = resizeStart.x + deltaX;
+      }
+      if (resizeHandle.includes('s')) {
+        newH = Math.max(20, resizeStart.h + deltaY);
+      }
+      if (resizeHandle.includes('n')) {
+        newH = Math.max(20, resizeStart.h - deltaY);
+        newY = resizeStart.y + deltaY;
+      }
+
+      setControls((prev) =>
+        prev.map((c) =>
+          c.id === selectedControlId
+            ? { ...c, x: snap(newX), y: snap(newY), w: snap(newW), h: snap(newH) }
+            : c
+        )
+      );
+    };
+
+    const handleMouseUp = async () => {
+      const control = controls.find((c) => c.id === selectedControlId);
+      if (control) {
+        await supabase
+          .from('controls')
+          .update({ x: control.x, y: control.y, w: control.w, h: control.h })
+          .eq('id', selectedControlId);
+      }
+
+      setIsResizing(false);
+      setResizeHandle(null);
+      setResizeStart(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, resizeHandle, resizeStart, selectedControlId, controls, snapToGrid]);
+
+  // ===== PROPERTY UPDATES =====
+  const updateControlProps = async (props: any) => {
     if (!selectedControlId) return;
 
     const control = controls.find((c) => c.id === selectedControlId);
@@ -266,7 +391,7 @@ export default function FormDesigner({
       .eq('id', selectedControlId);
   };
 
-  const updateControlPosition = async (updates: Partial<Pick<Control, 'x' | 'y' | 'w' | 'h'>>) => {
+  const updateControlPosition = async (updates: any) => {
     if (!selectedControlId) return;
 
     setControls((prev) =>
@@ -281,6 +406,7 @@ export default function FormDesigner({
       .eq('id', selectedControlId);
   };
 
+  // ===== CONTROL ACTIONS =====
   const deleteControl = async () => {
     if (!selectedControlId) return;
 
@@ -299,7 +425,7 @@ export default function FormDesigner({
     const control = controls.find((c) => c.id === selectedControlId);
     if (!control) return;
 
-    const newControl: Partial<Control> = {
+    const newControl: any = {
       page_id: currentPageId,
       control_type: control.control_type,
       x: control.x + 20,
@@ -323,19 +449,17 @@ export default function FormDesigner({
     }
   };
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
+  // Delete key handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Delete' && selectedControlId && !isPreview) {
         deleteControl();
       }
-    },
-    [selectedControlId, isPreview]
-  );
+    };
 
-  useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
+  }, [selectedControlId, isPreview]);
 
   const selectedControl = controls.find((c) => c.id === selectedControlId);
 
@@ -433,11 +557,23 @@ export default function FormDesigner({
               cursor: selectedTool === 'select' ? 'default' : 'crosshair',
             }}
             onMouseDown={handleCanvasMouseDown}
-            onMouseMove={handleCanvasMouseMove}
-            onMouseUp={handleCanvasMouseUp}
           >
+            {/* Ghost rectangle while drawing */}
+            {isDrawing && drawRect && drawRect.w > 0 && drawRect.h > 0 && (
+              <div
+                className="absolute border-2 border-dashed border-indigo-500 bg-indigo-50 bg-opacity-20 pointer-events-none"
+                style={{
+                  left: drawRect.x,
+                  top: drawRect.y,
+                  width: drawRect.w,
+                  height: drawRect.h,
+                }}
+              />
+            )}
+
+            {/* Render all controls */}
             {controls.map((control) => (
-              <div key={control.id} className="absolute">
+              <div key={control.id} className="absolute" style={{ left: control.x, top: control.y }}>
                 <ControlRenderer
                   control={control}
                   isSelected={control.id === selectedControlId}
@@ -445,16 +581,19 @@ export default function FormDesigner({
                   onClick={() => selectedTool === 'select' && setSelectedControlId(control.id)}
                   onMouseDown={(e) => handleControlMouseDown(e, control.id)}
                 />
+
                 {/* Resize Handles */}
                 {control.id === selectedControlId && !isPreview && (
                   <>
                     {['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'].map((handle) => (
                       <div
                         key={handle}
-                        className="absolute w-2 h-2 bg-indigo-500 rounded-full cursor-pointer"
+                        onMouseDown={(e) => handleResizeMouseDown(e, handle)}
+                        className="absolute w-3 h-3 bg-indigo-500 rounded-full cursor-pointer border-2 border-white shadow-md hover:bg-indigo-600"
                         style={{
-                          top: handle.includes('n') ? -4 : handle.includes('s') ? control.h - 4 : control.h / 2 - 4,
-                          left: handle.includes('w') ? -4 : handle.includes('e') ? control.w - 4 : control.w / 2 - 4,
+                          top: handle.includes('n') ? -6 : handle.includes('s') ? control.h - 6 : control.h / 2 - 6,
+                          left: handle.includes('w') ? -6 : handle.includes('e') ? control.w - 6 : control.w / 2 - 6,
+                          cursor: `${handle}-resize`,
                         }}
                       />
                     ))}
@@ -562,7 +701,7 @@ export default function FormDesigner({
           <button
             key={page.id}
             onClick={() => setCurrentPageId(page.id)}
-            className={`px-4 py-1.5 rounded text-sm ${
+            className={`px-4 py-1.5 rounded text-sm whitespace-nowrap ${
               page.id === currentPageId
                 ? 'bg-indigo-600 text-white'
                 : 'bg-[#252840] text-gray-400 hover:text-white'
@@ -576,7 +715,7 @@ export default function FormDesigner({
             const name = prompt('Page name:');
             if (name) createPage(name);
           }}
-          className="px-4 py-1.5 bg-[#252840] text-gray-400 rounded text-sm hover:text-white"
+          className="px-4 py-1.5 bg-[#252840] text-gray-400 rounded text-sm hover:text-white whitespace-nowrap"
         >
           + Add Page
         </button>
