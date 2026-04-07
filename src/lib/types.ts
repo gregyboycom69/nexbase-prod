@@ -22,13 +22,13 @@ export interface Control {
   id: string;
   page_id: string;
   control_type: string;
-  label: string | null;
-  field_name: string | null;
-  placeholder: string | null;
-  required: boolean;
-  options: any | null;
-  validation_rules: any | null;
-  order_index: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  props: any;
+  macro_steps: any[];
+  display_order: number;
   created_at: string;
   updated_at: string;
 }

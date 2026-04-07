@@ -15,7 +15,8 @@
       "Bash(python -c:*)",
       "Bash(pip install:*)",
       "Bash(unzip:*)",
-      "Bash(tr:*)"
+      "Bash(tr:*)",
+      "Bash(npm install:*)"
     ]
   }
 }
