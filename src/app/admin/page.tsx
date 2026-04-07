@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { Workspace } from '@/lib/types';
+import { UserProfile } from '@/lib/types';
 import Link from 'next/link';
+import { AdminActions } from '@/components/admin-actions';
 
 export default async function AdminPage() {
   const supabase = await createClient();
@@ -20,26 +21,49 @@ export default async function AdminPage() {
     redirect('/dashboard');
   }
 
-  // Get all workspaces (admin can see all)
+  // Get all user profiles
+  const { data: userProfiles, error: profilesError } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (profilesError) {
+    console.error('Error fetching user profiles:', profilesError);
+  }
+
+  // Get all workspaces for workspace counts per user
   const { data: allWorkspaces, error: workspacesError } = await supabase
     .from('workspaces')
-    .select(`
-      *,
-      owner:owner_id (
-        email
-      )
-    `)
-    .order('created_at', { ascending: false });
+    .select('id, owner_id, brand_name, slug, created_at');
 
   if (workspacesError) {
     console.error('Error fetching workspaces:', workspacesError);
   }
 
-  // Get unique customer count
-  const uniqueOwners = new Set(
-    allWorkspaces?.map((ws: any) => ws.owner_id) || []
-  );
-  const totalCustomers = uniqueOwners.size;
+  // Calculate workspace counts per user
+  const workspaceCounts: Record<string, number> = {};
+  allWorkspaces?.forEach((ws) => {
+    workspaceCounts[ws.owner_id] = (workspaceCounts[ws.owner_id] || 0) + 1;
+  });
+
+  // Calculate statistics
+  const totalUsers = userProfiles?.length || 0;
+  const totalWorkspaces = allWorkspaces?.length || 0;
+
+  // Revenue calculation based on plan pricing
+  const planPrices = {
+    free: 0,
+    starter: 19,
+    builder: 49,
+    agency: 149,
+  };
+
+  const totalRevenue = userProfiles?.reduce((sum, profile) => {
+    return sum + planPrices[profile.plan as keyof typeof planPrices];
+  }, 0) || 0;
+
+  const activeUsers = userProfiles?.filter((p) => p.status === 'active').length || 0;
+  const blockedUsers = userProfiles?.filter((p) => p.status === 'blocked').length || 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -79,15 +103,18 @@ export default async function AdminPage() {
           </h2>
 
           {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="bg-white rounded-lg shadow-md p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600 mb-1">
-                    Total Customers
+                    Total Users
                   </p>
                   <p className="text-3xl font-bold text-primary-600">
-                    {totalCustomers}
+                    {totalUsers}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {activeUsers} active, {blockedUsers} blocked
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
@@ -115,7 +142,13 @@ export default async function AdminPage() {
                     Total Workspaces
                   </p>
                   <p className="text-3xl font-bold text-primary-600">
-                    {allWorkspaces?.length || 0}
+                    {totalWorkspaces}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {totalUsers > 0
+                      ? (totalWorkspaces / totalUsers).toFixed(1)
+                      : '0'}{' '}
+                    per user
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
@@ -140,15 +173,43 @@ export default async function AdminPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600 mb-1">
-                    Avg per Customer
+                    Monthly Revenue
+                  </p>
+                  <p className="text-3xl font-bold text-green-600">
+                    €{totalRevenue}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    €{(totalRevenue * 12).toLocaleString()}/year
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <svg
+                    className="w-6 h-6 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">
+                    Avg Revenue/User
                   </p>
                   <p className="text-3xl font-bold text-primary-600">
-                    {totalCustomers > 0
-                      ? ((allWorkspaces?.length || 0) / totalCustomers).toFixed(
-                          1
-                        )
-                      : '0'}
+                    €{totalUsers > 0 ? (totalRevenue / totalUsers).toFixed(0) : '0'}
                   </p>
+                  <p className="text-xs text-gray-500 mt-1">per month</p>
                 </div>
                 <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
                   <svg
@@ -170,30 +231,31 @@ export default async function AdminPage() {
           </div>
         </div>
 
-        {/* All Workspaces Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        {/* Users Table */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">
-              All Workspaces
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900">All Users</h3>
           </div>
 
-          {allWorkspaces && allWorkspaces.length > 0 ? (
+          {userProfiles && userProfiles.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Workspace
+                      Email
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Slug
+                      Plan
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Owner
+                      Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Created
+                      Workspaces
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Joined
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
@@ -201,36 +263,53 @@ export default async function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {allWorkspaces.map((workspace: any) => (
-                    <tr key={workspace.id} className="hover:bg-gray-50">
+                  {userProfiles.map((profile: UserProfile) => (
+                    <tr key={profile.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          {workspace.brand_name}
+                          {profile.email}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">
-                          /{workspace.slug}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {workspace.owner?.email || 'Unknown'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">
-                          {new Date(workspace.created_at).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <Link
-                          href={`/app/${workspace.slug}`}
-                          target="_blank"
-                          className="text-primary-600 hover:text-primary-900 mr-4"
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            profile.plan === 'agency'
+                              ? 'bg-purple-100 text-purple-800'
+                              : profile.plan === 'builder'
+                              ? 'bg-blue-100 text-blue-800'
+                              : profile.plan === 'starter'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
                         >
-                          View App
-                        </Link>
+                          {profile.plan.charAt(0).toUpperCase() +
+                            profile.plan.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            profile.status === 'active'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {profile.status.charAt(0).toUpperCase() +
+                            profile.status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {workspaceCounts[profile.id] || 0}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(profile.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <AdminActions
+                          userId={profile.id}
+                          currentStatus={profile.status}
+                          currentPlan={profile.plan}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -239,7 +318,7 @@ export default async function AdminPage() {
             </div>
           ) : (
             <div className="px-6 py-12 text-center text-gray-500">
-              No workspaces found
+              No users found
             </div>
           )}
         </div>

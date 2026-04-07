@@ -22,7 +22,7 @@ function LoginForm() {
 
     try {
       const supabase = createClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -31,6 +31,22 @@ function LoginForm() {
         setError(signInError.message);
         setLoading(false);
         return;
+      }
+
+      // Check if user is blocked
+      if (data.user) {
+        const { data: userProfile } = await supabase
+          .from('user_profiles')
+          .select('status')
+          .eq('id', data.user.id)
+          .single();
+
+        if (userProfile?.status === 'blocked') {
+          await supabase.auth.signOut();
+          setError('Your account has been suspended. Please contact support.');
+          setLoading(false);
+          return;
+        }
       }
 
       router.push(returnUrl);

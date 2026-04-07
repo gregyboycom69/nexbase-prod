@@ -41,6 +41,25 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Check if user is blocked (except on suspended page and auth pages)
+  if (
+    user &&
+    !request.nextUrl.pathname.startsWith('/suspended') &&
+    !request.nextUrl.pathname.startsWith('/login') &&
+    !request.nextUrl.pathname.startsWith('/signup') &&
+    !request.nextUrl.pathname.startsWith('/auth/signout')
+  ) {
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('status')
+      .eq('id', user.id)
+      .single();
+
+    if (userProfile?.status === 'blocked') {
+      return NextResponse.redirect(new URL('/suspended', request.url));
+    }
+  }
+
   // Protected routes - require authentication
   if (
     (request.nextUrl.pathname.startsWith('/dashboard') ||
@@ -59,6 +78,17 @@ export async function middleware(request: NextRequest) {
       request.nextUrl.pathname.startsWith('/signup')) &&
     user
   ) {
+    // Check if user is blocked before redirecting to dashboard
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('status')
+      .eq('id', user.id)
+      .single();
+
+    if (userProfile?.status === 'blocked') {
+      return NextResponse.redirect(new URL('/suspended', request.url));
+    }
+
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
