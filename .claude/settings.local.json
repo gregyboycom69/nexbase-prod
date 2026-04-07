@@ -10,7 +10,12 @@
       "Bash(git remote add:*)",
       "Bash(git branch:*)",
       "Bash(git push:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(docx2txt:*)",
+      "Bash(python -c:*)",
+      "Bash(pip install:*)",
+      "Bash(unzip:*)",
+      "Bash(tr:*)"
     ]
   }
 }

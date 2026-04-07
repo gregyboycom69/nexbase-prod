@@ -38,27 +38,29 @@ export default function SuspendedPage() {
 
         <div className="space-y-3">
           <a
-            href="mailto:support@nexbase.com?subject=Account%20Suspension%20Appeal"
+            href="mailto:support@nexbase.app?subject=Account%20Suspension%20Appeal"
             className="block w-full bg-primary-600 text-white py-3 px-4 rounded-lg hover:bg-primary-700 font-medium transition-colors"
           >
             Contact Support
           </a>
 
-          <Link
-            href="/"
-            className="block w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200 font-medium transition-colors"
-          >
-            Return to Home
-          </Link>
+          <form action="/auth/signout" method="post" className="w-full">
+            <button
+              type="submit"
+              className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200 font-medium transition-colors"
+            >
+              Sign Out
+            </button>
+          </form>
         </div>
 
         <p className="text-xs text-gray-500 mt-6">
           Need immediate assistance? Email us at{' '}
           <a
-            href="mailto:support@nexbase.com"
+            href="mailto:support@nexbase.app"
             className="text-primary-600 hover:text-primary-700"
           >
-            support@nexbase.com
+            support@nexbase.app
           </a>
         </p>
       </div>
