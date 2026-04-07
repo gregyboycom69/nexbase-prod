@@ -56,7 +56,7 @@ export default async function StudioPage({ params }: StudioPageProps) {
                 </svg>
               </Link>
               <h1 className="text-2xl font-bold text-primary-600">
-                {workspace.brand_name}
+                {workspace.name}
               </h1>
             </div>
             <div className="flex items-center gap-4">
@@ -100,7 +100,7 @@ export default async function StudioPage({ params }: StudioPageProps) {
               to create custom forms with drag-and-drop controls.
             </p>
             <div className="text-sm text-gray-500">
-              <p>Workspace: {workspace.brand_name}</p>
+              <p>Workspace: {workspace.name}</p>
               <p>Slug: /{workspace.slug}</p>
             </div>
           </div>

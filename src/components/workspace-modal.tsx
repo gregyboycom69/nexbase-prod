@@ -70,7 +70,7 @@ export default function WorkspaceModal({ userId }: WorkspaceModalProps) {
 
       const { error: insertError } = await supabase.from('workspaces').insert({
         slug: uniqueSlug,
-        brand_name: brandName,
+        name: brandName,
         owner_id: userId,
       });
 

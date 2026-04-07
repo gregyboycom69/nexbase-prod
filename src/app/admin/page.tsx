@@ -34,7 +34,7 @@ export default async function AdminPage() {
   // Get all workspaces for workspace counts per user
   const { data: allWorkspaces, error: workspacesError } = await supabase
     .from('workspaces')
-    .select('id, owner_id, brand_name, slug, created_at');
+    .select('id, owner_id, name, slug, created_at');
 
   if (workspacesError) {
     console.error('Error fetching workspaces:', workspacesError);

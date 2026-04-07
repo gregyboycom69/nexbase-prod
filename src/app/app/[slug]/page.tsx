@@ -42,7 +42,7 @@ export default async function PublicAppPage({ params }: PublicAppPageProps) {
               </svg>
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-4">
-              {workspace.brand_name}
+              {workspace.name}
             </h1>
             <div className="bg-primary-50 border border-primary-200 rounded-lg p-6 mb-6">
               <p className="text-primary-800 font-medium mb-2">

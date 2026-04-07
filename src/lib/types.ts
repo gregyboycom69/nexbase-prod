@@ -2,7 +2,7 @@ export interface Workspace {
   id: string;
   slug: string;
   owner_id: string;
-  brand_name: string;
+  name: string;
   created_at: string;
   updated_at: string;
 }
