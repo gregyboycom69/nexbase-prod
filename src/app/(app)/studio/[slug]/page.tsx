@@ -186,6 +186,11 @@ export default function StudioPage() {
 
   const selCtrl = controls.find(c => c.id === selectedId)
 
+  // Debug: Log when selCtrl changes
+  useEffect(() => {
+    console.log('📋 selCtrl updated:', selCtrl ? `${selCtrl.type} (${selCtrl.id})` : 'none')
+  }, [selCtrl])
+
   useEffect(() => {
     loadWorkspace()
   }, [slug])
@@ -265,6 +270,7 @@ export default function StudioPage() {
   const onCtrlMD = (e: React.MouseEvent, ctrl: Ctrl) => {
     if (isPreview || activeToolRef.current !== 'select') return
     e.stopPropagation()
+    console.log('🎯 Control clicked:', ctrl.id, ctrl.type)
     setSelectedId(ctrl.id)
     isDragging.current = true
     dragStart.current = { mx: e.clientX, my: e.clientY, cx: ctrl.x, cy: ctrl.y }
@@ -619,23 +625,198 @@ export default function StudioPage() {
         )}
 
         {view === 'design' && !isPreview && (
-          /* PROPERTIES PANEL - Simplified */
-          <div style={{ width:220, background:'#181a28', borderLeft:'1px solid #252840',
+          /* PROPERTIES PANEL */
+          <div style={{ width:260, background:'#181a28', borderLeft:'1px solid #252840',
             display:'flex', flexDirection:'column', overflow:'hidden' }}>
-            <div style={{ padding:'10px 12px', background:'#1e2035',
+            <div style={{ padding:'10px 14px', background:'#1e2035',
               borderBottom:'1px solid #252840', fontSize:12, fontWeight:600, color:'#e2e8f0' }}>
               Properties
             </div>
             {selCtrl ? (
-              <div style={{ flex:1, overflow:'auto', padding:12 }}>
-                <div style={{ fontSize:11, color:'#9ca3af' }}>Control: {selCtrl.type}</div>
+              <div style={{ flex:1, overflow:'auto', padding:14 }}>
+                {/* Control Type */}
+                <div style={{ marginBottom:16, padding:'6px 10px', background:'#252840', borderRadius:6,
+                  fontSize:11, color:'#9ca3af', fontWeight:600 }}>
+                  {selCtrl.type}
+                </div>
+
+                {/* Position & Size */}
+                <div style={{ marginBottom:14 }}>
+                  <div style={{ fontSize:10, color:'#6b7280', marginBottom:6, fontWeight:600 }}>POSITION</div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+                    <div>
+                      <label style={{ fontSize:9, color:'#7480a8', display:'block', marginBottom:2 }}>X</label>
+                      <input type="number" value={selCtrl.x} onChange={e => updCtrl({ x: +e.target.value })}
+                        style={{ width:'100%', padding:'5px 8px', background:'#252840', border:'1px solid #3a3f5c',
+                          borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize:9, color:'#7480a8', display:'block', marginBottom:2 }}>Y</label>
+                      <input type="number" value={selCtrl.y} onChange={e => updCtrl({ y: +e.target.value })}
+                        style={{ width:'100%', padding:'5px 8px', background:'#252840', border:'1px solid #3a3f5c',
+                          borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom:14 }}>
+                  <div style={{ fontSize:10, color:'#6b7280', marginBottom:6, fontWeight:600 }}>SIZE</div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+                    <div>
+                      <label style={{ fontSize:9, color:'#7480a8', display:'block', marginBottom:2 }}>W</label>
+                      <input type="number" value={selCtrl.w} onChange={e => updCtrl({ w: Math.max(20, +e.target.value) })}
+                        style={{ width:'100%', padding:'5px 8px', background:'#252840', border:'1px solid #3a3f5c',
+                          borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize:9, color:'#7480a8', display:'block', marginBottom:2 }}>H</label>
+                      <input type="number" value={selCtrl.h} onChange={e => updCtrl({ h: Math.max(10, +e.target.value) })}
+                        style={{ width:'100%', padding:'5px 8px', background:'#252840', border:'1px solid #3a3f5c',
+                          borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Caption */}
+                {!['Divider'].includes(selCtrl.type) && (
+                  <div style={{ marginBottom:14 }}>
+                    <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>CAPTION</label>
+                    <input type="text" value={selCtrl.caption} onChange={e => updCtrl({ caption: e.target.value })}
+                      style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
+                        borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
+                  </div>
+                )}
+
+                {/* Placeholder */}
+                {['TextBox','ComboBox','Lookup','DatePicker'].includes(selCtrl.type) && (
+                  <div style={{ marginBottom:14 }}>
+                    <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>PLACEHOLDER</label>
+                    <input type="text" value={selCtrl.placeholder || ''} onChange={e => updCtrl({ placeholder: e.target.value })}
+                      style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
+                        borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
+                  </div>
+                )}
+
+                {/* Field Key */}
+                {['TextBox','ComboBox','CheckBox','DatePicker','NumberBox','Lookup'].includes(selCtrl.type) && (
+                  <div style={{ marginBottom:14 }}>
+                    <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>FIELD KEY</label>
+                    <input type="text" value={selCtrl.fieldKey || ''} onChange={e => updCtrl({ fieldKey: e.target.value })}
+                      placeholder="e.g. customer_name"
+                      style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
+                        borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
+                  </div>
+                )}
+
+                {/* Border Radius */}
+                <div style={{ marginBottom:14 }}>
+                  <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>BORDER RADIUS</label>
+                  <input type="number" min="0" value={selCtrl.radius} onChange={e => updCtrl({ radius: +e.target.value })}
+                    style={{ width:'100%', padding:'5px 8px', background:'#252840', border:'1px solid #3a3f5c',
+                      borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
+                </div>
+
+                {/* Background Color */}
+                {!['Label','Heading','CheckBox'].includes(selCtrl.type) && (
+                  <div style={{ marginBottom:14 }}>
+                    <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>BG COLOR</label>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:4 }}>
+                      {COLORS.map(col => (
+                        <div key={col} onClick={() => updCtrl({ bg: col })}
+                          style={{ width:'100%', aspectRatio:'1', background:col, borderRadius:4,
+                            cursor:'pointer', border: selCtrl.bg === col ? '2px solid #6366f1' : '1px solid #3a3f5c' }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Text Color */}
+                <div style={{ marginBottom:14 }}>
+                  <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>TEXT COLOR</label>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:4 }}>
+                    {COLORS.map(col => (
+                      <div key={col} onClick={() => updCtrl({ color: col })}
+                        style={{ width:'100%', aspectRatio:'1', background:col, borderRadius:4,
+                          cursor:'pointer', border: selCtrl.color === col ? '2px solid #6366f1' : '1px solid #3a3f5c' }} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* DataTable Columns */}
+                {selCtrl.type === 'DataTable' && (
+                  <div style={{ marginBottom:14 }}>
+                    <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>COLUMNS</label>
+                    <input type="text" value={selCtrl.columns || ''} onChange={e => updCtrl({ columns: e.target.value })}
+                      placeholder="Name,Email,Status"
+                      style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
+                        borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
+                    <div style={{ fontSize:9, color:'#6b7280', marginTop:4 }}>Comma-separated</div>
+                  </div>
+                )}
+
+                {/* DataTable Source */}
+                {selCtrl.type === 'DataTable' && (
+                  <div style={{ marginBottom:14 }}>
+                    <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>SOURCE TABLE</label>
+                    <input type="text" value={selCtrl.sourceTable || ''} onChange={e => updCtrl({ sourceTable: e.target.value })}
+                      placeholder="customers"
+                      style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
+                        borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
+                  </div>
+                )}
+
+                {/* TabPanel Tabs */}
+                {selCtrl.type === 'TabPanel' && (
+                  <div style={{ marginBottom:14 }}>
+                    <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>TABS</label>
+                    <input type="text" value={selCtrl.tabs || ''} onChange={e => updCtrl({ tabs: e.target.value })}
+                      placeholder="Tab 1,Tab 2,Tab 3"
+                      style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
+                        borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
+                    <div style={{ fontSize:9, color:'#6b7280', marginTop:4 }}>Comma-separated</div>
+                  </div>
+                )}
+
+                {/* Chart Type */}
+                {selCtrl.type === 'Chart' && (
+                  <div style={{ marginBottom:14 }}>
+                    <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>CHART TYPE</label>
+                    <select value={selCtrl.chartType || 'bar'} onChange={e => updCtrl({ chartType: e.target.value })}
+                      style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
+                        borderRadius:5, color:'#e2e8f0', fontSize:11 }}>
+                      <option value="bar">Bar</option>
+                      <option value="line">Line</option>
+                      <option value="pie">Pie</option>
+                      <option value="doughnut">Doughnut</option>
+                      <option value="area">Area</option>
+                    </select>
+                  </div>
+                )}
+
+                {/* Control List */}
+                <div style={{ marginTop:24, borderTop:'1px solid #252840', paddingTop:14 }}>
+                  <div style={{ fontSize:10, color:'#6b7280', marginBottom:8, fontWeight:600 }}>ALL CONTROLS</div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                    {controls.map(c => (
+                      <div key={c.id} onClick={() => setSelectedId(c.id)}
+                        style={{
+                          padding:'6px 10px', background: c.id === selectedId ? '#4f46e5' : '#252840',
+                          borderRadius:5, fontSize:10, color: c.id === selectedId ? '#fff' : '#9ca3af',
+                          cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center'
+                        }}>
+                        <span>{c.type}</span>
+                        <span style={{ fontSize:8, opacity:0.6 }}>{c.x},{c.y}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : (
               <div style={{ flex:1, display:'flex', flexDirection:'column',
                 alignItems:'center', justifyContent:'center',
                 color:'#3a3f5c', gap:8, padding:16, textAlign:'center' }}>
                 <div style={{ fontSize:28, opacity:0.3 }}>✦</div>
-                <div style={{ fontSize:11 }}>Click a tool then draw on canvas</div>
+                <div style={{ fontSize:11 }}>Select a control to edit properties</div>
               </div>
             )}
           </div>
