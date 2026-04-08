@@ -21,6 +21,8 @@ export default function PublishedAppPage() {
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [visibleModal, setVisibleModal] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [tableData, setTableData] = useState<any[]>([])
+  const [currentRecordIndex, setCurrentRecordIndex] = useState(0)
 
   useEffect(() => {
     loadWorkspace()
@@ -29,8 +31,16 @@ export default function PublishedAppPage() {
   useEffect(() => {
     if (activePageId) {
       loadControls(activePageId)
+      loadPageData(activePageId)
     }
   }, [activePageId])
+
+  useEffect(() => {
+    // Update formData when currentRecordIndex changes
+    if (tableData.length > 0 && currentRecordIndex >= 0 && currentRecordIndex < tableData.length) {
+      setFormData(tableData[currentRecordIndex])
+    }
+  }, [currentRecordIndex, tableData])
 
   const loadWorkspace = async () => {
     setLoading(true)
@@ -72,6 +82,56 @@ export default function PublishedAppPage() {
     if (data) {
       setControls(data)
     }
+  }
+
+  const loadPageData = async (pageId: string) => {
+    const page = pages.find((p) => p.id === pageId)
+    if (!page || !page.record_source) {
+      setTableData([])
+      setCurrentRecordIndex(0)
+      setFormData({})
+      return
+    }
+
+    // Load data from app_data table for this workspace and table
+    const { data } = await supabase
+      .from('app_data')
+      .select('*')
+      .eq('workspace_id', workspace.id)
+      .eq('table_name', page.record_source)
+      .order('created_at', { ascending: true })
+
+    if (data && data.length > 0) {
+      const records = data.map((row) => row.data)
+      setTableData(records)
+      setCurrentRecordIndex(0)
+      setFormData(records[0])
+    } else {
+      setTableData([])
+      setCurrentRecordIndex(0)
+      setFormData({})
+    }
+  }
+
+  const goToFirstRecord = () => {
+    if (tableData.length > 0) setCurrentRecordIndex(0)
+  }
+
+  const goToPreviousRecord = () => {
+    if (currentRecordIndex > 0) setCurrentRecordIndex(currentRecordIndex - 1)
+  }
+
+  const goToNextRecord = () => {
+    if (currentRecordIndex < tableData.length - 1) setCurrentRecordIndex(currentRecordIndex + 1)
+  }
+
+  const goToLastRecord = () => {
+    if (tableData.length > 0) setCurrentRecordIndex(tableData.length - 1)
+  }
+
+  const createNewRecord = () => {
+    setFormData({})
+    setCurrentRecordIndex(-1)
   }
 
   const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info') => {
@@ -572,8 +632,8 @@ export default function PublishedAppPage() {
         </div>
 
         {/* Canvas Area */}
-        <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
-          <div style={{ background: '#fff', borderRadius: 12, padding: 32, minHeight: 600, position: 'relative', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <div style={{ flex: 1, overflow: 'auto', padding: 24, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ background: '#fff', borderRadius: 12, padding: 32, minHeight: 600, position: 'relative', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: activePage?.record_source ? 16 : 0 }}>
             {controls.map((ctrl) => (
               <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
                 {renderControl(ctrl)}
@@ -585,6 +645,31 @@ export default function PublishedAppPage() {
               </div>
             )}
           </div>
+
+          {/* Navigation Bar - MS Access Style */}
+          {activePage?.record_source && (
+            <div style={{ background: '#fff', borderRadius: 8, padding: '8px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button onClick={goToFirstRecord} disabled={currentRecordIndex <= 0} style={{ padding: '6px 12px', background: currentRecordIndex <= 0 ? '#f3f4f6' : '#fff', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 12, cursor: currentRecordIndex <= 0 ? 'default' : 'pointer', color: currentRecordIndex <= 0 ? '#9ca3af' : '#1f2937' }}>
+                |◀ First
+              </button>
+              <button onClick={goToPreviousRecord} disabled={currentRecordIndex <= 0} style={{ padding: '6px 12px', background: currentRecordIndex <= 0 ? '#f3f4f6' : '#fff', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 12, cursor: currentRecordIndex <= 0 ? 'default' : 'pointer', color: currentRecordIndex <= 0 ? '#9ca3af' : '#1f2937' }}>
+                ◀ Previous
+              </button>
+              <div style={{ padding: '6px 12px', background: '#f9fafb', borderRadius: 6, fontSize: 12, color: '#6b7280', fontWeight: 600 }}>
+                {tableData.length > 0 ? (currentRecordIndex + 1) : 0} of {tableData.length}
+              </div>
+              <button onClick={goToNextRecord} disabled={currentRecordIndex >= tableData.length - 1} style={{ padding: '6px 12px', background: currentRecordIndex >= tableData.length - 1 ? '#f3f4f6' : '#fff', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 12, cursor: currentRecordIndex >= tableData.length - 1 ? 'default' : 'pointer', color: currentRecordIndex >= tableData.length - 1 ? '#9ca3af' : '#1f2937' }}>
+                Next ▶
+              </button>
+              <button onClick={goToLastRecord} disabled={currentRecordIndex >= tableData.length - 1} style={{ padding: '6px 12px', background: currentRecordIndex >= tableData.length - 1 ? '#f3f4f6' : '#fff', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 12, cursor: currentRecordIndex >= tableData.length - 1 ? 'default' : 'pointer', color: currentRecordIndex >= tableData.length - 1 ? '#9ca3af' : '#1f2937' }}>
+                Last ▶|
+              </button>
+              <div style={{ width: 1, height: 24, background: '#e5e7eb', margin: '0 8px' }} />
+              <button onClick={createNewRecord} style={{ padding: '6px 14px', background: brandColor, color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                ➕ New Record
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Toast, { ToastMessage } from '@/components/Toast'
+import TableDesigner from '@/components/TableDesigner'
+import QueryBuilder from '@/components/QueryBuilder'
 
 const GRID = 8
 const snap = (v: number, on: boolean) => on ? Math.round(v / GRID) * GRID : v
@@ -167,6 +169,14 @@ export default function StudioPage() {
   const [isPreview, setIsPreview] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [showPublishModal, setShowPublishModal] = useState(false)
+  const [showNewPageModal, setShowNewPageModal] = useState(false)
+  const [pages, setPages] = useState<any[]>([])
+  const [currentPageId, setCurrentPageId] = useState<string>('home')
+  const [newPageName, setNewPageName] = useState('')
+  const [bindingType, setBindingType] = useState<'blank'|'table'|'query'>('blank')
+  const [selectedSource, setSelectedSource] = useState('')
+  const [tables, setTables] = useState<any[]>([])
+  const [queries, setQueries] = useState<any[]>([])
 
   const canvasRef = useRef<HTMLDivElement>(null)
   const isDrawing = useRef(false)
@@ -199,7 +209,117 @@ export default function StudioPage() {
     const { data } = await supabase.from('workspaces').select('*').eq('slug', slug).single()
     if (data) {
       setWorkspace(data)
+      loadPages(data.id)
+      loadTables(data.id)
+      loadQueries(data.id)
     }
+  }
+
+  const loadPages = async (workspaceId: string) => {
+    const { data } = await supabase.from('pages').select('*').eq('workspace_id', workspaceId)
+    if (data) setPages(data)
+  }
+
+  const loadTables = async (workspaceId: string) => {
+    const { data } = await supabase.from('workspace_tables').select('*').eq('workspace_id', workspaceId)
+    if (data) setTables(data)
+  }
+
+  const loadQueries = async (workspaceId: string) => {
+    const { data } = await supabase.from('workspace_queries').select('*').eq('workspace_id', workspaceId)
+    if (data) setQueries(data)
+  }
+
+  const handleCreatePage = async () => {
+    if (!workspace || !newPageName.trim()) return
+
+    const recordSource = bindingType === 'blank' ? null : selectedSource
+    const { data, error } = await supabase.from('pages').insert({
+      workspace_id: workspace.id,
+      slug: newPageName.toLowerCase().replace(/\s+/g, '-'),
+      title: newPageName,
+      record_source: recordSource,
+      form_type: bindingType === 'blank' ? null : 'single',
+      allow_edits: true,
+      allow_additions: true,
+      allow_deletions: true,
+    }).select().single()
+
+    if (error) {
+      showToast('Failed to create page', 'error')
+    } else {
+      showToast('Page created successfully', 'success')
+      setPages(prev => [...prev, data])
+      setCurrentPageId(data.id)
+      setShowNewPageModal(false)
+      setNewPageName('')
+      setBindingType('blank')
+      setSelectedSource('')
+    }
+  }
+
+  const addAllFields = async () => {
+    if (!workspace) return
+    const currentPage = pages.find(p => p.id === currentPageId)
+    if (!currentPage || !currentPage.record_source) return
+
+    const table = tables.find(t => t.name === currentPage.record_source)
+    if (!table || !table.fields) return
+
+    let yPos = 20
+    const newControls: Ctrl[] = []
+
+    table.fields.forEach((field: any, index: number) => {
+      // Add label
+      const labelId = `${Date.now()}-label-${index}`
+      newControls.push({
+        id: labelId,
+        type: 'Label',
+        x: 20,
+        y: yPos,
+        w: 150,
+        h: 24,
+        caption: field.name,
+        color: '#374151',
+        bg: 'transparent',
+        radius: 0,
+        fontSize: 14,
+        fieldKey: '',
+        placeholder: '',
+        steps: [],
+      })
+
+      // Add input control based on field type
+      let controlType = 'TextBox'
+      if (field.type === 'Number' || field.type === 'Currency') controlType = 'NumberBox'
+      else if (field.type === 'Date/Time') controlType = 'DatePicker'
+      else if (field.type === 'Yes/No') controlType = 'CheckBox'
+      else if (field.type === 'Choice') controlType = 'ComboBox'
+
+      const def = DEFAULTS[controlType] || DEFAULTS.TextBox
+      const ctrlId = `${Date.now()}-ctrl-${index}`
+      newControls.push({
+        id: ctrlId,
+        type: controlType,
+        x: 180,
+        y: yPos,
+        w: def.w || 200,
+        h: def.h || 44,
+        caption: def.caption || '',
+        color: def.color || '#1e293b',
+        bg: def.bg || '#ffffff',
+        radius: def.radius ?? 8,
+        fontSize: def.fontSize || 14,
+        fieldKey: field.name,
+        placeholder: def.placeholder || '',
+        steps: [],
+      })
+
+      yPos += 60
+    })
+
+    setControls(prev => [...prev, ...newControls])
+    showToast(`Added ${table.fields.length} fields to form`, 'success')
   }
 
   const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info') => {
@@ -438,6 +558,87 @@ export default function StudioPage() {
         </div>
       )}
 
+      {/* New Page Modal */}
+      {showNewPageModal && (
+        <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999 }}
+          onClick={() => setShowNewPageModal(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background:'#1e2035', borderRadius:12, padding:32, maxWidth:500, width:'90%' }}>
+            <div style={{ fontSize:20, fontWeight:700, marginBottom:20, color:'#e2e8f0' }}>Create New Form</div>
+
+            <div style={{ marginBottom:16 }}>
+              <label style={{ fontSize:12, color:'#9ca3af', display:'block', marginBottom:6 }}>Form Name</label>
+              <input
+                type="text"
+                value={newPageName}
+                onChange={e => setNewPageName(e.target.value)}
+                placeholder="e.g. Customers"
+                style={{ width:'100%', padding:'10px 12px', background:'#252840', border:'1px solid #3a3f5c', borderRadius:8, color:'#e2e8f0', fontSize:14 }}
+              />
+            </div>
+
+            <div style={{ marginBottom:16 }}>
+              <label style={{ fontSize:12, color:'#9ca3af', display:'block', marginBottom:8 }}>Bind to:</label>
+              <div style={{ display:'flex', gap:8 }}>
+                <button
+                  onClick={() => setBindingType('blank')}
+                  style={{ flex:1, padding:'10px', background: bindingType === 'blank' ? '#4f46e5' : '#252840', border:'none', borderRadius:8, color: bindingType === 'blank' ? '#fff' : '#9ca3af', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+                  📄 Blank
+                </button>
+                <button
+                  onClick={() => setBindingType('table')}
+                  style={{ flex:1, padding:'10px', background: bindingType === 'table' ? '#4f46e5' : '#252840', border:'none', borderRadius:8, color: bindingType === 'table' ? '#fff' : '#9ca3af', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+                  📊 Table
+                </button>
+                <button
+                  onClick={() => setBindingType('query')}
+                  style={{ flex:1, padding:'10px', background: bindingType === 'query' ? '#4f46e5' : '#252840', border:'none', borderRadius:8, color: bindingType === 'query' ? '#fff' : '#9ca3af', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+                  🔍 Query
+                </button>
+              </div>
+            </div>
+
+            {bindingType === 'table' && (
+              <div style={{ marginBottom:16 }}>
+                <label style={{ fontSize:12, color:'#9ca3af', display:'block', marginBottom:6 }}>Select Table</label>
+                <select
+                  value={selectedSource}
+                  onChange={e => setSelectedSource(e.target.value)}
+                  style={{ width:'100%', padding:'10px 12px', background:'#252840', border:'1px solid #3a3f5c', borderRadius:8, color:'#e2e8f0', fontSize:14 }}>
+                  <option value="">-- Choose a table --</option>
+                  {tables.map(t => (
+                    <option key={t.id} value={t.name}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {bindingType === 'query' && (
+              <div style={{ marginBottom:16 }}>
+                <label style={{ fontSize:12, color:'#9ca3af', display:'block', marginBottom:6 }}>Select Query</label>
+                <select
+                  value={selectedSource}
+                  onChange={e => setSelectedSource(e.target.value)}
+                  style={{ width:'100%', padding:'10px 12px', background:'#252840', border:'1px solid #3a3f5c', borderRadius:8, color:'#e2e8f0', fontSize:14 }}>
+                  <option value="">-- Choose a query --</option>
+                  {queries.map(q => (
+                    <option key={q.id} value={q.name}>{q.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div style={{ display:'flex', gap:12, marginTop:24 }}>
+              <button onClick={() => setShowNewPageModal(false)} style={{ flex:1, padding:'10px 16px', background:'#252840', color:'#9ca3af', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={handleCreatePage} disabled={!newPageName.trim()} style={{ flex:1, padding:'10px 16px', background: newPageName.trim() ? '#4f46e5' : '#2d3055', color: newPageName.trim() ? '#fff' : '#4a5070', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor: newPageName.trim() ? 'pointer' : 'default' }}>
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TOP BAR */}
       <div style={{ height:44, background:'#1e2035', borderBottom:'1px solid #252840',
         display:'flex', alignItems:'center', padding:'0 14px', gap:12, flexShrink:0 }}>
@@ -466,6 +667,14 @@ export default function StudioPage() {
         <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:10 }}>
           {view === 'forms' && (
             <>
+              {(() => {
+                const currentPage = pages.find(p => p.id === currentPageId)
+                return currentPage && currentPage.record_source && (
+                  <button onClick={addAllFields} style={{ background:'#059669', border:'none', color:'#fff', padding:'6px 14px', borderRadius:7, cursor:'pointer', fontSize:12, fontWeight:600 }}>
+                    ➕ Add All Fields
+                  </button>
+                )
+              })()}
               {[{l:'Grid',v:gridOn,f:setGridOn},{l:'Snap',v:snapOn,f:setSnapOn}].map(({l,v,f}) => (
                 <label key={l} style={{ display:'flex', alignItems:'center', gap:5, fontSize:12, color:'#7480a8', cursor:'pointer' }}>
                   <input type="checkbox" checked={v} onChange={e => f(e.target.checked)} style={{ accentColor:'#6366f1' }}/>
@@ -595,59 +804,12 @@ export default function StudioPage() {
           </div>
         )}
 
-        {view === 'queries' && (
-          /* QUERY BUILDER - Keep existing implementation */
-          <div style={{ flex:1, display:'flex', overflow:'hidden' }}>
-            <div style={{ width:200, background:'#1e2035', borderRight:'1px solid #252840', padding:12, overflow:'auto' }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#e2e8f0', marginBottom:12 }}>TABLES</div>
-              {['Customers','Orders','Products'].map(t => (
-                <div key={t} style={{ padding:'8px 10px', background:'#252840', borderRadius:6, marginBottom:6, fontSize:12, color:'#c8d0f0', cursor:'pointer' }}>
-                  📊 {t}
-                </div>
-              ))}
-            </div>
-            <div style={{ flex:1, padding:20 }}>
-              <div style={{ fontSize:15, fontWeight:700, marginBottom:16 }}>Query By Example (QBE)</div>
-              <div style={{ fontSize:14, color:'#9ca3af' }}>Query builder interface here...</div>
-            </div>
-          </div>
+        {view === 'queries' && workspace && (
+          <QueryBuilder workspaceId={workspace.id} />
         )}
 
-        {view === 'tables' && (
-          /* TABLES TAB - Table Designer */
-          <div style={{ flex:1, display:'flex', overflow:'hidden' }}>
-            {/* Left Panel - Table List */}
-            <div style={{ width:220, background:'#1e2035', borderRight:'1px solid #252840', padding:12, overflow:'auto', display:'flex', flexDirection:'column' }}>
-              <button style={{ padding:'10px', background:'#4f46e5', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', marginBottom:16 }}>
-                ➕ New Table
-              </button>
-              <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', marginBottom:8 }}>TABLES</div>
-              <div style={{ padding:'10px 12px', background:'#252840', borderRadius:8, marginBottom:8, fontSize:13, color:'#e2e8f0', cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}>
-                <span>📊</span>
-                <span>Customers</span>
-              </div>
-              <div style={{ padding:'10px 12px', background:'transparent', borderRadius:8, marginBottom:8, fontSize:13, color:'#7480a8', cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}>
-                <span>📊</span>
-                <span>Orders</span>
-              </div>
-              <div style={{ padding:'10px 12px', background:'transparent', borderRadius:8, marginBottom:8, fontSize:13, color:'#7480a8', cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}>
-                <span>📊</span>
-                <span>Products</span>
-              </div>
-            </div>
-
-            {/* Right Panel - Table Designer */}
-            <div style={{ flex:1, padding:24, overflow:'auto' }}>
-              <div style={{ fontSize:20, fontWeight:700, marginBottom:20, color:'#e2e8f0' }}>Table Designer - Customers</div>
-              <div style={{ background:'#1e2035', borderRadius:12, padding:24 }}>
-                <div style={{ fontSize:14, color:'#9ca3af', textAlign:'center', padding:40 }}>
-                  Table Designer coming in Phase 7
-                  <br /><br />
-                  Define fields, data types, relationships, and constraints
-                </div>
-              </div>
-            </div>
-          </div>
+        {view === 'tables' && workspace && (
+          <TableDesigner workspaceId={workspace.id} />
         )}
 
         {view === 'macros' && (
@@ -737,16 +899,31 @@ export default function StudioPage() {
                   </div>
                 )}
 
-                {/* Field Key */}
-                {['TextBox','ComboBox','CheckBox','DatePicker','NumberBox','Lookup'].includes(selCtrl.type) && (
-                  <div style={{ marginBottom:14 }}>
-                    <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>FIELD KEY</label>
-                    <input type="text" value={selCtrl.fieldKey || ''} onChange={e => updCtrl({ fieldKey: e.target.value })}
-                      placeholder="e.g. customer_name"
-                      style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
-                        borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
-                  </div>
-                )}
+                {/* Control Source - MS Access style */}
+                {['TextBox','ComboBox','CheckBox','DatePicker','NumberBox','Lookup'].includes(selCtrl.type) && (() => {
+                  const currentPage = pages.find(p => p.id === currentPageId)
+                  const boundTable = currentPage?.record_source ? tables.find(t => t.name === currentPage.record_source) : null
+                  return (
+                    <div style={{ marginBottom:14 }}>
+                      <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>CONTROL SOURCE</label>
+                      {boundTable && boundTable.fields ? (
+                        <select value={selCtrl.fieldKey || ''} onChange={e => updCtrl({ fieldKey: e.target.value })}
+                          style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
+                            borderRadius:5, color:'#e2e8f0', fontSize:11 }}>
+                          <option value="">-- Unbound --</option>
+                          {boundTable.fields.map((field: any) => (
+                            <option key={field.id} value={field.name}>{field.name}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input type="text" value={selCtrl.fieldKey || ''} onChange={e => updCtrl({ fieldKey: e.target.value })}
+                          placeholder="e.g. customer_name"
+                          style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
+                            borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
+                      )}
+                    </div>
+                  )
+                })()}
 
                 {/* Border Radius */}
                 <div style={{ marginBottom:14 }}>
@@ -866,13 +1043,29 @@ export default function StudioPage() {
       {/* BOTTOM PAGE TABS */}
       {view === 'forms' && (
         <div style={{ height:40, background:'#1e2035', borderTop:'1px solid #252840',
-          display:'flex', alignItems:'center', padding:'0 12px', gap:6, flexShrink:0 }}>
-          <div style={{ padding:'4px 14px', borderRadius:7, display:'flex', alignItems:'center', gap:6,
-            background:'#4f46e5', color:'#fff', fontSize:12, fontWeight:600 }}>
-            🏠 Home
-          </div>
-          <button style={{ padding:'4px 12px', borderRadius:7, background:'transparent',
-            border:'1px dashed #3a3f5c', color:'#7480a8', fontSize:12, cursor:'pointer' }}>
+          display:'flex', alignItems:'center', padding:'0 12px', gap:6, flexShrink:0, overflow:'auto' }}>
+          {pages.length === 0 ? (
+            <div style={{ padding:'4px 14px', borderRadius:7, display:'flex', alignItems:'center', gap:6,
+              background:'#4f46e5', color:'#fff', fontSize:12, fontWeight:600 }}>
+              🏠 Home
+            </div>
+          ) : (
+            pages.map(page => (
+              <div
+                key={page.id}
+                onClick={() => setCurrentPageId(page.id)}
+                style={{
+                  padding:'4px 14px', borderRadius:7, display:'flex', alignItems:'center', gap:6,
+                  background: currentPageId === page.id ? '#4f46e5' : '#252840',
+                  color: currentPageId === page.id ? '#fff' : '#9ca3af',
+                  fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap'
+                }}>
+                {page.record_source ? '📊' : '📄'} {page.title}
+              </div>
+            ))
+          )}
+          <button onClick={() => setShowNewPageModal(true)} style={{ padding:'4px 12px', borderRadius:7, background:'transparent',
+            border:'1px dashed #3a3f5c', color:'#7480a8', fontSize:12, cursor:'pointer', whiteSpace:'nowrap' }}>
             + Add Page
           </button>
         </div>
