@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getStripe, PRICE_IDS } from '@/lib/stripe'
+import { getStripe, PLANS } from '@/lib/stripe'
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if Stripe is configured
     const stripe = getStripe()
+    if (!stripe) {
+      return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 })
+    }
 
     const { planId } = await request.json()
 
@@ -45,9 +47,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Checkout Session
-    const priceId = PRICE_IDS[planId as keyof typeof PRICE_IDS]
+    const plan = PLANS[planId as keyof typeof PLANS]
 
-    if (!priceId) {
+    if (!plan || !plan.price) {
       return NextResponse.json({ error: 'Price ID not configured' }, { status: 500 })
     }
 
@@ -57,7 +59,7 @@ export async function POST(request: NextRequest) {
       payment_method_types: ['card'],
       line_items: [
         {
-          price: priceId,
+          price: plan.price,
           quantity: 1,
         },
       ],

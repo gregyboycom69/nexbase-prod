@@ -1,27 +1,15 @@
 import Stripe from 'stripe'
 
-// Lazy initialization to prevent build-time crashes
-let stripeInstance: Stripe | null = null
-
-export const getStripe = (): Stripe => {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    throw new Error('STRIPE_SECRET_KEY is not configured')
-  }
-
-  if (!stripeInstance) {
-    stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2024-11-20.acacia',
-      typescript: true,
-    })
-  }
-
-  return stripeInstance
+export const getStripe = () => {
+  const key = process.env.STRIPE_SECRET_KEY
+  if (!key) return null
+  return new Stripe(key, { apiVersion: '2024-06-20' })
 }
 
-export const PRICE_IDS = {
-  starter: process.env.STRIPE_STARTER_PRICE_ID || '',
-  builder: process.env.STRIPE_BUILDER_PRICE_ID || '',
-  agency: process.env.STRIPE_AGENCY_PRICE_ID || '',
+export const PLANS = {
+  starter: { price: process.env.STRIPE_STARTER_PRICE_ID || '', amount: 19 },
+  builder: { price: process.env.STRIPE_BUILDER_PRICE_ID || '', amount: 49 },
+  agency:  { price: process.env.STRIPE_AGENCY_PRICE_ID  || '', amount: 149 },
 }
 
 export const PLAN_LIMITS = {
@@ -50,10 +38,4 @@ export const PLAN_LIMITS = {
     pages_limit: 999,
     rows_limit: 9999999,
   },
-}
-
-export const PLAN_PRICES = {
-  starter: 19,
-  builder: 49,
-  agency: 149,
 }
