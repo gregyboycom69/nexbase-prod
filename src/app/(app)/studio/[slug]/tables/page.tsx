@@ -148,9 +148,21 @@ export default function TableDesignerPage() {
   }
 
   async function handleCreateNewTable() {
-    if (!workspace || !newTableName.trim()) return
+    console.log('🔍 handleCreateNewTable called')
+    console.log('Workspace:', workspace)
+    console.log('New table name:', newTableName)
+
+    if (!workspace || !newTableName.trim()) {
+      console.log('❌ Validation failed: workspace or newTableName missing')
+      alert('Error: Workspace not loaded or table name is empty')
+      return
+    }
 
     const slug = newTableName.toLowerCase().replace(/\s+/g, '_')
+    console.log('Generated slug:', slug)
+    console.log('Workspace ID:', workspace.id)
+
+    console.log('📤 Inserting into workspace_tables...')
     const { data, error } = await supabase
       .from('workspace_tables')
       .insert({
@@ -172,11 +184,23 @@ export default function TableDesignerPage() {
       .select()
       .single()
 
-    if (!error && data) {
+    console.log('📥 Insert response:', { data, error })
+
+    if (error) {
+      console.error('❌ Insert error:', error)
+      alert('Error creating table: ' + error.message)
+      return
+    }
+
+    if (data) {
+      console.log('✅ Table created successfully:', data.id)
       loadTables(workspace.id)
       setSelectedTableId(data.id)
       setIsCreatingNew(false)
       setNewTableName('')
+    } else {
+      console.log('⚠️ No data returned from insert')
+      alert('Error: Table creation returned no data')
     }
   }
 
