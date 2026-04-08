@@ -1,3 +1,13 @@
+NexBase - Phase 2 Canvas Fix
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+TASK: The drag-draw on the canvas does not work. 
+Replace the ENTIRE contents of src/app/(app)/studio/[slug]/page.tsx 
+with the code below. Do not split into other files. Just replace the one file.
+
+=== START OF FILE ===
+
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
@@ -489,3 +499,11 @@ export default function StudioPage() {
     </div>
   )
 }
+
+=== END OF FILE ===
+
+AFTER REPLACING THE FILE DO THESE COMMANDS:
+1. npm run build
+2. git add -A
+3. git commit -m "Phase 2 working canvas drag draw"
+4. git push origin main
