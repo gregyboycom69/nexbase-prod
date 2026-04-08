@@ -10,6 +10,7 @@ type PropertySheetProps = {
   formProperties: any
   tables: any[]
   queries: any[]
+  pages: any[]
   workspaceId: string
 }
 
@@ -21,6 +22,7 @@ export default function PropertySheet({
   formProperties,
   tables,
   queries,
+  pages,
 }: PropertySheetProps) {
   const [activeTab, setActiveTab] = useState<'format' | 'data' | 'event' | 'other' | 'all'>('format')
 
@@ -47,6 +49,46 @@ export default function PropertySheet({
     }
 
     if (type === 'dropdown') {
+      // Special handling for Subform-specific dropdowns
+      if (propName === 'sourceObject') {
+        return (
+          <select value={value || ''} onChange={e => onChange(e.target.value)} style={inputStyle}>
+            <option value="">(none)</option>
+            {pages.map((page: any) => (
+              <option key={page.id} value={page.id}>{page.title || page.slug}</option>
+            ))}
+          </select>
+        )
+      }
+
+      if (propName === 'linkMasterFields') {
+        // Show fields from parent form's Record Source
+        return (
+          <select value={value || ''} onChange={e => onChange(e.target.value)} style={inputStyle}>
+            <option value="">(none)</option>
+            {formFields.map((f: any) => (
+              <option key={f.id} value={f.name}>{f.name}</option>
+            ))}
+          </select>
+        )
+      }
+
+      if (propName === 'linkChildFields') {
+        // Show fields from subform's Record Source
+        const subformPage = selectedControl?.sourceObject ? pages.find((p: any) => p.id === selectedControl.sourceObject) : null
+        const subformTable = subformPage?.record_source ? tables.find((t: any) => t.name === subformPage.record_source) : null
+        const subformFields = subformTable?.fields || []
+
+        return (
+          <select value={value || ''} onChange={e => onChange(e.target.value)} style={inputStyle}>
+            <option value="">(none)</option>
+            {subformFields.map((f: any) => (
+              <option key={f.id} value={f.name}>{f.name}</option>
+            ))}
+          </select>
+        )
+      }
+
       const options: { [key: string]: string[] } = {
         controlSource: ['(none)', ...formFields.map((f: any) => f.name)],
         fieldKey: ['(none)', ...formFields.map((f: any) => f.name)],
@@ -414,6 +456,27 @@ export default function PropertySheet({
         ]
         props.data = []
         props.event = [{ label: 'On Change', prop: 'onChangeMacro', type: 'text' }]
+        props.other = [
+          { label: 'Name', prop: 'name', type: 'text' },
+          { label: 'Tag', prop: 'tag', type: 'text' },
+        ]
+        break
+
+      case 'Subform':
+        props.format = [
+          ...commonFormat,
+          { label: 'Back Color', prop: 'bg', type: 'color' },
+          { label: 'Border Style', prop: 'borderStyle', type: 'dropdown' },
+          { label: 'Border Color', prop: 'borderColor', type: 'color' },
+          { label: 'Visible', prop: 'visible', type: 'yesno' },
+        ]
+        props.data = [
+          { label: 'Source Object', prop: 'sourceObject', type: 'dropdown' },
+          { label: 'Link Master Fields', prop: 'linkMasterFields', type: 'dropdown' },
+          { label: 'Link Child Fields', prop: 'linkChildFields', type: 'dropdown' },
+          { label: 'Enabled', prop: 'enabled', type: 'yesno' },
+        ]
+        props.event = commonEvents.filter(e => ['On Enter', 'On Exit'].includes(e.label))
         props.other = [
           { label: 'Name', prop: 'name', type: 'text' },
           { label: 'Tag', prop: 'tag', type: 'text' },

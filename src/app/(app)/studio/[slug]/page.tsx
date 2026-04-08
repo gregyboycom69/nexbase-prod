@@ -7,6 +7,7 @@ import Toast, { ToastMessage } from '@/components/Toast'
 import TableDesigner from '@/components/TableDesigner'
 import QueryBuilder from '@/components/QueryBuilder'
 import PropertySheet from '@/components/PropertySheet'
+import FieldList from '@/components/FieldList'
 
 const GRID = 8
 const snap = (v: number, on: boolean) => on ? Math.round(v / GRID) * GRID : v
@@ -103,6 +104,10 @@ type Ctrl = {
   headerBackColor?: string
   headerForeColor?: string
   alternateBackColor?: string
+  // Subform specific
+  sourceObject?: string
+  linkMasterFields?: string
+  linkChildFields?: string
 }
 
 const DEFAULTS: Record<string, Partial<Ctrl>> = {
@@ -309,6 +314,7 @@ export default function StudioPage() {
   const [previewRecords, setPreviewRecords] = useState<any[]>([])
   const [previewRecordIndex, setPreviewRecordIndex] = useState(0)
   const [comboRowSourceData, setComboRowSourceData] = useState<Record<string, any[]>>({})
+  const [showFieldList, setShowFieldList] = useState(false)
 
   const canvasRef = useRef<HTMLDivElement>(null)
   const isDrawing = useRef(false)
@@ -466,6 +472,63 @@ export default function StudioPage() {
       // Reload pages to get updated data
       if (workspace) loadPages(workspace.id)
     }
+  }
+
+  const handleAddFieldFromList = (fieldName: string, fieldType: string) => {
+    // Find a good position for the new controls (stack them vertically)
+    const existingY = controls.length > 0 ? Math.max(...controls.map(c => c.y + c.h)) : 20
+    const startY = existingY + 20
+
+    // Create Label
+    const labelId = Date.now().toString()
+    const labelCtrl: Ctrl = {
+      id: labelId,
+      type: 'Label',
+      x: 20,
+      y: startY,
+      w: 150,
+      h: 24,
+      caption: fieldName,
+      color: '#374151',
+      bg: 'transparent',
+      radius: 0,
+      fontSize: 14,
+      fieldKey: '',
+      placeholder: '',
+      steps: [],
+      visible: true,
+    }
+
+    // Create bound TextBox/NumberBox/DatePicker based on field type
+    let controlType = 'TextBox'
+    if (fieldType === 'Number' || fieldType === 'Currency') controlType = 'NumberBox'
+    else if (fieldType === 'Date/Time') controlType = 'DatePicker'
+    else if (fieldType === 'Yes/No') controlType = 'CheckBox'
+    else if (fieldType === 'Choice') controlType = 'ComboBox'
+
+    const def = DEFAULTS[controlType] || DEFAULTS.TextBox
+    const ctrlId = (Date.now() + 1).toString()
+    const inputCtrl: Ctrl = {
+      id: ctrlId,
+      type: controlType,
+      x: 180,
+      y: startY,
+      w: def.w || 200,
+      h: def.h || 44,
+      caption: def.caption || '',
+      color: def.color || '#1e293b',
+      bg: def.bg || '#ffffff',
+      radius: def.radius ?? 8,
+      fontSize: def.fontSize || 14,
+      fieldKey: fieldName, // THIS IS THE KEY - binds to the field
+      placeholder: def.placeholder || '',
+      steps: [],
+      visible: true,
+    }
+
+    setControls(prev => [...prev, labelCtrl, inputCtrl])
+    setSelectedId(ctrlId)
+    showToast(`Added ${fieldName} field to form`, 'success')
   }
 
   const loadTables = async (workspaceId: string) => {
@@ -929,6 +992,9 @@ export default function StudioPage() {
                   {l}
                 </label>
               ))}
+              <button onClick={() => setShowFieldList(!showFieldList)} style={{ background:showFieldList?'#4f46e5':'transparent', border:'1px solid #3a3f5c', color:showFieldList?'#fff':'#7480a8', padding:'4px 12px', borderRadius:7, cursor:'pointer', fontSize:12 }}>
+                📋 Field List
+              </button>
               <button onClick={() => setIsPreview(!isPreview)} style={{ background:isPreview?'#4f46e5':'transparent', border:'1px solid #3a3f5c', color:isPreview?'#fff':'#7480a8', padding:'4px 12px', borderRadius:7, cursor:'pointer', fontSize:12 }}>
                 {isPreview ? '🔙 Design' : '👁 Preview'}
               </button>
@@ -1116,6 +1182,7 @@ export default function StudioPage() {
             formProperties={formProperties}
             tables={tables}
             queries={queries}
+            pages={pages}
             workspaceId={workspace.id}
           />
         )}
@@ -1150,6 +1217,17 @@ export default function StudioPage() {
             + Add Page
           </button>
         </div>
+      )}
+
+      {/* Field List Panel */}
+      {view === 'forms' && !isPreview && workspace && (
+        <FieldList
+          isOpen={showFieldList}
+          onClose={() => setShowFieldList(false)}
+          recordSource={formProperties.recordSource}
+          tables={tables}
+          onAddField={handleAddFieldFromList}
+        />
       )}
     </div>
   )
