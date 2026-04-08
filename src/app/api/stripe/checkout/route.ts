@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { stripe, PRICE_IDS } from '@/lib/stripe'
+import { getStripe, PRICE_IDS } from '@/lib/stripe'
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if Stripe is configured
+    const stripe = getStripe()
+
     const { planId } = await request.json()
 
     if (!planId || !['starter', 'builder', 'agency'].includes(planId)) {
@@ -69,6 +72,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: session.url })
   } catch (error: any) {
     console.error('Stripe checkout error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Check if it's a Stripe configuration error
+    if (error.message?.includes('STRIPE_SECRET_KEY')) {
+      return NextResponse.json(
+        { error: 'Payment system not configured. Please contact support.' },
+        { status: 503 }
+      )
+    }
+
+    return NextResponse.json({ error: error.message || 'Payment processing failed' }, { status: 500 })
   }
 }

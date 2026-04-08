@@ -1,0 +1,364 @@
+NexBase - Phase 6 - Polish + Performance + SEO + Email + Analytics + Custom Domains
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+Phases 1 to 5 are all done. NexBase is a working SaaS with billing.
+
+Phase 6 is about making it PRODUCTION READY and PROFESSIONAL.
+Polish everything, add missing features, make it fast, add analytics.
+
+=== TASK 1 - EMAIL NOTIFICATIONS WITH RESEND ===
+
+npm install resend
+
+Add to .env.local:
+RESEND_API_KEY=re_... (Greg will get this from resend.com - free tier is fine)
+FROM_EMAIL=noreply@nexbase.app
+
+Create src/lib/email.ts:
+- Initialize Resend client
+- Create sendEmail function
+
+Create these email templates as React components in src/emails/:
+
+1. WelcomeEmail.tsx
+   Subject: "Welcome to NexBase - Your account is ready!"
+   Content:
+   - NexBase logo and brand colors
+   - "Welcome [name]!" heading
+   - "Your 14-day free trial has started"
+   - What they can do: build apps, invite clients, publish
+   - Big "Go to Dashboard" button
+   - Trial ends in: 14 days from signup date
+   - Support email: support@nexbase.app
+
+2. TrialEndingEmail.tsx
+   Subject: "Your NexBase trial ends in 3 days"
+   Content:
+   - Warning message about trial ending
+   - Show their usage stats (workspaces created, apps published)
+   - "Upgrade now to keep everything" CTA button
+   - Pricing plans comparison (brief)
+   - "If you have questions" support link
+
+3. PaymentSuccessEmail.tsx
+   Subject: "Payment confirmed - Welcome to NexBase [Plan]!"
+   Content:
+   - Confirmation of payment
+   - Plan name and amount charged
+   - What is now unlocked
+   - Invoice number and date
+   - Manage billing link
+
+4. PaymentFailedEmail.tsx
+   Subject: "Action required - Payment failed for NexBase"
+   Content:
+   - Payment failed notice
+   - Update payment method button
+   - Account will be downgraded in 7 days if not fixed
+
+5. NewWorkspaceEmail.tsx (to Greg as admin)
+   Subject: "New workspace created on NexBase"
+   Content:
+   - User email who created it
+   - Workspace name and slug
+   - Their current plan
+   - Link to admin panel
+
+Send emails from:
+- Signup trigger: send WelcomeEmail
+- 3 days before trial ends: send TrialEndingEmail (create a cron job route)
+- Stripe webhook on payment success: send PaymentSuccessEmail
+- Stripe webhook on payment failure: send PaymentFailedEmail
+- When workspace created: send NewWorkspaceEmail to Greg
+
+Create src/app/api/cron/trial-reminder/route.ts:
+- GET endpoint (protected by a secret token in header)
+- Finds all users where trial_ends_at is between now and now+3days
+- Sends TrialEndingEmail to each
+- Add to Vercel cron jobs (in vercel.json):
+  { "crons": [{ "path": "/api/cron/trial-reminder", "schedule": "0 9 * * *" }] }
+
+=== TASK 2 - SEO AND METADATA ===
+
+Update src/app/layout.tsx:
+Add default metadata:
+- title: "NexBase - Build Your Own CRM Without Code"
+- description: "Drag and drop app builder for MS Access developers and consultants. Build, publish and sell custom CRM apps to your clients."
+- keywords: MS Access alternative, no-code CRM builder, drag drop app builder, low code platform
+- openGraph image: /og-image.png (create a simple placeholder)
+- Twitter card
+- Canonical URL
+- Favicon
+
+Create src/app/sitemap.ts:
+Returns sitemap with:
+- / (landing page)
+- /pricing
+- /templates
+- /login
+- /signup
+- All published workspace slugs from Supabase (dynamically fetched)
+
+Create src/app/robots.ts:
+- Allow all crawlers
+- Disallow /admin, /dashboard, /studio
+- Sitemap URL
+
+Add metadata to each page:
+- Landing: full SEO meta
+- Pricing: "NexBase Pricing - Plans from 19 EUR/month"
+- Templates: "NexBase Templates - Ready-made CRM templates"
+- Published app (/app/[slug]): use workspace brand_name as title
+
+=== TASK 3 - PERFORMANCE OPTIMIZATIONS ===
+
+1. Add loading.tsx files for each route group:
+   src/app/(app)/loading.tsx - shows branded skeleton
+   src/app/app/[slug]/loading.tsx - shows workspace branded skeleton
+
+2. Add error.tsx files:
+   src/app/error.tsx - global error page with nice design
+   src/app/(app)/error.tsx - dashboard error page
+   src/app/not-found.tsx - 404 page with link back home
+
+3. Optimize Supabase queries:
+   - Add select() to all queries to only fetch needed columns
+   - Add indexes to Supabase (run in SQL editor):
+     CREATE INDEX IF NOT EXISTS idx_workspaces_slug ON workspaces(slug);
+     CREATE INDEX IF NOT EXISTS idx_workspaces_owner ON workspaces(owner_id);
+     CREATE INDEX IF NOT EXISTS idx_pages_workspace ON pages(workspace_id);
+     CREATE INDEX IF NOT EXISTS idx_controls_page ON controls(page_id);
+     CREATE INDEX IF NOT EXISTS idx_app_data_workspace ON app_data(workspace_id);
+     CREATE INDEX IF NOT EXISTS idx_app_data_table ON app_data(workspace_id, table_name);
+
+4. Add React Suspense boundaries around data-fetching components
+
+5. Image optimization: use next/image for all images
+
+=== TASK 4 - ANALYTICS DASHBOARD FOR GREG ===
+
+Update src/app/admin/page.tsx to add Analytics section:
+
+Show these metrics at the top (fetch from Supabase):
+
+Row 1 - Revenue metrics:
+- Monthly Recurring Revenue (MRR): count of active paid users x their plan price
+- Total Revenue this month
+- New paying customers this month
+- Churn: customers who cancelled this month
+
+Row 2 - Usage metrics:
+- Total users (all time)
+- Active users (logged in last 30 days)
+- Total workspaces
+- Total apps published
+- Total data rows across all workspaces
+
+Row 3 - Growth chart:
+- Line chart showing new signups per day for last 30 days
+- Use simple CSS/SVG bars - no library needed
+
+Row 4 - Users table (already exists, keep it)
+
+Row 5 - Recent activity feed:
+- Latest 20 events from audit_log and billing_events
+- Shows: icon, description, user, time ago
+- Color coded: green=success, blue=info, red=error
+
+=== TASK 5 - NOTIFICATION SYSTEM IN APP ===
+
+Add a notification bell to the studio and dashboard header.
+
+When clicked shows a dropdown panel with recent notifications:
+
+Types of notifications stored in Supabase:
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id),
+  type TEXT, -- info, success, warning, error
+  title TEXT,
+  message TEXT,
+  read BOOLEAN DEFAULT false,
+  link TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY user_notifications ON notifications FOR ALL USING (user_id = auth.uid());
+
+Notifications to create automatically:
+- When trial ends in 3 days: warning notification
+- When payment succeeds: success notification
+- When workspace is published: info notification
+- When data limit is 80% full: warning notification
+
+Bell icon shows unread count badge (red dot with number).
+Mark all as read button.
+Each notification links somewhere relevant.
+
+=== TASK 6 - WORKSPACE SETTINGS PAGE ===
+
+Create src/app/(app)/studio/[slug]/settings/page.tsx:
+
+Add Settings tab to studio top navigation.
+
+Show workspace settings:
+
+Section 1 - General:
+- Workspace name (editable input, saves to Supabase)
+- Workspace slug (editable, warns if changing will break existing links)
+- Description (textarea)
+
+Section 2 - Branding:
+- Brand name (what shows in the published app sidebar)
+- Brand logo (emoji picker with 30 emojis to choose from)
+- Brand color (color picker with preset swatches + custom hex input)
+- Preview of how sidebar will look with current brand settings
+- Logo upload placeholder (for Agency plan - shows upgrade prompt for others)
+- Custom domain input (for Agency plan - shows upgrade prompt for others)
+
+Section 3 - Access:
+- Published status toggle (on/off)
+- Public URL shown when published
+- Password protect app toggle + password input (Builder plan+)
+- Allow client self-registration toggle
+
+Section 4 - Danger Zone:
+- Delete Workspace button (red, requires typing workspace name to confirm)
+
+=== TASK 7 - ONBOARDING FLOW ===
+
+Create a first-time user onboarding experience.
+
+After signup, if user has 0 workspaces, show onboarding modal in dashboard:
+
+Step 1 of 3 - Welcome:
+- "Welcome to NexBase!"
+- "Let's build your first app in 3 steps"
+- Animated illustration (CSS only)
+- Next button
+
+Step 2 of 3 - Create your first workspace:
+- Input: What is your app for? (pre-filled options: CRM, Club Management, Inventory, HR, Other)
+- Input: App name
+- Input: Who are your clients? (text)
+- Creates workspace automatically when Next is clicked
+
+Step 3 of 3 - Choose a starting point:
+- Start from blank canvas
+- Start from a template (shows 3 popular templates)
+- When clicked: redirects to studio
+
+Track onboarding_complete boolean in user_profiles:
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS onboarding_complete BOOLEAN DEFAULT false;
+
+After step 3 set onboarding_complete = true so it never shows again.
+
+=== TASK 8 - KEYBOARD SHORTCUTS IN STUDIO ===
+
+Add keyboard shortcuts to the studio canvas:
+
+Ctrl+Z = Undo last action (keep history of last 20 changes)
+Ctrl+Y = Redo
+Ctrl+D = Duplicate selected control
+Delete = Delete selected control
+Escape = Deselect all
+Ctrl+A = Select all controls
+Arrow keys = Move selected control 1px
+Shift+Arrow = Move selected control 8px (grid)
+Ctrl+S = Save (shows "Saved" toast)
+Ctrl+P = Toggle preview mode
+Ctrl+G = Toggle grid
+Ctrl+Shift+P = Publish
+
+Show a keyboard shortcuts help panel:
+- ? key opens it
+- Shows all shortcuts in a modal
+- Nicely formatted with key badges
+
+=== TASK 9 - UNDO/REDO HISTORY ===
+
+Add undo/redo to the studio canvas:
+
+Keep a history array of up to 20 states (snapshot of controls array).
+When any control is added/moved/resized/deleted/changed:
+- Push current state to history
+- Clear redo stack
+
+Ctrl+Z pops from history (undo)
+Ctrl+Y pops from redo stack (redo)
+
+Show undo/redo buttons in studio top bar:
+- Undo button (left arrow icon) disabled if no history
+- Redo button (right arrow icon) disabled if no redo stack
+- Tooltip on hover showing what action will be undone
+
+=== TASK 10 - COPY PASTE CONTROLS ===
+
+Add copy/paste in studio:
+
+Ctrl+C = Copy selected control (save to clipboard state)
+Ctrl+V = Paste (create new control at offset +16px from original)
+Ctrl+X = Cut (copy + delete)
+
+Also add right-click context menu on canvas controls:
+- Copy
+- Paste
+- Duplicate
+- Delete
+- Bring to Front
+- Send to Back
+- Properties (focuses properties panel)
+
+Context menu appears at mouse position, dismisses on click outside.
+
+=== TASK 11 - MULTI-SELECT IN STUDIO ===
+
+Allow selecting multiple controls at once:
+
+Shift+Click = Add/remove control from selection
+Ctrl+A = Select all
+Click+Drag on empty canvas = Selection rectangle (marquee select)
+
+When multiple controls selected:
+- Show bounding box around all selected controls
+- Move them all together when dragging any one
+- Delete removes all selected
+- Duplicate copies all selected
+
+Properties panel when multiple selected:
+- Shows "X controls selected"
+- Only shows properties that apply to all (like x offset, y offset)
+- "Align" buttons: align left edges, align right edges, align tops, align bottoms, center horizontally, center vertically, distribute horizontally, distribute vertically
+
+=== SQL TO RUN IN SUPABASE BEFORE STARTING ===
+
+CREATE INDEX IF NOT EXISTS idx_workspaces_slug ON workspaces(slug);
+CREATE INDEX IF NOT EXISTS idx_workspaces_owner ON workspaces(owner_id);
+CREATE INDEX IF NOT EXISTS idx_pages_workspace ON pages(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_controls_page ON controls(page_id);
+CREATE INDEX IF NOT EXISTS idx_app_data_workspace ON app_data(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_app_data_table ON app_data(workspace_id, table_name);
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id),
+  type TEXT DEFAULT 'info',
+  title TEXT,
+  message TEXT,
+  read BOOLEAN DEFAULT false,
+  link TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY user_notifications ON notifications FOR ALL USING (user_id = auth.uid());
+
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS onboarding_complete BOOLEAN DEFAULT false;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '14 days');
+
+=== AFTER ALL TASKS DONE ===
+
+1. npm run build (fix any TypeScript errors)
+2. git add -A
+3. git commit -m "Phase 6 Polish SEO Email Analytics Onboarding Shortcuts"
+4. git push origin main
