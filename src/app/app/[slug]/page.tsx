@@ -1,64 +1,592 @@
-import { createClient } from '@/lib/supabase/server';
-import { notFound } from 'next/navigation';
+'use client'
 
-interface PublicAppPageProps {
-  params: Promise<{
-    slug: string;
-  }>;
-}
+import { useState, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import Toast, { ToastMessage } from '@/components/Toast'
+import { runMacro } from '@/lib/macroEngine'
 
-export default async function PublicAppPage({ params }: PublicAppPageProps) {
-  const { slug } = await params;
-  const supabase = await createClient();
+export default function PublishedAppPage() {
+  const params = useParams()
+  const router = useRouter()
+  const slug = params.slug as string
+  const supabase = createClient()
 
-  const { data: workspace, error } = await supabase
-    .from('workspaces')
-    .select('*')
-    .eq('slug', slug)
-    .single();
+  const [loading, setLoading] = useState(true)
+  const [workspace, setWorkspace] = useState<any>(null)
+  const [pages, setPages] = useState<any[]>([])
+  const [activePageId, setActivePageId] = useState<string | null>(null)
+  const [controls, setControls] = useState<any[]>([])
+  const [formData, setFormData] = useState<Record<string, any>>({})
+  const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const [visibleModal, setVisibleModal] = useState<string | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
-  if (error || !workspace) {
-    notFound();
+  useEffect(() => {
+    loadWorkspace()
+  }, [slug])
+
+  useEffect(() => {
+    if (activePageId) {
+      loadControls(activePageId)
+    }
+  }, [activePageId])
+
+  const loadWorkspace = async () => {
+    setLoading(true)
+    const { data: ws } = await supabase.from('workspaces').select('*').eq('slug', slug).single()
+
+    if (!ws) {
+      setLoading(false)
+      return
+    }
+
+    setWorkspace(ws)
+
+    if (!ws.published) {
+      setLoading(false)
+      return
+    }
+
+    const { data: pgs } = await supabase
+      .from('pages')
+      .select('*')
+      .eq('workspace_id', ws.id)
+      .order('display_order', { ascending: true })
+
+    if (pgs && pgs.length > 0) {
+      setPages(pgs)
+      setActivePageId(pgs[0].id)
+    }
+
+    setLoading(false)
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100">
-      <div className="max-w-4xl mx-auto px-4 py-16">
-        <div className="bg-white rounded-lg shadow-xl p-8 text-center">
-          <div className="max-w-md mx-auto">
-            <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg
-                className="w-10 h-10 text-primary-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+  const loadControls = async (pageId: string) => {
+    const { data } = await supabase
+      .from('controls')
+      .select('*')
+      .eq('page_id', pageId)
+      .order('display_order', { ascending: true })
+
+    if (data) {
+      setControls(data)
+    }
+  }
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info') => {
+    const id = Date.now().toString()
+    setToasts((prev) => [...prev, { id, message, type }])
+  }
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }
+
+  const handleButtonClick = async (ctrl: any) => {
+    if (ctrl.macro_steps && ctrl.macro_steps.length > 0) {
+      await runMacro(ctrl.macro_steps, {
+        formData,
+        setFormData,
+        workspaceId: workspace.id,
+        showToast,
+        showModal: (id) => setVisibleModal(id),
+        hideModal: () => setVisibleModal(null),
+      })
+    }
+  }
+
+  const renderControl = (ctrl: any) => {
+    const base: React.CSSProperties = {
+      width: ctrl.w,
+      height: ctrl.h,
+      borderRadius: ctrl.radius,
+      fontSize: ctrl.fontSize,
+      color: ctrl.color,
+      fontFamily: 'inherit',
+    }
+
+    if (ctrl.type === 'Heading') {
+      return <div style={{ ...base, display: 'flex', alignItems: 'center', fontWeight: 800 }}>{ctrl.caption}</div>
+    }
+
+    if (ctrl.type === 'Label') {
+      return <div style={{ ...base, display: 'flex', alignItems: 'center' }}>{ctrl.caption}</div>
+    }
+
+    if (ctrl.type === 'TextBox') {
+      return (
+        <input
+          type="text"
+          placeholder={ctrl.placeholder}
+          value={formData[ctrl.fieldKey] || ''}
+          onChange={(e) => setFormData((prev) => ({ ...prev, [ctrl.fieldKey]: e.target.value }))}
+          style={{
+            ...base,
+            background: ctrl.bg,
+            border: '1.5px solid #e2e8f0',
+            padding: '0 12px',
+            outline: 'none',
+            transition: 'border-color 0.2s',
+          }}
+          onFocus={(e) => (e.target.style.borderColor = '#6366f1')}
+          onBlur={(e) => (e.target.style.borderColor = '#e2e8f0')}
+        />
+      )
+    }
+
+    if (ctrl.type === 'Button') {
+      return (
+        <button
+          onClick={() => handleButtonClick(ctrl)}
+          style={{
+            ...base,
+            background: ctrl.bg,
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 700,
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            boxShadow: `0 4px 14px ${ctrl.bg}55`,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)'
+            e.currentTarget.style.boxShadow = `0 6px 20px ${ctrl.bg}77`
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = `0 4px 14px ${ctrl.bg}55`
+          }}
+        >
+          {ctrl.caption}
+        </button>
+      )
+    }
+
+    if (ctrl.type === 'ComboBox') {
+      const options = (ctrl.placeholder || 'Option 1,Option 2,Option 3').split(',')
+      return (
+        <select
+          value={formData[ctrl.fieldKey] || ''}
+          onChange={(e) => setFormData((prev) => ({ ...prev, [ctrl.fieldKey]: e.target.value }))}
+          style={{
+            ...base,
+            background: ctrl.bg,
+            border: '1.5px solid #e2e8f0',
+            padding: '0 12px',
+            outline: 'none',
+          }}
+        >
+          <option value="">Select...</option>
+          {options.map((opt: string, i: number) => (
+            <option key={i} value={opt.trim()}>
+              {opt.trim()}
+            </option>
+          ))}
+        </select>
+      )
+    }
+
+    if (ctrl.type === 'CheckBox') {
+      return (
+        <label style={{ ...base, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={formData[ctrl.fieldKey] || false}
+            onChange={(e) => setFormData((prev) => ({ ...prev, [ctrl.fieldKey]: e.target.checked }))}
+            style={{ width: 20, height: 20 }}
+          />
+          <span>{ctrl.caption}</span>
+        </label>
+      )
+    }
+
+    if (ctrl.type === 'DatePicker') {
+      return (
+        <input
+          type="date"
+          value={formData[ctrl.fieldKey] || ''}
+          onChange={(e) => setFormData((prev) => ({ ...prev, [ctrl.fieldKey]: e.target.value }))}
+          style={{
+            ...base,
+            background: ctrl.bg,
+            border: '1.5px solid #e2e8f0',
+            padding: '0 12px',
+            outline: 'none',
+          }}
+        />
+      )
+    }
+
+    if (ctrl.type === 'NumberBox') {
+      return (
+        <input
+          type="number"
+          value={formData[ctrl.fieldKey] || ctrl.value || 0}
+          onChange={(e) => setFormData((prev) => ({ ...prev, [ctrl.fieldKey]: Number(e.target.value) }))}
+          style={{
+            ...base,
+            background: ctrl.bg,
+            border: '1.5px solid #e2e8f0',
+            padding: '0 12px',
+            textAlign: 'right',
+            outline: 'none',
+          }}
+        />
+      )
+    }
+
+    if (ctrl.type === 'ProgressBar') {
+      const pct = formData[ctrl.fieldKey] || ctrl.value || 0
+      return (
+        <div
+          style={{
+            ...base,
+            background: ctrl.bg || '#e5e7eb',
+            borderRadius: ctrl.radius,
+            display: 'flex',
+            alignItems: 'center',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: `${pct}%`,
+              background: ctrl.color,
+              transition: 'width 0.3s',
+              borderRadius: ctrl.radius,
+            }}
+          />
+          <span style={{ position: 'relative', marginLeft: 'auto', marginRight: 8, fontSize: 11, fontWeight: 600 }}>
+            {pct}%
+          </span>
+        </div>
+      )
+    }
+
+    if (ctrl.type === 'Badge') {
+      return (
+        <div
+          style={{
+            ...base,
+            background: ctrl.bg,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0 12px',
+            fontWeight: 600,
+            border: `1.5px solid ${ctrl.color}44`,
+          }}
+        >
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: ctrl.color, marginRight: 6 }} />
+          {ctrl.caption}
+        </div>
+      )
+    }
+
+    if (ctrl.type === 'Card') {
+      return (
+        <div
+          style={{
+            ...base,
+            background: ctrl.bg,
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+            padding: '14px 16px',
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 12, color: '#94a3b8', textTransform: 'uppercase' }}>
+            {ctrl.caption}
+          </div>
+          <div style={{ height: 1, background: '#f1f5f9', marginBottom: 10 }} />
+          <div style={{ fontSize: 12, color: '#cbd5e1' }}>Content area</div>
+        </div>
+      )
+    }
+
+    if (ctrl.type === 'Divider') {
+      return (
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}>
+          <div style={{ width: '100%', height: 2, background: ctrl.bg || '#e2e8f0' }} />
+        </div>
+      )
+    }
+
+    if (ctrl.type === 'Modal' && visibleModal === ctrl.id) {
+      return (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9998,
+          }}
+          onClick={() => setVisibleModal(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: ctrl.w,
+              height: ctrl.h,
+              background: '#fff',
+              borderRadius: ctrl.radius,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            }}
+          >
+            <div
+              style={{
+                background: ctrl.bg,
+                color: ctrl.color,
+                padding: '10px 12px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontWeight: 600,
+              }}
+            >
+              <span>{ctrl.caption}</span>
+              <button
+                onClick={() => setVisibleModal(null)}
+                style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 20 }}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
+                ✕
+              </button>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">
-              {workspace.name}
-            </h1>
-            <div className="bg-primary-50 border border-primary-200 rounded-lg p-6 mb-6">
-              <p className="text-primary-800 font-medium mb-2">
-                Published App Coming Soon
-              </p>
-              <p className="text-primary-700 text-sm">
-                This workspace is being configured. Check back soon to see the
-                published application.
-              </p>
+            <div style={{ flex: 1, padding: '12px', fontSize: 12, color: '#6b7280' }}>Modal content here</div>
+            <div
+              style={{
+                padding: '10px 12px',
+                borderTop: '1px solid #e5e7eb',
+                display: 'flex',
+                gap: 8,
+                justifyContent: 'flex-end',
+              }}
+            >
+              <button
+                onClick={() => setVisibleModal(null)}
+                style={{
+                  padding: '4px 12px',
+                  background: '#e5e7eb',
+                  border: 'none',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setVisibleModal(null)}
+                style={{
+                  padding: '4px 12px',
+                  background: '#4f46e5',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                OK
+              </button>
             </div>
-            <div className="text-sm text-gray-500">
-              <p>App URL: /app/{workspace.slug}</p>
+          </div>
+        </div>
+      )
+    }
+
+    // Simplified rendering for other controls
+    return (
+      <div
+        style={{
+          ...base,
+          background: ctrl.bg || '#f3f4f6',
+          border: '1px dashed #d1d5db',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 12,
+          color: '#9ca3af',
+        }}
+      >
+        {ctrl.type}
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', background: '#f3f4f6' }}>
+        <div style={{ width: 210, background: '#1e293b', borderRight: '1px solid #334155', padding: 20 }}>
+          <div style={{ width: 60, height: 60, background: '#334155', borderRadius: 8, marginBottom: 16, animation: 'pulse 1.5s ease-in-out infinite' }} />
+          <div style={{ width: '80%', height: 20, background: '#334155', borderRadius: 4, animation: 'pulse 1.5s ease-in-out infinite' }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ height: 56, background: '#fff', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', padding: '0 20px' }}>
+            <div style={{ width: 200, height: 24, background: '#e5e7eb', borderRadius: 4, animation: 'pulse 1.5s ease-in-out infinite' }} />
+          </div>
+          <div style={{ padding: 32 }}>
+            <div style={{ background: '#fff', borderRadius: 12, padding: 24, minHeight: 400 }}>
+              <div style={{ width: '100%', height: 200, background: '#f3f4f6', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
             </div>
+          </div>
+        </div>
+        <style jsx>{`
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+        `}</style>
+      </div>
+    )
+  }
+
+  if (!workspace) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f3f4f6' }}>
+        <div style={{ textAlign: 'center', padding: 40, background: '#fff', borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: '#1f2937', marginBottom: 8 }}>App Not Found</div>
+          <div style={{ fontSize: 14, color: '#6b7280' }}>The app you're looking for doesn't exist.</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!workspace.published) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f3f4f6' }}>
+        <div style={{ textAlign: 'center', padding: 40, background: '#fff', borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.1)', maxWidth: 400 }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>📝</div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: '#1f2937', marginBottom: 8 }}>{workspace.name}</div>
+          <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 20 }}>
+            This app is not published yet. The owner is still building it.
+          </div>
+          <div style={{ fontSize: 12, color: '#9ca3af', padding: '12px 16px', background: '#f9fafb', borderRadius: 8 }}>
+            App URL: /app/{workspace.slug}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const activePage = pages.find((p) => p.id === activePageId)
+  const brandColor = workspace.brand_color || '#4f46e5'
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', background: '#f3f4f6', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      <Toast toasts={toasts} removeToast={removeToast} />
+
+      {/* Sidebar */}
+      <div
+        style={{
+          width: sidebarOpen ? 210 : 0,
+          background: `linear-gradient(180deg, ${brandColor} 0%, ${brandColor}dd 100%)`,
+          borderRight: '1px solid rgba(255,255,255,0.1)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          transition: 'width 0.3s',
+        }}
+      >
+        <div style={{ padding: 20, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          <div style={{ width: 48, height: 48, background: 'rgba(255,255,255,0.2)', borderRadius: 12, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
+            🚀
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{workspace.name}</div>
+        </div>
+
+        <div style={{ flex: 1, padding: '12px 0', overflow: 'auto' }}>
+          {pages.map((page) => (
+            <button
+              key={page.id}
+              onClick={() => setActivePageId(page.id)}
+              style={{
+                width: '100%',
+                padding: '10px 20px',
+                background: page.id === activePageId ? 'rgba(255,255,255,0.15)' : 'transparent',
+                border: 'none',
+                borderLeft: page.id === activePageId ? '3px solid #fff' : '3px solid transparent',
+                color: '#fff',
+                fontSize: 14,
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                if (page.id !== activePageId) e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
+              }}
+              onMouseLeave={(e) => {
+                if (page.id !== activePageId) e.currentTarget.style.background = 'transparent'
+              }}
+            >
+              <span>📄</span>
+              <span>{page.name}</span>
+            </button>
+          ))}
+        </div>
+
+        <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', fontSize: 10, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
+          Powered by NexBase
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Header */}
+        <div style={{ height: 56, background: '#fff', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6b7280', marginRight: 16 }}
+          >
+            ☰
+          </button>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#1f2937' }}>{activePage?.name || 'Home'}</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <button style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6b7280' }}>🔔</button>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: brandColor, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 14 }}>
+              G
+            </div>
+          </div>
+        </div>
+
+        {/* Canvas Area */}
+        <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
+          <div style={{ background: '#fff', borderRadius: 12, padding: 32, minHeight: 600, position: 'relative', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            {controls.map((ctrl) => (
+              <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+                {renderControl(ctrl)}
+              </div>
+            ))}
+            {controls.length === 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: '#9ca3af', fontSize: 14 }}>
+                No controls on this page yet.
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }

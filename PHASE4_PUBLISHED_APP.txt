@@ -1,0 +1,250 @@
+NexBase - Phase 4 - Published App (What Clients See)
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+Phase 1, 1B, 2, 3 are all done.
+
+Now build Phase 4 - the Published App.
+This is what the CLIENT sees when Greg sends them the link.
+URL: nexbase-inky.vercel.app/app/[slug]
+No login required for clients - fully public.
+Zero NexBase branding - only the workspace brand shows.
+
+=== TASK 1 - PUBLISHED APP MAIN PAGE ===
+
+Replace src/app/app/[slug]/page.tsx with a full published app renderer.
+
+This page:
+1. Loads workspace from Supabase by slug (public access - no auth needed)
+2. If workspace.published = false, show "App not published yet" page
+3. If workspace.published = true, show the full client app
+
+The published app layout:
+- Left sidebar (210px, background = workspace.brand_color darkened)
+  Shows workspace brand_logo and brand_name at top
+  Below that: list of all pages as nav items with icon and name
+  Active page highlighted
+  Bottom: powered by NexBase in tiny text (very subtle)
+
+- Top header bar (56px, white background, shadow)
+  Left: current page name and subtitle
+  Right: notification bell icon, user avatar circle with first letter of email
+  If user is logged in show their name, if not show "Guest"
+
+- Main content area (flex 1, light gray background)
+  Renders the active page controls exactly as designed in studio
+  Controls are at exact x,y positions on a white card
+
+The page loads data from Supabase:
+  - workspaces table: get workspace by slug
+  - pages table: get all pages for this workspace ordered by display_order
+  - controls table: get all controls for the active page
+
+=== TASK 2 - RENDER CONTROLS IN PUBLISHED MODE ===
+
+In published mode controls are INTERACTIVE not just visual:
+
+TextBox:
+  Renders as real <input> with the placeholder
+  Saves value to local form state using fieldKey as the key
+  Styled with the control radius, fontSize, bg, color from props
+  On focus shows indigo border glow
+
+ComboBox:
+  Renders as real <select>
+  Options come from props.options split by comma
+  Saves selected value to form state using fieldKey
+
+CheckBox:
+  Renders as real clickable checkbox
+  Saves true/false to form state using fieldKey
+
+DatePicker:
+  Renders as <input type="date">
+  Saves to form state using fieldKey
+
+NumberBox:
+  Renders as <input type="number">
+  Saves to form state using fieldKey
+
+Button:
+  Renders as clickable button with hover and active states
+  When clicked runs the macro steps from control.macro_steps
+  Shows loading spinner while macro runs
+
+DataTable:
+  Renders a real interactive table
+  Loads data from Supabase app_data table filtered by workspace_id and table_name (from props.sourceTable)
+  Shows columns from props.columns
+  Has search input at top if props.showSearch is true
+  Has Export CSV button if props.showExport is true
+  Has Add Row button if props.allowAdd is true
+  Clicking a row selects it and fills any connected form fields
+  Has pagination at bottom
+
+DataGrid:
+  Same as DataTable but in MS Access datasheet style
+  Editable cells - click to edit inline
+  Tab key moves to next cell
+  Enter key saves the row
+
+Modal:
+  Normally hidden
+  Becomes visible when a Button with action "showModal" targets this control id
+  Shows as overlay with the modal content
+  Close button hides it
+
+TabPanel:
+  Shows clickable tabs
+  Clicking tab switches content
+  Each tab content area can have its own controls (from props.tabContent)
+
+Chart:
+  Loads data from app_data table
+  Renders using simple CSS bars (no library needed)
+  Bar chart: show bars proportional to values
+  Line chart: show connected dots
+  Pie: show colored segments
+
+ProgressBar:
+  Shows progress from props.value (0-100)
+  Animated fill
+
+NavigationButtons:
+  Connected to a DataTable or DataGrid on the same page
+  First, Prev, Next, Last buttons navigate through records
+  Shows current record number
+
+=== TASK 3 - MACRO ENGINE IN PUBLISHED APP ===
+
+When a Button is clicked in the published app, run its macro_steps array.
+
+Create src/lib/macroEngine.ts with a runMacro function:
+
+async function runMacro(steps, context) {
+  context has: formData, setFormData, workspaceId, navigate, showToast, showModal, hideModal, supabase
+  
+  for each step in steps:
+  
+  if action === 'save':
+    Insert into app_data table:
+    { workspace_id: workspaceId, table_name: vals.table, data: formData }
+    Show success toast after save
+
+  if action === 'newrec':
+    Clear all form fields (setFormData({}))
+
+  if action === 'delrec':
+    Show confirm dialog
+    If confirmed: delete from app_data where id = formData.id
+
+  if action === 'goto':
+    Navigate to the page with slug = vals.page
+
+  if action === 'toast':
+    Show toast notification with vals.msg and vals.type (success/error/warning/info)
+
+  if action === 'alert':
+    window.alert(vals.msg)
+
+  if action === 'confirm':
+    result = window.confirm(vals.msg)
+    If result is false: stop running macro
+
+  if action === 'filter':
+    Set filter on the DataTable with fieldKey = vals.field, value = vals.val
+
+  if action === 'clearfil':
+    Clear all filters on DataTable
+
+  if action === 'expcsv':
+    Fetch all rows from app_data where table_name = vals.table
+    Convert to CSV and download as vals.fname + .csv
+
+  if action === 'setval':
+    setFormData(prev => ({...prev, [vals.field]: vals.val}))
+
+  if action === 'calc':
+    Evaluate vals.formula replacing field names with formData values
+    Store result in vals.target field
+
+  if action === 'auditlog':
+    Insert into audit_log table: { workspace_id, action: vals.action, record_name: formData.name or formData.id }
+
+  if action === 'showModal':
+    Call showModal(vals.modalId) to show a Modal control
+
+  if action === 'hideModal':
+    Call hideModal() to hide current modal
+
+  if action === 'print':
+    window.print()
+
+  if action === 'mailto':
+    Open mailto link with formData values
+
+=== TASK 4 - TOAST NOTIFICATIONS ===
+
+Create a Toast component for the published app:
+- Fixed position top-right
+- Slide in from right animation
+- Types: success (green), error (red), warning (yellow), info (blue)
+- Auto-dismiss after 3 seconds
+- Manual close X button
+- Shows icon based on type: checkmark, X, warning triangle, info circle
+- Maximum 3 toasts at once
+- Stack vertically with gap
+
+=== TASK 5 - PUBLISH BUTTON IN STUDIO ===
+
+Make the Publish button in studio actually work:
+
+When clicked:
+1. Set workspaces.published = true in Supabase
+2. Show a success modal/toast in studio: "App Published!"
+3. Show the public URL: nexbase-inky.vercel.app/app/[slug]
+4. Add a Copy Link button next to the URL
+5. Add an Open App button that opens the URL in new tab
+
+Add an Unpublish button next to Publish (shown when already published):
+- Sets workspaces.published = false
+- Shows toast "App unpublished"
+
+Show the publish status in the top bar:
+- Green dot + "Published" when published
+- Gray dot + "Draft" when not published
+
+=== TASK 6 - CLIENT DATA DASHBOARD ===
+
+In the studio, add a "Data" tab in the top navigation (next to "Queries"):
+When clicked shows a data management view:
+
+- Left: list of table names (from all DataTable/DataGrid controls in the workspace)
+- Right: shows the actual data from app_data table for the selected table
+  - Full spreadsheet view
+  - Can search, filter, sort
+  - Can export to CSV
+  - Can delete rows
+  - Shows when each row was created
+
+=== TASK 7 - PUBLISHED APP LOADING STATE ===
+
+While the published app is loading from Supabase show:
+- Skeleton loading screens (gray animated blocks where content will be)
+- The workspace brand color as accent in the loading screen
+- Brand name in the header even while loading
+
+=== TASK 8 - MOBILE RESPONSIVE ===
+
+Make the published app work on mobile:
+- Sidebar collapses to bottom navigation bar on mobile (< 768px)
+- Controls stack vertically on very small screens
+- Touch events work for interactive controls
+- Buttons have minimum tap target size of 44px
+
+=== AFTER ALL TASKS DONE ===
+
+1. npm run build (fix any TypeScript errors)
+2. git add -A
+3. git commit -m "Phase 4 Published App - client view complete"
+4. git push origin main
