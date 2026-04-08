@@ -1,0 +1,268 @@
+NexBase - Phase 3 - Advanced Controls + MS Access Style UI
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+The drag-draw canvas is now working. 
+
+Now add MORE control types to the toolbox so it feels like MS Access Form Designer.
+Also add a full DATA TABLE view and QUERY BUILDER to the studio.
+
+=== TASK 1 - ADD THESE NEW CONTROLS TO THE TOOLBOX ===
+
+Add these new types to DEFAULTS and TOOLS array and renderCtrl function
+in src/app/(app)/studio/[slug]/page.tsx:
+
+NEW CONTROL TYPES:
+
+1. DataTable
+   Default: w:400, h:200, radius:8
+   Render: A spreadsheet-style table with:
+   - Header row with column names (from props.columns split by comma, default "Name,Email,Status")
+   - 3 sample data rows with placeholder dashes
+   - Alternating row colors (#f8faff and white)
+   - Indigo header background
+   - Sortable column headers (show arrow icon)
+   - Shows "DataTable" label at top left in small text
+   - Has a "+ Add Row" button at bottom
+
+2. Modal / Popup
+   Default: w:300, h:200, radius:12
+   Render: Looks like a popup dialog with:
+   - Dark overlay hint (semi-transparent border)
+   - White inner box with title bar (indigo background, white text "Dialog Title")
+   - Close X button top right of title bar
+   - Content area with "Modal content here" text
+   - Footer with OK and Cancel buttons
+
+3. TabPanel
+   Default: w:350, h:200, radius:8
+   Render: Tab control with:
+   - 3 tabs at top: Tab 1 (active, indigo underline), Tab 2, Tab 3
+   - Active tab has indigo bottom border and darker text
+   - Content area below showing "Tab 1 content"
+   - Props: tabs = "Tab 1,Tab 2,Tab 3" (comma separated)
+
+4. DataGrid (like Access subform datasheet)
+   Default: w:400, h:180, radius:8
+   Render: Looks exactly like MS Access datasheet:
+   - Row selector column on left (gray, shows row numbers)
+   - Column headers with type icons (text icon, number icon)
+   - 4 sample rows of data
+   - Selected row highlighted in blue
+   - New row at bottom with asterisk *
+   - Border around entire grid
+
+5. Chart / Graph
+   Default: w:300, h:180, radius:12
+   Render: A simple bar chart visual:
+   - Title at top "Chart Title"
+   - 5 bars of different heights in indigo shades
+   - X axis labels below bars
+   - Y axis on left
+   - Legend at bottom
+   - Props: chartType = "bar" (bar, line, pie)
+
+6. Lookup / Search Box
+   Default: w:220, h:44, radius:8
+   Render: Input with search icon on left and dropdown button on right
+   - Search icon (magnifying glass) on left
+   - Placeholder "Search or select..."
+   - Small dropdown arrow button on right in indigo
+   - Border with focus ring style
+
+7. DatePicker
+   Default: w:180, h:44, radius:8
+   Render: Input that looks like a date field
+   - Calendar icon on left
+   - Shows "DD/MM/YYYY" as placeholder
+   - Small calendar button on right
+
+8. NumberBox
+   Default: w:120, h:44, radius:8
+   Render: Number input with up/down spinner arrows
+   - Shows "0" as default value
+   - Up arrow button on right top
+   - Down arrow button on right bottom
+   - Right-aligned text
+
+9. ProgressBar
+   Default: w:200, h:24, radius:20
+   Render: A progress bar
+   - Gray background track
+   - Indigo filled portion (props.value = 65 = 65% filled)
+   - Shows percentage text on right
+   - Rounded ends
+
+10. StatusBar
+    Default: w:400, h:28, radius:0
+    Render: Bottom status bar like MS Access
+    - Gray background
+    - Left side: "Ready" text with green dot
+    - Middle: "Record: 1 of 5"
+    - Right side: navigation buttons (|< < > >|)
+
+11. NavigationButtons
+    Default: w:200, h:36, radius:8
+    Render: MS Access style record navigation
+    - |< First  < Prev  Record number input  > Next  >| Last
+    - Plus button for new record
+    - All in a row with borders between
+
+12. Subform
+    Default: w:380, h:160, radius:8
+    Render: Looks like an embedded form inside the main form
+    - Dashed border around it
+    - Small label "Subform" at top
+    - Inside shows a mini DataGrid with 2 columns and 3 rows
+    - Background slightly different from parent
+
+13. SectionHeader
+    Default: w:400, h:32, radius:0
+    Render: A section divider with label
+    - Full width gray bar
+    - Bold text on left "Section Title"
+    - Horizontal line extending to right
+    - Optional collapse arrow on right
+
+14. ImageViewer
+    Default: w:160, h:120, radius:8
+    Render: Image display with controls
+    - Gray box with image placeholder icon
+    - Below: row of buttons (Browse, Clear, Zoom)
+    - Border around image area
+
+=== TASK 2 - ORGANIZE TOOLBOX INTO GROUPS ===
+
+Change the toolbox left sidebar to show controls in GROUPS with group headers:
+
+Group 1: BASIC
+- Select (arrow)
+- Label
+- Heading
+- TextBox
+- Button
+
+Group 2: INPUTS
+- ComboBox
+- CheckBox
+- DatePicker
+- NumberBox
+- Lookup
+
+Group 3: DATA
+- DataTable
+- DataGrid
+- Subform
+
+Group 4: DISPLAY
+- Badge
+- Card
+- Chart
+- ProgressBar
+- Image
+
+Group 5: LAYOUT
+- Divider
+- SectionHeader
+- TabPanel
+- StatusBar
+- NavigationButtons
+
+Group 6: DIALOGS
+- Modal
+
+Make the toolbox scrollable and each group has a small header label in uppercase.
+Make the toolbox wider: 72px instead of 64px.
+
+=== TASK 3 - ADD QUERY BUILDER PAGE TO STUDIO ===
+
+Add a "Queries" tab to the studio top navigation (next to the workspace name).
+When clicked it shows a Query Builder panel instead of the canvas.
+
+The Query Builder has:
+- Left panel (200px): Table selector
+  - Title "Tables"
+  - List of table names from props (default: Customers, Orders, Products)
+  - Click a table to add it to the query
+  - Added tables show as cards with their columns listed
+
+- Center panel: QBE Grid (Query By Example - exactly like MS Access)
+  - Grid with columns: Field, Table, Sort, Show, Criteria, Or
+  - User can add fields by clicking + 
+  - Each row is one field in the query
+  - Sort column has dropdown: None, Ascending, Descending
+  - Show column has checkbox
+  - Criteria column is a text input
+  - Can add multiple criteria rows
+
+- Right panel (200px): Query Properties
+  - Query Name input
+  - Query Type: Select, Insert, Update, Delete
+  - Top N records input
+  - Unique values checkbox
+
+- Bottom: Run Query button (indigo), Save Query button, Clear button
+
+=== TASK 4 - ADD PAGES MANAGER TO STUDIO ===
+
+Make the bottom tabs area better:
+- Each page tab shows: icon + name
+- Active page tab has indigo background
+- Right-click on tab shows context menu: Rename, Delete, Duplicate
+- Drag tabs to reorder them
+- Add Page button opens a small modal asking for page name and icon (emoji picker with 20 common emojis)
+
+=== TASK 5 - IMPROVE PROPERTIES PANEL ===
+
+When a DataTable is selected in properties panel show:
+- Columns input (comma separated)
+- Rows Per Page dropdown (10, 25, 50, 100)
+- Show Search checkbox
+- Show Export button checkbox
+- Allow Add Row checkbox
+- Allow Delete Row checkbox
+- Source Table input (which Supabase table to pull data from)
+
+When a Chart is selected show:
+- Chart Type: Bar, Line, Pie, Donut
+- Title input
+- Data Source input
+- Color scheme dropdown
+
+When a Modal is selected show:
+- Title input
+- Width input
+- Show Cancel button checkbox
+- OK button label input
+
+When a TabPanel is selected show:
+- Tabs input (comma separated)
+- Active Tab number
+
+=== TASK 6 - ADD PREVIEW MODE ===
+
+The Preview button in top bar already exists but make it actually work:
+
+When Preview mode is ON:
+- Hide all resize handles
+- Hide toolbox
+- Hide properties panel  
+- Canvas takes full width
+- TextBox becomes a real <input>
+- ComboBox becomes a real <select>
+- CheckBox becomes clickable
+- Button shows hover effect and cursor pointer
+- DataTable shows real data (sample rows from the control config)
+- DatePicker shows a date input
+- NumberBox shows a number input
+- Modal shows as an overlay when a Button linked to it is clicked
+
+When Preview mode is OFF:
+- Everything comes back to design mode
+
+=== AFTER ALL TASKS DONE ===
+
+1. npm run build (fix any TypeScript errors)
+2. git add -A
+3. git commit -m "Phase 3 Advanced Controls + Query Builder + Preview Mode"
+4. git push origin main
