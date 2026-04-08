@@ -25,17 +25,26 @@ type Ctrl = {
   rowsPerPage?: number
   showSearch?: boolean
   sourceTable?: string
-  // New MS Access-style properties
+  // MS Access-style properties - FORMAT tab
   name?: string
-  controlSource?: string
   fontName?: string
   fontWeight?: string
   fontItalic?: boolean
+  fontUnderline?: boolean
   textAlign?: string
   borderStyle?: string
   borderColor?: string
-  borderWidth?: number
+  borderWidth?: string
   visible?: boolean
+  specialEffect?: string
+  backStyle?: string
+  inputMask?: string
+  format?: string
+  decimalPlaces?: string
+  verticalAlignment?: string
+  displayWhen?: string
+  // DATA tab properties
+  controlSource?: string
   defaultValue?: string
   validationRule?: string
   validationText?: string
@@ -45,6 +54,23 @@ type Ctrl = {
   rowSource?: string
   boundColumn?: number
   columnCount?: number
+  limitToList?: boolean
+  listRows?: number
+  listWidth?: number
+  tripleState?: boolean
+  minimumDate?: string
+  maximumDate?: string
+  minimumValue?: number
+  maximumValue?: number
+  step?: number
+  showSpinner?: boolean
+  allowEdits?: boolean
+  allowAdditions?: boolean
+  allowDeletions?: boolean
+  filter?: string
+  orderBy?: string
+  dateFormat?: string
+  // EVENT tab properties
   onClickMacro?: string
   onDblClickMacro?: string
   onGotFocusMacro?: string
@@ -52,10 +78,31 @@ type Ctrl = {
   beforeUpdateMacro?: string
   afterUpdateMacro?: string
   onChangeMacro?: string
+  // OTHER tab properties
   statusBarText?: string
   tabStop?: boolean
   tabIndex?: number
+  controlTipText?: string
   tag?: string
+  // Chart specific
+  showLegend?: boolean
+  legendPosition?: string
+  colorScheme?: string
+  showDataLabels?: boolean
+  recordSource?: string
+  xAxisField?: string
+  yAxisField?: string
+  seriesField?: string
+  // TabPanel specific
+  tabPosition?: string
+  tabStyle?: string
+  tabBackColor?: string
+  tabForeColor?: string
+  // DataTable specific
+  gridLinesColor?: string
+  headerBackColor?: string
+  headerForeColor?: string
+  alternateBackColor?: string
 }
 
 const DEFAULTS: Record<string, Partial<Ctrl>> = {
