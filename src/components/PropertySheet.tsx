@@ -36,8 +36,8 @@ export default function PropertySheet({
 
   const renderPropertyInput = (propName: string, value: any, onChange: (v: any) => void, type: string = 'text') => {
     const inputStyle: React.CSSProperties = {
-      width: '100%', padding: '2px 4px', fontSize: 11, border: '1px solid #b0b0b0',
-      background: '#fff', fontFamily: 'inherit', height: 22,
+      width: '100%', padding: '2px 6px', fontSize: 11, border: 'none',
+      background: '#0f1117', color: '#c8d0f0', fontFamily: 'inherit', height: 22,
     }
 
     if (type === 'yesno') {
@@ -128,8 +128,7 @@ export default function PropertySheet({
     if (type === 'color') {
       return (
         <div style={{ display: 'flex', gap: 4 }}>
-          <input type="color" value={value || '#000000'} onChange={e => onChange(e.target.value)}
-            style={{ width: 24, height: 22, border: '1px solid #b0b0b0', cursor: 'pointer' }} />
+          <div style={{ width: 16, height: 16, background: value || '#000000', border: '1px solid #2d3055', borderRadius: 2, alignSelf: 'center' }} />
           <input type="text" value={value || ''} onChange={e => onChange(e.target.value)} style={{ ...inputStyle, flex: 1 }} />
         </div>
       )
@@ -144,11 +143,11 @@ export default function PropertySheet({
 
   const renderPropertyRow = (label: string, propName: string, value: any, onChange: (v: any) => void, type: string = 'text', index: number) => {
     return (
-      <div key={propName} style={{ display: 'flex', borderBottom: '1px solid #e0e0e0', background: index % 2 === 0 ? '#fff' : '#f8f8f8' }}>
-        <div style={{ width: 140, padding: '4px 6px', fontSize: 11, color: '#666', fontWeight: 500, borderRight: '1px solid #e0e0e0' }}>
+      <div key={propName} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: '1px solid #252840', padding: '3px 8px', background: index % 2 === 0 ? '#1a1d2e' : '#1e2139' }}>
+        <span style={{ fontSize: 11, color: '#8890b8', fontFamily: "'JetBrains Mono', monospace", alignSelf: 'center' }}>
           {label}
-        </div>
-        <div style={{ flex: 1, padding: '2px' }}>
+        </span>
+        <div>
           {renderPropertyInput(propName, value, onChange, type)}
         </div>
       </div>
@@ -564,12 +563,12 @@ export default function PropertySheet({
   const selectionType = selectedControl ? selectedControl.type : 'Form'
 
   return (
-    <div style={{ width: 260, background: '#f0f0f0', borderLeft: '1px solid #b0b0b0', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: "'Segoe UI', Tahoma, sans-serif" }}>
-      <div style={{ padding: '6px 8px', background: '#fff', borderBottom: '1px solid #b0b0b0' }}>
-        <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Property Sheet</div>
-        <div style={{ fontSize: 10, color: '#666' }}>Selection type: {selectionType}</div>
+    <div style={{ width: 260, background: '#1a1d2e', borderLeft: '1px solid #252840', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: "'Segoe UI', Tahoma, sans-serif" }}>
+      <div style={{ padding: '6px 8px', background: '#252840', borderBottom: '1px solid #252840' }}>
+        <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: '#c8d0f0' }}>Property Sheet</div>
+        <div style={{ fontSize: 10, color: '#8890b8' }}>Selection type: {selectionType}</div>
         {selectedControl && (
-          <select value={selectedControl.name || selectedControl.id} style={{ width: '100%', marginTop: 4, fontSize: 11, padding: '2px 4px', border: '1px solid #b0b0b0', background: '#fff' }}>
+          <select value={selectedControl.name || selectedControl.id} style={{ width: '100%', marginTop: 4, fontSize: 11, padding: '2px 6px', border: 'none', background: '#0f1117', color: '#c8d0f0' }}>
             {controls.map(c => (
               <option key={c.id} value={c.id}>{c.name || c.type}</option>
             ))}
@@ -577,24 +576,24 @@ export default function PropertySheet({
         )}
       </div>
 
-      <div style={{ display: 'flex', background: '#f0f0f0', borderBottom: '1px solid #b0b0b0' }}>
+      <div style={{ display: 'flex', background: '#1a1d2e', borderBottom: '1px solid #252840' }}>
         {(['format', 'data', 'event', 'other', 'all'] as const).map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             style={{
               flex: 1, padding: '5px 4px', fontSize: 10, fontWeight: 500, border: 'none',
-              borderRight: '1px solid #b0b0b0',
-              background: activeTab === tab ? '#fff' : '#e8e8e8',
-              borderBottom: activeTab === tab ? 'none' : '1px solid #b0b0b0',
-              cursor: 'pointer', textTransform: 'capitalize', color: '#000',
+              borderRight: '1px solid #252840',
+              background: activeTab === tab ? '#6366f1' : 'transparent',
+              color: activeTab === tab ? '#fff' : '#7480a8',
+              cursor: 'pointer', textTransform: 'capitalize',
             }}>
             {tab}
           </button>
         ))}
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto', background: '#fff' }}>
+      <div style={{ flex: 1, overflow: 'auto', background: '#1a1d2e' }}>
         {formFields.length === 0 && activeTab === 'data' && selectedControl && (
-          <div style={{ padding: 12, background: '#e3f2fd', border: '1px solid #2196f3', margin: 8, borderRadius: 4, fontSize: 10, color: '#1976d2' }}>
+          <div style={{ padding: 12, background: '#252840', border: '1px solid #6366f1', margin: 8, borderRadius: 4, fontSize: 10, color: '#c8d0f0' }}>
             💡 Set Record Source on the form first to bind controls to data fields
           </div>
         )}
@@ -602,7 +601,7 @@ export default function PropertySheet({
           renderPropertyRow(prop.label, prop.prop, getValue(prop.prop), (v) => handleChange(prop.prop, v), prop.type, index)
         )}
         {properties.length === 0 && (
-          <div style={{ padding: 20, textAlign: 'center', fontSize: 11, color: '#999' }}>
+          <div style={{ padding: 20, textAlign: 'center', fontSize: 11, color: '#7480a8' }}>
             No properties available
           </div>
         )}

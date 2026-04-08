@@ -1,0 +1,407 @@
+NexBase - Phase 8 - Fix All Issues + Complete the System
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+Fix these problems found after Phase 7C:
+
+=== ISSUE 1 - WORKSPACE LANDING PAGE ===
+
+When user clicks a workspace from dashboard it goes straight to studio.
+This is wrong. It should go to a workspace home page first.
+
+Create src/app/(app)/workspace/[slug]/page.tsx:
+This is the workspace landing page that shows when you open a workspace.
+
+Layout:
+- Top bar: NexBase logo | workspace name | user email | Sign Out
+- Left sidebar (200px, dark): Navigation pane like MS Access
+  Shows grouped objects:
+  
+  TABLES section (with table icon):
+  - Lists all tables from workspace_tables
+  - Click = opens table in datasheet view
+  - Double click = opens table in design view
+  - Right click menu: Open, Design View, Rename, Delete
+  
+  QUERIES section (with query icon):
+  - Lists all saved queries from workspace_queries
+  - Click = runs query and shows results
+  - Double click = opens in query designer
+  
+  FORMS section (with form icon):
+  - Lists all pages/forms from pages table
+  - Click = opens form in preview mode
+  - Double click = opens form in design view (studio)
+  
+  MACROS section (with lightning icon):
+  - Lists all saved macros
+  
+  Each section has expand/collapse arrow.
+  At top of sidebar: search box to filter objects.
+
+- Main area: Welcome/home content
+  Shows workspace name as big title
+  Shows 4 quick action cards:
+  - "Design a Table" → goes to /studio/[slug]/tables
+  - "Create a Query" → goes to /studio/[slug]/queries  
+  - "Design a Form" → goes to /studio/[slug]
+  - "View Published App" → opens /app/[slug] in new tab
+  
+  Below that: Recent Objects list (last 5 opened)
+  
+  At bottom: workspace stats:
+  - Tables: X
+  - Forms: X  
+  - Records: X total across all tables
+
+Update the dashboard workspace cards to link to /workspace/[slug] instead of /studio/[slug].
+
+Also add workspace rename:
+- Workspace name in top bar is clickable
+- Click shows inline edit input
+- Press Enter saves new name to Supabase workspaces table
+
+=== ISSUE 2 - TABLE DESIGNER NOT SAVING ===
+
+The Tables tab shows but cannot add fields or save tables.
+
+Fix src/app/(app)/studio/[slug]/tables/page.tsx completely:
+
+The page must:
+1. Load existing tables from workspace_tables Supabase table
+2. Show tables in left panel list
+3. Click New Table: ask for table name → create entry in workspace_tables
+4. Click a table: show the field designer on the right
+
+Field Designer (right panel):
+- Show a grid with rows for each field
+- Each row: Field Name input | Data Type dropdown | Required checkbox | Default input | Delete button
+- Data Type options: Short Text, Long Text, Number, Decimal, Currency, AutoNumber, Date/Time, Yes/No, Choice, Email, Phone, URL, Image, Lookup
+- When Choice selected: show extra input "Options (comma separated)"
+- When Lookup selected: show extra dropdown "Related Table"
+- Bottom of grid: "+ Add Field" button that adds a new empty row
+- First row is always id (AutoNumber, Required, greyed out - cannot delete)
+
+Toolbar above grid:
+- Table name shown and editable
+- Save Table button → saves fields to workspace_tables.fields JSONB in Supabase
+- Datasheet View button → switches to show actual data
+- Design View button → switches back to field designer
+- Delete Table button (red) → deletes table with confirmation
+
+When Save Table is clicked:
+INSERT or UPDATE workspace_tables SET fields = [array of field objects]
+Each field: { name, type, required, defaultValue, options (for Choice), relatedTable (for Lookup), caption }
+
+Show a green "Saved!" toast after successful save.
+
+Datasheet View:
+When switched to datasheet view show a spreadsheet grid:
+- Column headers = field names from the table definition
+- Rows = records from app_data where workspace_id and table_name match
+- Click a cell to edit it inline
+- Tab key moves to next cell
+- Enter key saves the row
+- New row at bottom with * in row selector
+- Delete key on selected row asks confirmation then deletes
+
+=== ISSUE 3 - QUERY BUILDER NOT SAVING ===
+
+Fix src/app/(app)/studio/[slug]/queries/page.tsx:
+
+Left panel:
+- Shows all workspace_tables
+- Click a table to add it to the query workspace
+
+Center - Query workspace:
+- Shows added tables as draggable boxes
+- Each box shows table name and list of fields
+- Clicking a field in a table box adds it to the QBE grid below
+- Lines drawn between tables when user drags one field to another
+
+QBE Grid (bottom):
+- Columns: Field | Table | Sort | Show | Criteria
+- Each row is one output field
+- Field: dropdown of all fields from all added tables
+- Table: auto-filled from where field comes from
+- Sort: None / Ascending / Descending (dropdown)
+- Show: checkbox (include in output)
+- Criteria: text input (e.g. USA or >100 or Like A*)
+- Add Column button at right of grid
+
+Toolbar:
+- Query name input (editable)
+- Run Query button → executes and shows results
+- Save Query button → saves to workspace_queries table
+- Clear button → clears everything
+- SQL View button → shows the equivalent SQL
+
+Results panel (shown after Run):
+- Datasheet showing query results
+- Record count shown
+- Export CSV button
+- Close Results button
+
+Save query stores:
+{ name, tables: [], fields: [], criteria: [], orderBy: [] } to workspace_queries.definition
+
+=== ISSUE 4 - PROPERTY SHEET STYLING ===
+
+The property sheet colors are wrong - white on white is unreadable.
+
+Fix the property sheet to match the dark studio theme:
+
+Property sheet background: #1a1d2e (dark blue-gray)
+Property sheet header: #252840 (slightly lighter)
+Tab buttons: dark background, indigo active tab
+Property rows: alternating #1a1d2e and #1e2139
+Property labels: #8890b8 (muted blue-gray text)
+Property values (inputs): #0f1117 background, #c8d0f0 text, #2d3055 border
+Tab active color: #6366f1 with white text
+Tab inactive: transparent with #7480a8 text
+
+Each property row:
+<div style="display:grid; grid-template-columns:130px 1fr; border-bottom:1px solid #252840; padding:3px 8px;">
+  <span style="font-size:11px; color:#8890b8; font-family:JetBrains Mono; align-self:center;">{propName}</span>
+  <input style="background:#0f1117; border:none; color:#c8d0f0; font-size:11px; padding:2px 6px; width:100%;"/>
+</div>
+
+Dropdown/select inputs:
+background:#0f1117; color:#c8d0f0; border:none; font-size:11px; width:100%
+
+Color swatch inputs:
+Show a small 16x16 colored square + text input side by side
+
+Yes/No properties: use a small select with Yes/No options
+
+Section headers inside property sheet (like "Position" or "Appearance"):
+background:#252840; color:#6366f1; font-size:9px; font-weight:700; 
+text-transform:uppercase; letter-spacing:0.08em; padding:4px 8px;
+
+=== ISSUE 5 - CONTROLS RENDERING CORRECTLY ===
+
+Fix all control renderers so they look correct in designer mode:
+
+DatePicker: 
+Must show as a proper date input visual:
+- White/light background box
+- Calendar icon on left (use 📅 emoji, 14px)
+- "DD/MM/YYYY" placeholder text in gray
+- Small calendar button on right side
+NOT just a plain box or button!
+
+NumberBox:
+- White background with border
+- Shows "0" or the number value  
+- Small up ▲ and down ▼ arrows stacked on the right side
+- Right-aligned text
+
+Lookup/Search:
+- White background with border
+- Magnifying glass 🔍 icon on left
+- "Search or select..." placeholder
+- Small dropdown ▾ button on right in indigo background
+
+ComboBox:
+- White background with border
+- Shows placeholder or selected value on left
+- Small dropdown ▾ arrow on right in a slightly gray box
+
+TextBox:
+- White background
+- Thin indigo left border accent (like VS Code style)
+- Placeholder text in light gray
+- Border: 1px solid #e2e8f0
+
+DataTable:
+- Shows actual header row with field names (from props.columns or "Col1, Col2, Col3")
+- Shows 3 sample data rows with "---" as values
+- Alternating row colors (#f8faff and white)
+- Indigo header background with white text
+- Thin borders between cells
+- Small "DataTable" label top-left in tiny indigo text
+
+Chart:
+- Shows actual bar chart visual with 5 bars
+- Bars are different heights in indigo shades (#6366f1, #818cf8, #a5b4fc, #4338ca, #4f46e5)
+- X axis line at bottom
+- Bar labels below
+- Chart title at top from props.caption
+
+Modal:
+- Shows as a box with dark overlay background at edges
+- White inner panel
+- Title bar in indigo with white text
+- X button top right
+- Content area with "Content here" in gray
+- Footer with OK and Cancel buttons
+
+TabPanel:
+- Shows actual tab buttons at top: Tab 1 (active, indigo), Tab 2, Tab 3
+- Active tab has indigo bottom border and darker text
+- Content area below in white/light background
+- "Tab content" text in gray
+
+ProgressBar:
+- Gray track (full width)
+- Indigo filled portion (65% by default)
+- Percentage text "65%" on the right
+
+Badge:
+- Pill shape with colored background
+- Small dot on left
+- Text centered
+
+Card:
+- White rounded box
+- Subtle shadow
+- Title in small uppercase gray at top
+- Horizontal divider
+- "Content area" text below
+
+NavigationButtons:
+- Row of buttons: |< < [1] > >|
+- Gray background
+- Borders between buttons
+- Small font
+- Plus button at end
+
+StatusBar:
+- Gray background
+- "Ready" with green dot on left
+- "Record 1 of 5" in center
+- Navigation arrows on right
+
+SectionHeader:
+- Left-aligned bold text
+- Horizontal line extending to right
+- Light gray background strip
+
+Subform:
+- Dashed border
+- "Subform" label at top in small gray text
+- Inside shows a mini 3-column 3-row grid table
+- Slightly different background from parent
+
+=== ISSUE 6 - FORM DESIGN FLOW ===
+
+When user goes to Forms tab, before showing the canvas:
+If the page/form has NO record source set, show a setup prompt:
+
+Show a centered card with:
+Title: "Set up your form"
+Options:
+1. "Bind to a Table" - select from workspace tables dropdown
+2. "Bind to a Query" - select from workspace queries dropdown  
+3. "Blank Form" - no data binding, just visual design
+
+After selection (or if already set up), show the canvas normally.
+
+At the top of the canvas (below the toolbar), show a small info bar:
+"Form: [name] | Record Source: [table name or None] | [Change] button"
+
+When record source is set:
+- Show "Add All Fields" button in toolbar
+- Field List panel shows fields from that table
+- Control Source dropdowns are populated
+
+=== ISSUE 7 - PROPERTIES NOT MIXED UP ===
+
+Currently properties from different controls mix together.
+When you select a Button it shows TextBox properties etc.
+
+Fix: Each control type must show ONLY its own properties.
+The PropertySheet component must check ctrl.type and render 
+the correct property sections.
+
+Use a switch/case or if/else for each control type:
+
+if controlType === 'TextBox': render textbox properties
+if controlType === 'Button': render button properties  
+if controlType === 'ComboBox': render combobox properties
+if controlType === 'CheckBox': render checkbox properties
+if controlType === 'DatePicker': render datepicker properties
+if controlType === 'NumberBox': render numberbox properties
+if controlType === 'DataTable': render datatable properties
+if controlType === 'Chart': render chart properties
+if controlType === 'Modal': render modal properties
+if controlType === 'TabPanel': render tabpanel properties
+if controlType === 'Badge': render badge properties
+if controlType === 'Label': render label properties
+if controlType === 'Heading': render heading properties
+if controlType === 'Card': render card properties
+if controlType === 'Subform': render subform properties
+if controlType === 'Image': render image properties
+if controlType === 'ProgressBar': render progressbar properties
+if controlType === 'NavigationButtons': render navbuttons properties
+if controlType === 'StatusBar': render statusbar properties
+if controlType === 'Divider': render divider properties
+if controlType === 'SectionHeader': render sectionheader properties
+null/undefined: render form properties
+
+=== ISSUE 8 - NAVIGATION FIX ===
+
+Fix navigation so it flows like this:
+
+Dashboard → shows workspace cards
+Click workspace card → goes to /workspace/[slug] (new landing page)
+From workspace landing page:
+  Click "Design a Form" → goes to /studio/[slug] (form designer)
+  Click "Design a Table" → goes to /studio/[slug]/tables
+  Click "Create a Query" → goes to /studio/[slug]/queries
+  Double-click a form in nav pane → goes to /studio/[slug]?form=[pageId]
+  Double-click a table in nav pane → goes to /studio/[slug]/tables?table=[tableId]
+
+Back button in studio goes to /workspace/[slug]
+NOT to /dashboard directly.
+
+=== SQL TO RUN IN SUPABASE ===
+
+CREATE TABLE IF NOT EXISTS workspace_tables (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  fields JSONB DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(workspace_id, slug)
+);
+
+ALTER TABLE workspace_tables ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT FROM pg_policies WHERE tablename='workspace_tables' AND policyname='owner_wt'
+  ) THEN
+    CREATE POLICY owner_wt ON workspace_tables FOR ALL USING (
+      workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid())
+    );
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS workspace_queries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  definition JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE workspace_queries ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT FROM pg_policies WHERE tablename='workspace_queries' AND policyname='owner_wq'
+  ) THEN
+    CREATE POLICY owner_wq ON workspace_queries FOR ALL USING (
+      workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid())
+    );
+  END IF;
+END $$;
+
+=== AFTER ALL TASKS DONE ===
+
+1. npm run build
+2. git add -A
+3. git commit -m "Phase 8 - Fix navigation, table save, query save, property sheet styling, control rendering"
+4. git push origin main
