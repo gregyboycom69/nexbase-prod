@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 type Field = {
@@ -11,16 +11,19 @@ type Field = {
   description: string
   required: boolean
   defaultValue: string
-  primaryKey: boolean
-  maxLength?: number
+  isPrimaryKey: boolean
+  caption?: string
+  validationRule?: string
+  validationText?: string
+  size?: string | number
+  format?: string
+  decimalPlaces?: string
+  allowZeroLength?: boolean
+  indexed?: string
   options?: string
-}
-
-type Table = {
-  id: string
-  name: string
-  slug: string
-  fields: Field[]
+  relatedTable?: string
+  relatedField?: string
+  displayField?: string
 }
 
 const DATA_TYPES = [
@@ -28,412 +31,847 @@ const DATA_TYPES = [
   'Long Text',
   'Number',
   'Currency',
+  'AutoNumber',
   'Date/Time',
   'Yes/No',
-  'Choice',
   'Email',
   'Phone',
   'URL',
-  'AutoNumber',
+  'Choice',
   'Lookup',
 ]
 
-export default function TablesPage() {
+export default function TableDesignerPage() {
   const params = useParams()
+  const router = useRouter()
   const slug = params.slug as string
   const supabase = createClient()
 
   const [workspace, setWorkspace] = useState<any>(null)
-  const [tables, setTables] = useState<Table[]>([])
-  const [selectedTable, setSelectedTable] = useState<Table | null>(null)
+  const [tables, setTables] = useState<any[]>([])
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null)
+  const [selectedTable, setSelectedTable] = useState<any>(null)
+  const [fields, setFields] = useState<Field[]>([])
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
-  const [showNewTableModal, setShowNewTableModal] = useState(false)
+  const [tableName, setTableName] = useState('')
+  const [view, setView] = useState<'design' | 'datasheet'>('design')
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tableId: string } | null>(null)
+  const [isCreatingNew, setIsCreatingNew] = useState(false)
   const [newTableName, setNewTableName] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [datasheetData, setDatasheetData] = useState<any[]>([])
+  const [activePropertyTab, setActivePropertyTab] = useState<'general' | 'lookup'>('general')
 
   useEffect(() => {
     loadWorkspace()
-    loadTables()
   }, [slug])
 
-  const loadWorkspace = async () => {
-    const { data } = await supabase.from('workspaces').select('*').eq('slug', slug).single()
-    if (data) setWorkspace(data)
+  useEffect(() => {
+    if (selectedTableId) {
+      loadTable(selectedTableId)
+    }
+  }, [selectedTableId])
+
+  useEffect(() => {
+    if (view === 'datasheet' && selectedTable) {
+      loadDatasheetData()
+    }
+  }, [view, selectedTable])
+
+  async function loadWorkspace() {
+    const { data: ws } = await supabase.from('workspaces').select('*').eq('slug', slug).single()
+    if (!ws) {
+      router.push('/dashboard')
+      return
+    }
+    setWorkspace(ws)
+    loadTables(ws.id)
   }
 
-  const loadTables = async () => {
-    const { data: ws } = await supabase.from('workspaces').select('id').eq('slug', slug).single()
-    if (!ws) return
-
+  async function loadTables(workspaceId: string) {
     const { data } = await supabase
       .from('workspace_tables')
       .select('*')
-      .eq('workspace_id', ws.id)
-      .order('created_at', { ascending: true })
+      .eq('workspace_id', workspaceId)
+      .order('name')
 
-    if (data) {
-      const parsed = data.map(t => ({
-        id: t.id,
-        name: t.name,
-        slug: t.slug,
-        fields: Array.isArray(t.fields) ? t.fields : []
-      }))
-      setTables(parsed)
-      if (parsed.length > 0 && !selectedTable) {
-        setSelectedTable(parsed[0])
-      }
+    setTables(data || [])
+  }
+
+  async function loadTable(tableId: string) {
+    const table = tables.find((t) => t.id === tableId)
+    if (!table) return
+
+    setSelectedTable(table)
+    setTableName(table.name)
+
+    const loadedFields = Array.isArray(table.fields) && table.fields.length > 0
+      ? table.fields
+      : [{ id: 'field-0', name: 'id', type: 'AutoNumber', description: 'Primary Key', required: true, defaultValue: '', isPrimaryKey: true }]
+
+    setFields(loadedFields)
+    if (loadedFields.length > 0) {
+      setSelectedFieldId(loadedFields[0].id)
     }
   }
 
-  const createNewTable = async () => {
-    if (!workspace || !newTableName.trim()) return
+  async function loadDatasheetData() {
+    if (!workspace || !selectedTable) return
 
-    const tableSlug = newTableName.toLowerCase().replace(/[^a-z0-9]/g, '_')
-    const defaultFields: Field[] = [
-      {
-        id: Date.now().toString(),
-        name: 'id',
-        type: 'AutoNumber',
-        description: 'Primary key',
-        required: true,
-        defaultValue: '',
-        primaryKey: true
-      }
-    ]
+    const { data } = await supabase
+      .from('app_data')
+      .select('*')
+      .eq('workspace_id', workspace.id)
+      .eq('table_name', selectedTable.slug)
+      .order('created_at')
 
-    const { data, error } = await supabase
-      .from('workspace_tables')
-      .insert({
-        workspace_id: workspace.id,
-        name: newTableName,
-        slug: tableSlug,
-        fields: defaultFields
-      })
-      .select()
-      .single()
-
-    if (!error && data) {
-      const newTable: Table = {
-        id: data.id,
-        name: data.name,
-        slug: data.slug,
-        fields: data.fields || defaultFields
-      }
-      setTables(prev => [...prev, newTable])
-      setSelectedTable(newTable)
-      setNewTableName('')
-      setShowNewTableModal(false)
-    }
+    setDatasheetData(data?.map((d) => d.data) || [])
   }
 
-  const addField = () => {
-    if (!selectedTable) return
+  async function handleSaveTable() {
+    if (!workspace || !selectedTable) return
 
-    const newField: Field = {
-      id: Date.now().toString(),
-      name: '',
-      type: 'Short Text',
-      description: '',
-      required: false,
-      defaultValue: '',
-      primaryKey: false
-    }
-
-    setSelectedTable({
-      ...selectedTable,
-      fields: [...selectedTable.fields, newField]
-    })
-  }
-
-  const updateField = (fieldId: string, updates: Partial<Field>) => {
-    if (!selectedTable) return
-
-    setSelectedTable({
-      ...selectedTable,
-      fields: selectedTable.fields.map(f =>
-        f.id === fieldId ? { ...f, ...updates } : f
-      )
-    })
-  }
-
-  const deleteField = (fieldId: string) => {
-    if (!selectedTable) return
-
-    setSelectedTable({
-      ...selectedTable,
-      fields: selectedTable.fields.filter(f => f.id !== fieldId)
-    })
-  }
-
-  const saveTable = async () => {
-    if (!selectedTable) return
-
-    setSaving(true)
     const { error } = await supabase
       .from('workspace_tables')
       .update({
-        name: selectedTable.name,
-        fields: selectedTable.fields
+        name: tableName,
+        slug: tableName.toLowerCase().replace(/\s+/g, '_'),
+        fields: fields,
       })
       .eq('id', selectedTable.id)
 
-    setSaving(false)
-
     if (!error) {
-      setTables(prev => prev.map(t => t.id === selectedTable.id ? selectedTable : t))
       alert('Table saved successfully!')
+      loadTables(workspace.id)
     } else {
       alert('Error saving table: ' + error.message)
     }
   }
 
-  const deleteTable = async (tableId: string) => {
-    if (!confirm('Delete this table? This cannot be undone.')) return
+  async function handleCreateNewTable() {
+    if (!workspace || !newTableName.trim()) return
 
-    const { error } = await supabase.from('workspace_tables').delete().eq('id', tableId)
+    const slug = newTableName.toLowerCase().replace(/\s+/g, '_')
+    const { data, error } = await supabase
+      .from('workspace_tables')
+      .insert({
+        workspace_id: workspace.id,
+        name: newTableName,
+        slug,
+        fields: [
+          {
+            id: 'field-0',
+            name: 'id',
+            type: 'AutoNumber',
+            description: 'Primary Key',
+            required: true,
+            defaultValue: '',
+            isPrimaryKey: true,
+          },
+        ],
+      })
+      .select()
+      .single()
 
-    if (!error) {
-      setTables(prev => prev.filter(t => t.id !== tableId))
-      if (selectedTable?.id === tableId) {
-        setSelectedTable(tables[0] || null)
-      }
+    if (!error && data) {
+      loadTables(workspace.id)
+      setSelectedTableId(data.id)
+      setIsCreatingNew(false)
+      setNewTableName('')
     }
   }
 
-  const selectedField = selectedTable?.fields.find(f => f.id === selectedFieldId)
+  async function handleDeleteTable(tableId: string) {
+    if (!confirm('Delete this table? This cannot be undone.')) return
+
+    await supabase.from('workspace_tables').delete().eq('id', tableId)
+    loadTables(workspace?.id)
+
+    if (selectedTableId === tableId) {
+      setSelectedTableId(null)
+      setSelectedTable(null)
+      setFields([])
+    }
+  }
+
+  function handleAddField() {
+    const newField: Field = {
+      id: `field-${Date.now()}`,
+      name: '',
+      type: 'Short Text',
+      description: '',
+      required: false,
+      defaultValue: '',
+      isPrimaryKey: false,
+    }
+    setFields([...fields, newField])
+    setSelectedFieldId(newField.id)
+  }
+
+  function handleUpdateField(fieldId: string, updates: Partial<Field>) {
+    setFields(fields.map((f) => (f.id === fieldId ? { ...f, ...updates } : f)))
+  }
+
+  function handleDeleteField(fieldId: string) {
+    if (fields.find((f) => f.id === fieldId)?.isPrimaryKey) {
+      alert('Cannot delete primary key field')
+      return
+    }
+    setFields(fields.filter((f) => f.id !== fieldId))
+  }
+
+  function handleContextMenu(e: React.MouseEvent, tableId: string) {
+    e.preventDefault()
+    setContextMenu({ x: e.clientX, y: e.clientY, tableId })
+  }
+
+  const selectedField = fields.find((f) => f.id === selectedFieldId)
 
   return (
-    <div style={{ display: 'flex', height: '100%', background: '#0b0c14', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      {/* New Table Modal */}
-      {showNewTableModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}
-          onClick={() => setShowNewTableModal(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#1e2035', borderRadius: 12, padding: 32, maxWidth: 400, width: '90%' }}>
-            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: '#e2e8f0' }}>Create New Table</div>
-            <input
-              type="text"
-              value={newTableName}
-              onChange={e => setNewTableName(e.target.value)}
-              placeholder="Table name (e.g. Customers)"
-              autoFocus
-              style={{ width: '100%', padding: '10px 14px', background: '#252840', border: '1px solid #3a3f5c', borderRadius: 8, color: '#e2e8f0', fontSize: 14, marginBottom: 20 }}
-              onKeyDown={e => e.key === 'Enter' && createNewTable()}
-            />
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={createNewTable} disabled={!newTableName.trim()}
-                style={{ flex: 1, padding: '10px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: newTableName.trim() ? 'pointer' : 'not-allowed', opacity: newTableName.trim() ? 1 : 0.5 }}>
-                Create
-              </button>
-              <button onClick={() => setShowNewTableModal(false)}
-                style={{ flex: 1, padding: '10px', background: '#252840', color: '#9ca3af', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+    <div
+      style={{
+        display: 'flex',
+        height: '100vh',
+        background: '#13141f',
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        color: '#c8d0f0',
+      }}
+      onClick={() => setContextMenu(null)}
+    >
       {/* Left Panel - Table List */}
-      <div style={{ width: 240, background: '#1e2035', borderRight: '1px solid #252840', padding: 16, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
-        <button onClick={() => setShowNewTableModal(true)}
-          style={{ padding: '12px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-          <span style={{ fontSize: 16 }}>➕</span>
-          New Table
-        </button>
+      <div
+        style={{
+          width: 220,
+          background: '#1e2035',
+          borderRight: '1px solid #252840',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div
+          style={{
+            padding: '12px 16px',
+            borderBottom: '1px solid #252840',
+            fontSize: 13,
+            fontWeight: 700,
+            color: '#c8d0f0',
+          }}
+        >
+          Tables
+        </div>
 
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', marginBottom: 10, letterSpacing: '0.05em' }}>TABLES</div>
-
-        {tables.map(table => (
-          <div key={table.id}
-            onClick={() => setSelectedTable(table)}
-            style={{
-              padding: '10px 12px',
-              background: selectedTable?.id === table.id ? '#4f46e5' : 'transparent',
-              color: selectedTable?.id === table.id ? '#fff' : '#9ca3af',
-              borderRadius: 8,
-              marginBottom: 6,
-              fontSize: 13,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={e => { if (selectedTable?.id !== table.id) e.currentTarget.style.background = '#252840' }}
-            onMouseLeave={e => { if (selectedTable?.id !== table.id) e.currentTarget.style.background = 'transparent' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          {tables.map((table) => (
+            <div
+              key={table.id}
+              onClick={() => setSelectedTableId(table.id)}
+              onContextMenu={(e) => handleContextMenu(e, table.id)}
+              style={{
+                padding: '10px 16px',
+                fontSize: 12,
+                cursor: 'pointer',
+                background: selectedTableId === table.id ? '#1e2844' : 'transparent',
+                borderLeft: selectedTableId === table.id ? '3px solid #6366f1' : '3px solid transparent',
+                color: selectedTableId === table.id ? '#fff' : '#c8d0f0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+              onMouseEnter={(e) => {
+                if (selectedTableId !== table.id) e.currentTarget.style.background = '#1a1d2e'
+              }}
+              onMouseLeave={(e) => {
+                if (selectedTableId !== table.id) e.currentTarget.style.background = 'transparent'
+              }}
+            >
               <span>📊</span>
               <span>{table.name}</span>
             </div>
-            <button onClick={e => { e.stopPropagation(); deleteTable(table.id) }}
-              style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14, padding: 4 }}>
-              🗑
-            </button>
-          </div>
-        ))}
+          ))}
 
-        {tables.length === 0 && (
-          <div style={{ textAlign: 'center', padding: 40, color: '#6b7280', fontSize: 12 }}>
-            No tables yet
-            <br />
-            Click New Table to start
-          </div>
-        )}
+          {isCreatingNew && (
+            <div style={{ padding: '10px 16px' }}>
+              <input
+                type="text"
+                value={newTableName}
+                onChange={(e) => setNewTableName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateNewTable()
+                  if (e.key === 'Escape') {
+                    setIsCreatingNew(false)
+                    setNewTableName('')
+                  }
+                }}
+                onBlur={() => {
+                  if (newTableName.trim()) {
+                    handleCreateNewTable()
+                  } else {
+                    setIsCreatingNew(false)
+                  }
+                }}
+                autoFocus
+                placeholder="Table name..."
+                style={{
+                  width: '100%',
+                  padding: '6px 8px',
+                  background: '#0f1117',
+                  border: '1px solid #6366f1',
+                  borderRadius: 4,
+                  color: '#c8d0f0',
+                  fontSize: 12,
+                }}
+              />
+            </div>
+          )}
+        </div>
+
+        <div style={{ padding: 16, borderTop: '1px solid #252840' }}>
+          <button
+            onClick={() => setIsCreatingNew(true)}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              background: '#6366f1',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            + New Table
+          </button>
+        </div>
+
+        <div style={{ padding: 16, borderTop: '1px solid #252840' }}>
+          <button
+            onClick={() => router.push(`/studio/${slug}`)}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              background: '#252840',
+              color: '#c8d0f0',
+              border: 'none',
+              borderRadius: 4,
+              fontSize: 11,
+              cursor: 'pointer',
+            }}
+          >
+            ← Back to Studio
+          </button>
+        </div>
       </div>
 
-      {/* Right Panel - Table Designer */}
-      {selectedTable ? (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {/* Toolbar */}
-          <div style={{ padding: '16px 24px', background: '#13141f', borderBottom: '1px solid #252840', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#e2e8f0', marginBottom: 4 }}>{selectedTable.name}</div>
-              <div style={{ fontSize: 12, color: '#6b7280' }}>Table: {selectedTable.slug}</div>
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={addField}
-                style={{ padding: '8px 16px', background: '#252840', color: '#e2e8f0', border: '1px solid #3a3f5c', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                ➕ Add Field
-              </button>
-              <button onClick={saveTable} disabled={saving}
-                style={{ padding: '8px 20px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
-                {saving ? 'Saving...' : '💾 Save Table'}
-              </button>
-            </div>
+      {/* Right Panel */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {!selectedTable ? (
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column',
+              gap: 16,
+            }}
+          >
+            <div style={{ fontSize: 48, opacity: 0.3 }}>📊</div>
+            <div style={{ fontSize: 18, color: '#7480a8' }}>Select a table or create a new one</div>
           </div>
-
-          {/* Field Grid */}
-          <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
-            <div style={{ background: '#1e2035', borderRadius: 12, overflow: 'hidden', border: '1px solid #252840' }}>
-              {/* Header Row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '200px 150px 1fr 100px 150px 50px 50px', gap: 1, background: '#252840', padding: '12px 16px', borderBottom: '2px solid #3a3f5c' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.05em' }}>FIELD NAME</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.05em' }}>DATA TYPE</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.05em' }}>DESCRIPTION</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.05em' }}>REQUIRED</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.05em' }}>DEFAULT</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.05em', textAlign: 'center' }}>KEY</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.05em' }}></div>
-              </div>
-
-              {/* Field Rows */}
-              {selectedTable.fields.map((field, idx) => (
-                <div key={field.id}
-                  onClick={() => setSelectedFieldId(field.id)}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '200px 150px 1fr 100px 150px 50px 50px',
-                    gap: 1,
-                    background: selectedFieldId === field.id ? '#252840' : '#1e2035',
-                    padding: '8px 16px',
-                    borderBottom: '1px solid #252840',
-                    cursor: 'pointer',
-                    alignItems: 'center'
-                  }}>
-                  <input
-                    type="text"
-                    value={field.name}
-                    onChange={e => updateField(field.id, { name: e.target.value })}
-                    placeholder="field_name"
-                    style={{ background: '#13141f', border: '1px solid #3a3f5c', borderRadius: 6, padding: '6px 10px', color: '#e2e8f0', fontSize: 13 }}
-                  />
-                  <select
-                    value={field.type}
-                    onChange={e => updateField(field.id, { type: e.target.value })}
-                    style={{ background: '#13141f', border: '1px solid #3a3f5c', borderRadius: 6, padding: '6px 10px', color: '#e2e8f0', fontSize: 13 }}>
-                    {DATA_TYPES.map(dt => (
-                      <option key={dt} value={dt}>{dt}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    value={field.description}
-                    onChange={e => updateField(field.id, { description: e.target.value })}
-                    placeholder="Description"
-                    style={{ background: '#13141f', border: '1px solid #3a3f5c', borderRadius: 6, padding: '6px 10px', color: '#e2e8f0', fontSize: 13 }}
-                  />
-                  <input
-                    type="checkbox"
-                    checked={field.required}
-                    onChange={e => updateField(field.id, { required: e.target.checked })}
-                    style={{ accentColor: '#4f46e5', width: 16, height: 16, cursor: 'pointer' }}
-                  />
-                  <input
-                    type="text"
-                    value={field.defaultValue}
-                    onChange={e => updateField(field.id, { defaultValue: e.target.value })}
-                    placeholder="default value"
-                    style={{ background: '#13141f', border: '1px solid #3a3f5c', borderRadius: 6, padding: '6px 10px', color: '#e2e8f0', fontSize: 13 }}
-                  />
-                  <div style={{ textAlign: 'center', fontSize: 16 }}>
-                    {field.primaryKey ? '🔑' : ''}
-                  </div>
-                  <button
-                    onClick={() => !field.primaryKey && deleteField(field.id)}
-                    disabled={field.primaryKey}
-                    style={{ background: 'transparent', border: 'none', color: field.primaryKey ? '#6b7280' : '#ef4444', cursor: field.primaryKey ? 'not-allowed' : 'pointer', fontSize: 16 }}>
-                    {field.primaryKey ? '🔒' : '🗑'}
-                  </button>
-                </div>
-              ))}
-
-              {/* Add Field Row */}
-              <div onClick={addField}
-                style={{ display: 'grid', gridTemplateColumns: '200px 150px 1fr 100px 150px 50px 50px', gap: 1, background: '#13141f', padding: '12px 16px', cursor: 'pointer', borderTop: '2px dashed #3a3f5c' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#1e2035'}
-                onMouseLeave={e => e.currentTarget.style.background = '#13141f'}>
-                <div style={{ color: '#6b7280', fontSize: 13, fontStyle: 'italic' }}>Click to add field...</div>
-              </div>
+        ) : (
+          <>
+            {/* Toolbar */}
+            <div
+              style={{
+                background: '#1e2035',
+                borderBottom: '1px solid #252840',
+                padding: '8px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                height: 48,
+              }}
+            >
+              <input
+                type="text"
+                value={tableName}
+                onChange={(e) => setTableName(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '6px 12px',
+                  background: '#0f1117',
+                  border: '1px solid #252840',
+                  color: '#c8d0f0',
+                  borderRadius: 4,
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              />
+              <button
+                onClick={handleSaveTable}
+                style={{
+                  padding: '6px 16px',
+                  background: '#10b981',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                💾 Save Table
+              </button>
+              <button
+                onClick={() => setView('design')}
+                style={{
+                  padding: '6px 16px',
+                  background: view === 'design' ? '#6366f1' : '#252840',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                Design View
+              </button>
+              <button
+                onClick={() => setView('datasheet')}
+                style={{
+                  padding: '6px 16px',
+                  background: view === 'datasheet' ? '#6366f1' : '#252840',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                Datasheet View
+              </button>
             </div>
 
-            {/* Field Properties Panel */}
-            {selectedField && (
-              <div style={{ marginTop: 24, background: '#1e2035', borderRadius: 12, padding: 20, border: '1px solid #252840' }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0', marginBottom: 16 }}>
-                  Field Properties: {selectedField.name || '(unnamed)'}
+            {view === 'design' ? (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {/* Field Grid */}
+                <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
+                  <div style={{ background: '#1a1d2e', border: '1px solid #252840', borderRadius: 4, overflow: 'hidden' }}>
+                    {/* Header */}
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '30px 200px 160px 1fr',
+                        background: '#252840',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: '#8890b8',
+                        borderBottom: '2px solid #1a1d2e',
+                      }}
+                    >
+                      <div style={{ padding: '8px 6px', textAlign: 'center' }}>🔑</div>
+                      <div style={{ padding: '8px 12px' }}>Field Name</div>
+                      <div style={{ padding: '8px 12px' }}>Data Type</div>
+                      <div style={{ padding: '8px 12px' }}>Description</div>
+                    </div>
+
+                    {/* Rows */}
+                    {fields.map((field, index) => (
+                      <div
+                        key={field.id}
+                        onClick={() => setSelectedFieldId(field.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Delete' && !field.isPrimaryKey) {
+                            handleDeleteField(field.id)
+                          }
+                        }}
+                        tabIndex={0}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '30px 200px 160px 1fr',
+                          background: index % 2 === 0 ? '#1e2035' : '#1a1d2e',
+                          borderBottom: '1px solid #252840',
+                          borderLeft: selectedFieldId === field.id ? '3px solid #6366f1' : '3px solid transparent',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <div style={{ padding: '6px', textAlign: 'center', fontSize: 14 }}>
+                          {field.isPrimaryKey ? '🔑' : ''}
+                        </div>
+                        <div style={{ padding: '6px 12px' }}>
+                          <input
+                            type="text"
+                            value={field.name}
+                            onChange={(e) => handleUpdateField(field.id, { name: e.target.value })}
+                            disabled={field.isPrimaryKey}
+                            style={{
+                              width: '100%',
+                              background: field.isPrimaryKey ? '#252840' : 'transparent',
+                              border: 'none',
+                              color: field.isPrimaryKey ? '#7480a8' : '#c8d0f0',
+                              fontSize: 12,
+                              padding: 0,
+                              outline: 'none',
+                            }}
+                            onFocus={(e) => {
+                              if (!field.isPrimaryKey) e.target.style.background = '#0f1117'
+                            }}
+                            onBlur={(e) => {
+                              e.target.style.background = 'transparent'
+                            }}
+                          />
+                        </div>
+                        <div style={{ padding: '6px 12px' }}>
+                          <select
+                            value={field.type}
+                            onChange={(e) => handleUpdateField(field.id, { type: e.target.value })}
+                            disabled={field.isPrimaryKey}
+                            style={{
+                              width: '100%',
+                              background: field.isPrimaryKey ? '#252840' : '#1e2035',
+                              border: 'none',
+                              color: field.isPrimaryKey ? '#7480a8' : '#c8d0f0',
+                              fontSize: 12,
+                              padding: 0,
+                              cursor: field.isPrimaryKey ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {DATA_TYPES.map((type) => (
+                              <option key={type} value={type}>
+                                {type}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div style={{ padding: '6px 12px' }}>
+                          <input
+                            type="text"
+                            value={field.description}
+                            onChange={(e) => handleUpdateField(field.id, { description: e.target.value })}
+                            style={{
+                              width: '100%',
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#c8d0f0',
+                              fontSize: 12,
+                              padding: 0,
+                              outline: 'none',
+                            }}
+                            onFocus={(e) => (e.target.style.background = '#0f1117')}
+                            onBlur={(e) => (e.target.style.background = 'transparent')}
+                          />
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Add Field Row */}
+                    <div
+                      onClick={handleAddField}
+                      style={{
+                        padding: '12px',
+                        textAlign: 'center',
+                        fontSize: 12,
+                        color: '#7480a8',
+                        cursor: 'pointer',
+                        borderTop: '2px dashed #252840',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#1e2035')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      + Add Field
+                    </div>
+                  </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                  <div>
-                    <label style={{ fontSize: 11, color: '#9ca3af', display: 'block', marginBottom: 6, fontWeight: 600 }}>FIELD SIZE</label>
-                    <input
-                      type="number"
-                      value={selectedField.maxLength || ''}
-                      onChange={e => updateField(selectedField.id, { maxLength: +e.target.value })}
-                      placeholder={selectedField.type === 'Short Text' ? '255' : 'unlimited'}
-                      style={{ width: '100%', padding: '8px 12px', background: '#252840', border: '1px solid #3a3f5c', borderRadius: 8, color: '#e2e8f0', fontSize: 13 }}
-                    />
+                {/* Field Properties */}
+                <div style={{ height: 280, borderTop: '2px solid #252840', background: '#1a1d2e', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ background: '#252840', padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#8890b8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Field Properties</span>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button
+                        onClick={() => setActivePropertyTab('general')}
+                        style={{
+                          padding: '4px 14px',
+                          background: activePropertyTab === 'general' ? '#6366f1' : '#252840',
+                          color: activePropertyTab === 'general' ? '#fff' : '#7480a8',
+                          border: 'none',
+                          borderRadius: 6,
+                          fontSize: 11,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        General
+                      </button>
+                      <button
+                        onClick={() => setActivePropertyTab('lookup')}
+                        style={{
+                          padding: '4px 14px',
+                          background: activePropertyTab === 'lookup' ? '#6366f1' : '#252840',
+                          color: activePropertyTab === 'lookup' ? '#fff' : '#7480a8',
+                          border: 'none',
+                          borderRadius: 6,
+                          fontSize: 11,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Lookup
+                      </button>
+                    </div>
                   </div>
 
-                  {selectedField.type === 'Choice' && (
-                    <div>
-                      <label style={{ fontSize: 11, color: '#9ca3af', display: 'block', marginBottom: 6, fontWeight: 600 }}>OPTIONS (comma-separated)</label>
-                      <input
-                        type="text"
-                        value={selectedField.options || ''}
-                        onChange={e => updateField(selectedField.id, { options: e.target.value })}
-                        placeholder="Option1,Option2,Option3"
-                        style={{ width: '100%', padding: '8px 12px', background: '#252840', border: '1px solid #3a3f5c', borderRadius: 8, color: '#e2e8f0', fontSize: 13 }}
-                      />
-                    </div>
-                  )}
-                </div>
+                  <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
+                    {selectedField ? (
+                      activePropertyTab === 'general' ? (
+                        <>
+                          <PropertyRow label="Caption" value={selectedField.caption || ''} onChange={(v) => handleUpdateField(selectedField.id, { caption: v })} />
+                          <PropertyRow label="Description" value={selectedField.description || ''} onChange={(v) => handleUpdateField(selectedField.id, { description: v })} />
+                          <PropertyRow label="Required" value={selectedField.required ? 'Yes' : 'No'} onChange={(v) => handleUpdateField(selectedField.id, { required: v === 'Yes' })} type="yesno" />
+                          <PropertyRow label="Default Value" value={selectedField.defaultValue || ''} onChange={(v) => handleUpdateField(selectedField.id, { defaultValue: v })} />
+                          <PropertyRow label="Validation Rule" value={selectedField.validationRule || ''} onChange={(v) => handleUpdateField(selectedField.id, { validationRule: v })} />
+                          <PropertyRow label="Validation Text" value={selectedField.validationText || ''} onChange={(v) => handleUpdateField(selectedField.id, { validationText: v })} />
 
-                <div style={{ marginTop: 16, padding: 12, background: '#252840', borderRadius: 8, fontSize: 12, color: '#9ca3af' }}>
-                  💡 Tip: AutoNumber fields auto-increment. Choice fields show as dropdowns. Lookup fields link to other tables.
+                          {selectedField.type === 'Short Text' && (
+                            <>
+                              <PropertyRow label="Field Size" value={String(selectedField.size || 255)} onChange={(v) => handleUpdateField(selectedField.id, { size: v })} type="number" />
+                              <PropertyRow label="Allow Zero Length" value={selectedField.allowZeroLength ? 'Yes' : 'No'} onChange={(v) => handleUpdateField(selectedField.id, { allowZeroLength: v === 'Yes' })} type="yesno" />
+                            </>
+                          )}
+
+                          {selectedField.type === 'Choice' && (
+                            <PropertyRow label="Options" value={selectedField.options || ''} onChange={(v) => handleUpdateField(selectedField.id, { options: v })} />
+                          )}
+
+                          {selectedField.type === 'Lookup' && (
+                            <>
+                              <PropertyRow label="Related Table" value={selectedField.relatedTable || ''} onChange={(v) => handleUpdateField(selectedField.id, { relatedTable: v })} type="select" options={tables.map((t: any) => t.name)} />
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <div style={{ padding: 20, textAlign: 'center', fontSize: 11, color: '#7480a8' }}>
+                          Lookup properties
+                        </div>
+                      )
+                    ) : (
+                      <div style={{ padding: 20, textAlign: 'center', fontSize: 11, color: '#7480a8' }}>
+                        Select a field to view properties
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Datasheet View
+              <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
+                <div style={{ background: '#1a1d2e', border: '1px solid #252840', borderRadius: 4, overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                    <thead>
+                      <tr style={{ background: '#252840' }}>
+                        {fields.map((field, i) => (
+                          <th
+                            key={i}
+                            style={{
+                              padding: '8px 12px',
+                              textAlign: 'left',
+                              borderRight: '1px solid #1a1d2e',
+                              color: '#c8d0f0',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {field.name}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {datasheetData.map((row, i) => (
+                        <tr
+                          key={i}
+                          style={{
+                            background: i % 2 === 0 ? '#1a1d2e' : '#1e2139',
+                            borderBottom: '1px solid #252840',
+                          }}
+                        >
+                          {fields.map((field, j) => (
+                            <td
+                              key={j}
+                              style={{
+                                padding: '6px 12px',
+                                borderRight: '1px solid #252840',
+                                color: '#8890b8',
+                              }}
+                            >
+                              {row[field.name] || ''}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                      <tr style={{ background: '#1e2035' }}>
+                        <td
+                          colSpan={fields.length}
+                          style={{
+                            padding: '6px 12px',
+                            color: '#7480a8',
+                            fontStyle: 'italic',
+                            textAlign: 'center',
+                          }}
+                        >
+                          {datasheetData.length === 0 ? 'No records yet' : '* New Record'}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
+          </>
+        )}
+      </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          style={{
+            position: 'fixed',
+            left: contextMenu.x,
+            top: contextMenu.y,
+            background: '#252840',
+            border: '1px solid #3a3f5c',
+            borderRadius: 4,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            zIndex: 10000,
+            minWidth: 150,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div
+            onClick={() => {
+              const table = tables.find((t) => t.id === contextMenu.tableId)
+              if (table) {
+                const newName = prompt('Enter new table name:', table.name)
+                if (newName && newName.trim()) {
+                  supabase
+                    .from('workspace_tables')
+                    .update({ name: newName, slug: newName.toLowerCase().replace(/\s+/g, '_') })
+                    .eq('id', table.id)
+                    .then(() => loadTables(workspace.id))
+                }
+              }
+              setContextMenu(null)
+            }}
+            style={{
+              padding: '8px 12px',
+              fontSize: 11,
+              color: '#c8d0f0',
+              cursor: 'pointer',
+              borderBottom: '1px solid #1a1d2e',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#1a1d2e')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          >
+            Rename
+          </div>
+          <div
+            onClick={() => {
+              handleDeleteTable(contextMenu.tableId)
+              setContextMenu(null)
+            }}
+            style={{
+              padding: '8px 12px',
+              fontSize: 11,
+              color: '#ef4444',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#1a1d2e')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          >
+            Delete
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+// Property Row Component
+function PropertyRow({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  options = [],
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  type?: 'text' | 'number' | 'yesno' | 'select'
+  options?: string[]
+}) {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '150px 1fr',
+        borderBottom: '1px solid #252840',
+        padding: '4px 10px',
+        height: 26,
+        alignItems: 'center',
+      }}
+    >
+      <span style={{ fontSize: 11, color: '#8890b8', fontFamily: "'JetBrains Mono', monospace" }}>
+        {label}
+      </span>
+      {type === 'yesno' ? (
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          style={{
+            width: '100%',
+            background: '#0f1117',
+            color: '#c8d0f0',
+            border: 'none',
+            fontSize: 11,
+            padding: '2px 4px',
+          }}
+        >
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      ) : type === 'select' ? (
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          style={{
+            width: '100%',
+            background: '#0f1117',
+            color: '#c8d0f0',
+            border: 'none',
+            fontSize: 11,
+            padding: '2px 4px',
+          }}
+        >
+          <option value="">(none)</option>
+          {options.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
       ) : (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>📊</div>
-            <div style={{ fontSize: 16, marginBottom: 8 }}>No table selected</div>
-            <div style={{ fontSize: 13 }}>Select a table or create a new one</div>
-          </div>
-        </div>
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          style={{
+            width: '100%',
+            background: '#0f1117',
+            color: '#c8d0f0',
+            border: 'none',
+            fontSize: 11,
+            padding: '2px 4px',
+            outline: 'none',
+          }}
+        />
       )}
     </div>
   )

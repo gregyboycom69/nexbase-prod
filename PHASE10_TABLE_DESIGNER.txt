@@ -1,0 +1,195 @@
+NexBase - Phase 10 - Table Designer (MS Access Style)
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+Build the Table Designer exactly like MS Access Table Design View.
+
+=== LAYOUT ===
+
+src/app/(app)/studio/[slug]/tables/page.tsx
+
+Split layout:
+LEFT (220px): List of all tables in this workspace
+RIGHT: Table designer (field grid on top, field properties on bottom)
+
+=== LEFT PANEL ===
+
+Title: "Tables"
+Lists all tables from workspace_tables Supabase table.
+Each table row: grid icon + table name.
+Click to select and load in right panel.
+Selected table highlighted indigo.
+Right-click menu: Rename | Delete.
+Bottom: "+ New Table" button.
+Clicking New Table: shows inline text input in the list, press Enter to create.
+New table saved to workspace_tables with default id field.
+
+=== RIGHT PANEL - TOP HALF (Field Grid) ===
+
+When table selected shows a grid with 3 columns:
+Column 1 (30px): Primary key icon (🔑) for primary key fields
+Column 2 (200px): Field Name - text input
+Column 3 (160px): Data Type - dropdown select
+Column 4 (flex): Description - text input
+
+First row always: 🔑 | id | AutoNumber | Primary Key (locked, cannot delete)
+
+Each additional row is one field.
+Clicking a row selects it (highlights blue) and shows its properties in bottom panel.
+Delete key on selected row: confirm then remove.
+Tab between cells.
+Bottom of grid: "+ Add Field" row that adds new empty field when clicked.
+
+Data Type dropdown options:
+Short Text | Long Text | Number | Currency | AutoNumber | Date/Time | Yes/No | Email | Phone | URL | Choice | Lookup
+
+When Choice selected: show extra input below for "Options (comma separated)"
+When Lookup selected: show extra dropdown "Related Table" from workspace tables list
+
+Toolbar above grid:
+[Table name - editable input] [Save Table] [Design View] [Datasheet View]
+
+=== RIGHT PANEL - BOTTOM HALF (Field Properties) ===
+
+Title: "Field Properties"
+Two tabs: General | Lookup
+
+Horizontal splitter between top and bottom (draggable to resize).
+
+GENERAL TAB:
+Shows properties for the selected field row.
+Two-column layout: property name (left) | input (right)
+
+For ALL field types show:
+Caption: text input
+Description: text input  
+Required: Yes/No select
+Default Value: text input
+Validation Rule: text input
+Validation Text: text input
+
+For Short Text also show:
+Field Size: number input (default 255)
+Allow Zero Length: Yes/No select
+Indexed: No / Yes(Duplicates OK) / Yes(No Duplicates) select
+
+For Number also show:
+Field Size: Integer/Long Integer/Double select
+Decimal Places: Auto/0/1/2/3/4 select
+Format: General/Fixed/Standard/Currency/Percent select
+
+For Currency also show:
+Decimal Places: Auto/0/1/2 select
+Format: Currency/Fixed/Standard/Percent select
+
+For Date/Time also show:
+Format: Short Date/Long Date/Medium Date/Short Time/Long Time select
+
+For Choice also show:
+Options: text input (comma separated values)
+Allow Other Values: Yes/No select
+
+For Lookup also show:
+Related Table: select from workspace tables
+Related Field: select from fields of related table
+Display Field: select from fields of related table
+
+LOOKUP TAB:
+Display Control: Text Box / Combo Box / List Box select
+Row Source Type: Table/Query / Value List select
+Row Source: text input
+Bound Column: number input
+Column Count: number input
+Limit To List: Yes/No select
+
+=== STYLING ===
+
+Dark theme matching studio:
+Background: #13141f
+Left panel: #1e2035, border-right: 1px solid #252840
+Grid header: #252840 bg, #8890b8 text, 12px bold
+Grid rows: alternating #1e2035 and #1a1d2e
+Selected row: left border 3px solid #6366f1, background #1e2844
+Grid cell inputs: transparent bg, #c8d0f0 text, no border, 12px
+Grid cell inputs focused: #0f1117 bg, indigo border
+Data Type select: #1e2035 bg, #c8d0f0 text, no border, 12px
+
+Properties panel: #1a1d2e bg
+Properties title bar: #252840 bg, #8890b8 text
+Property rows: 
+  display grid, grid-template-columns: 150px 1fr
+  border-bottom: 1px solid #252840
+  padding: 4px 10px
+  height: 26px
+Property label: #8890b8, 11px, JetBrains Mono font
+Property input: #0f1117 bg, #c8d0f0 text, 11px, no border, full width
+
+Tab buttons (General/Lookup):
+  Active: #6366f1 bg, white text
+  Inactive: #252840 bg, #7480a8 text
+  Padding: 4px 14px, border-radius: 6px, font-size: 11px
+
+Toolbar:
+  Background: #1e2035
+  Border-bottom: 1px solid #252840
+  Height: 40px
+  Buttons: small, matching studio style
+
+=== SUPABASE OPERATIONS ===
+
+On page load:
+GET all workspace_tables WHERE workspace_id = current workspace id
+Populate left panel list.
+
+On table click:
+GET workspace_tables by id
+Parse fields JSONB array
+Populate field grid.
+
+On Save Table:
+UPSERT workspace_tables:
+  id (if existing) or new UUID
+  workspace_id
+  name: tableName
+  slug: tableName.toLowerCase().replace(/ /g, '_')
+  fields: JSON.stringify(fieldsArray)
+
+Each field in array:
+{
+  name, type, description, required, defaultValue,
+  validationRule, validationText, caption,
+  size, format, decimalPlaces, allowZeroLength, indexed,
+  options (for Choice), relatedTable, relatedField (for Lookup),
+  isPrimaryKey
+}
+
+On Delete Table:
+DELETE from workspace_tables WHERE id = tableId
+Confirm before deleting.
+
+On New Table:
+INSERT workspace_tables with name and default fields:
+[{ name: "id", type: "AutoNumber", isPrimaryKey: true, required: true }]
+
+=== DATASHEET VIEW ===
+
+When Datasheet View button clicked:
+Switch right panel to show a spreadsheet grid.
+Fetch records from app_data WHERE workspace_id AND table_name = current table slug.
+Show column headers from field definitions.
+Show all records as rows.
+Last row shows * for new record entry.
+Click cell to edit inline.
+Clicking * row: creates new empty record.
+Save edits: UPSERT into app_data.
+Right-click row: Delete Record option.
+Toolbar shows: New | Save | Delete | Refresh | Filter | Sort
+
+If no records: show empty grid with just the * new row.
+
+=== AFTER DONE ===
+
+npm run build
+git add -A
+git commit -m "Phase 10 Table Designer MS Access style complete"
+git push origin main
