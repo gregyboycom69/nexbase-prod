@@ -156,7 +156,7 @@ export default function StudioPage() {
   const slug = params.slug as string
   const supabase = createClient()
 
-  const [view, setView] = useState<'design'|'queries'|'data'>('design')
+  const [view, setView] = useState<'tables'|'queries'|'forms'|'macros'>('forms')
   const [workspace, setWorkspace] = useState<any>(null)
   const [controls, setControls] = useState<Ctrl[]>([])
   const [selectedId, setSelectedId] = useState<string|null>(null)
@@ -455,15 +455,16 @@ export default function StudioPage() {
           </div>
         )}
 
-        {/* View Tabs */}
+        {/* Object Type Tabs - MS Access Style */}
         <div style={{ display:'flex', gap:4, marginLeft:20 }}>
-          <button onClick={() => setView('design')} style={{ padding:'4px 12px', background:view==='design'?'#252840':'transparent', color:view==='design'?'#6366f1':'#7480a8', border:'none', borderRadius:6, fontSize:12, cursor:'pointer' }}>Design</button>
-          <button onClick={() => setView('queries')} style={{ padding:'4px 12px', background:view==='queries'?'#252840':'transparent', color:view==='queries'?'#6366f1':'#7480a8', border:'none', borderRadius:6, fontSize:12, cursor:'pointer' }}>Queries</button>
-          <button onClick={() => setView('data')} style={{ padding:'4px 12px', background:view==='data'?'#252840':'transparent', color:view==='data'?'#6366f1':'#7480a8', border:'none', borderRadius:6, fontSize:12, cursor:'pointer' }}>Data</button>
+          <button onClick={() => setView('tables')} style={{ padding:'6px 16px', background:view==='tables'?'#4f46e5':'transparent', color:view==='tables'?'#fff':'#7480a8', border:'none', borderRadius:6, fontSize:13, fontWeight:600, cursor:'pointer' }}>📊 Tables</button>
+          <button onClick={() => setView('queries')} style={{ padding:'6px 16px', background:view==='queries'?'#4f46e5':'transparent', color:view==='queries'?'#fff':'#7480a8', border:'none', borderRadius:6, fontSize:13, fontWeight:600, cursor:'pointer' }}>🔍 Queries</button>
+          <button onClick={() => setView('forms')} style={{ padding:'6px 16px', background:view==='forms'?'#4f46e5':'transparent', color:view==='forms'?'#fff':'#7480a8', border:'none', borderRadius:6, fontSize:13, fontWeight:600, cursor:'pointer' }}>📝 Forms</button>
+          <button onClick={() => setView('macros')} style={{ padding:'6px 16px', background:view==='macros'?'#4f46e5':'transparent', color:view==='macros'?'#fff':'#7480a8', border:'none', borderRadius:6, fontSize:13, fontWeight:600, cursor:'pointer' }}>⚡ Macros</button>
         </div>
 
         <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:10 }}>
-          {view === 'design' && (
+          {view === 'forms' && (
             <>
               {[{l:'Grid',v:gridOn,f:setGridOn},{l:'Snap',v:snapOn,f:setSnapOn}].map(({l,v,f}) => (
                 <label key={l} style={{ display:'flex', alignItems:'center', gap:5, fontSize:12, color:'#7480a8', cursor:'pointer' }}>
@@ -508,7 +509,7 @@ export default function StudioPage() {
       {/* BODY */}
       <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
 
-        {view === 'design' && !isPreview && (
+        {view === 'forms' && !isPreview && (
           /* TOOLBOX - Simplified for brevity */
           <div style={{ width:72, background:'#1e2035', borderRight:'1px solid #252840',
             display:'flex', flexDirection:'column', overflow:'auto', padding:6, gap:1 }}>
@@ -531,7 +532,7 @@ export default function StudioPage() {
           </div>
         )}
 
-        {view === 'design' && (
+        {view === 'forms' && (
           /* CANVAS AREA - Simplified */
           <div style={{ flex:1, overflow:'auto', background:'#0b0c14',
             backgroundImage: isPreview ? 'none' : 'radial-gradient(circle, #2d3150 1px, transparent 1px)',
@@ -612,19 +613,58 @@ export default function StudioPage() {
           </div>
         )}
 
-        {view === 'data' && (
-          /* DATA TAB */
-          <div style={{ flex:1, padding:20, overflow:'auto' }}>
-            <div style={{ fontSize:20, fontWeight:700, marginBottom:20 }}>Data Management</div>
-            <div style={{ background:'#1e2035', borderRadius:12, padding:24 }}>
-              <div style={{ fontSize:14, color:'#9ca3af', textAlign:'center', padding:40 }}>
-                No data tables found. Add DataTable or DataGrid controls to your app to manage data here.
+        {view === 'tables' && (
+          /* TABLES TAB - Table Designer */
+          <div style={{ flex:1, display:'flex', overflow:'hidden' }}>
+            {/* Left Panel - Table List */}
+            <div style={{ width:220, background:'#1e2035', borderRight:'1px solid #252840', padding:12, overflow:'auto', display:'flex', flexDirection:'column' }}>
+              <button style={{ padding:'10px', background:'#4f46e5', color:'#fff', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', marginBottom:16 }}>
+                ➕ New Table
+              </button>
+              <div style={{ fontSize:11, fontWeight:700, color:'#6b7280', marginBottom:8 }}>TABLES</div>
+              <div style={{ padding:'10px 12px', background:'#252840', borderRadius:8, marginBottom:8, fontSize:13, color:'#e2e8f0', cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}>
+                <span>📊</span>
+                <span>Customers</span>
+              </div>
+              <div style={{ padding:'10px 12px', background:'transparent', borderRadius:8, marginBottom:8, fontSize:13, color:'#7480a8', cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}>
+                <span>📊</span>
+                <span>Orders</span>
+              </div>
+              <div style={{ padding:'10px 12px', background:'transparent', borderRadius:8, marginBottom:8, fontSize:13, color:'#7480a8', cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}>
+                <span>📊</span>
+                <span>Products</span>
+              </div>
+            </div>
+
+            {/* Right Panel - Table Designer */}
+            <div style={{ flex:1, padding:24, overflow:'auto' }}>
+              <div style={{ fontSize:20, fontWeight:700, marginBottom:20, color:'#e2e8f0' }}>Table Designer - Customers</div>
+              <div style={{ background:'#1e2035', borderRadius:12, padding:24 }}>
+                <div style={{ fontSize:14, color:'#9ca3af', textAlign:'center', padding:40 }}>
+                  Table Designer coming in Phase 7
+                  <br /><br />
+                  Define fields, data types, relationships, and constraints
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {view === 'design' && !isPreview && (
+        {view === 'macros' && (
+          /* MACROS TAB */
+          <div style={{ flex:1, padding:20, overflow:'auto' }}>
+            <div style={{ fontSize:20, fontWeight:700, marginBottom:20 }}>Macros & Automation</div>
+            <div style={{ background:'#1e2035', borderRadius:12, padding:24 }}>
+              <div style={{ fontSize:14, color:'#9ca3af', textAlign:'center', padding:40 }}>
+                Macro editor coming soon
+                <br /><br />
+                Create workflows, automation, and event handlers
+              </div>
+            </div>
+          </div>
+        )}
+
+        {view === 'forms' && !isPreview && (
           /* PROPERTIES PANEL */
           <div style={{ width:260, background:'#181a28', borderLeft:'1px solid #252840',
             display:'flex', flexDirection:'column', overflow:'hidden' }}>
@@ -824,7 +864,7 @@ export default function StudioPage() {
       </div>
 
       {/* BOTTOM PAGE TABS */}
-      {view === 'design' && (
+      {view === 'forms' && (
         <div style={{ height:40, background:'#1e2035', borderTop:'1px solid #252840',
           display:'flex', alignItems:'center', padding:'0 12px', gap:6, flexShrink:0 }}>
           <div style={{ padding:'4px 14px', borderRadius:7, display:'flex', alignItems:'center', gap:6,

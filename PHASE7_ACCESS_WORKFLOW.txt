@@ -1,0 +1,473 @@
+NexBase - Phase 7 - Full MS Access Workflow
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+This is the most important phase. Make NexBase work exactly like 
+MS Access but better and cloud-based.
+
+The MS Access workflow is:
+1. First design your TABLES (define fields and data types)
+2. Then create QUERIES (filter/join table data)
+3. Then design FORMS (visual interface bound to a table or query)
+4. Forms can have SUBFORMS (another form embedded inside)
+5. Everything is connected - form saves to table, query filters table data
+
+=== UNDERSTANDING THE FULL STRUCTURE ===
+
+In MS Access:
+- Tables = where data lives (like Supabase tables)
+- Queries = saved SQL/filter definitions
+- Forms = visual designer bound to a table
+- Reports = printable layouts (Phase 8)
+- Macros = automation (already built)
+
+In NexBase the studio should have these TABS at the top:
+Tables | Queries | Forms | Reports | Macros
+
+Currently we only have the canvas (Forms tab).
+We need to add Tables and Queries properly.
+
+=== TASK 1 - TABLE DESIGNER ===
+
+Create src/app/(app)/studio/[slug]/tables/page.tsx
+
+This is the Table Designer - like MS Access table design view.
+
+Left panel - Table List (200px):
+- Shows all tables for this workspace
+- Each table listed with icon and name
+- Click to open that table in designer
+- "New Table" button at top
+- Right-click on table: Rename, Delete, Duplicate
+
+Right panel - Table Designer:
+When a table is selected show a spreadsheet-like designer:
+
+Column headers: Field Name | Data Type | Description | Required | Default | Primary Key
+
+Each row is one field in the table. Example:
+Row 1: id | AutoNumber | Primary key | Yes | auto | ✅ (key icon)
+Row 2: name | Short Text | Customer name | Yes | - | 
+Row 3: email | Short Text | Email address | No | - |
+Row 4: country | Short Text | Country | No | - |
+Row 5: status | Choice | Active/Inactive/Trial | No | Active |
+Row 6: revenue | Currency | Total revenue | No | 0 |
+Row 7: created_at | Date/Time | When created | No | NOW() |
+Row 8: [click to add new field] | | | | |
+
+Data Types dropdown (exactly like MS Access):
+- Short Text (up to 255 chars)
+- Long Text (unlimited)
+- Number (integer)
+- Decimal (float with decimals)
+- Currency (formatted as money)
+- AutoNumber (auto incrementing, for ID fields)
+- Date/Time
+- Yes/No (boolean checkbox)
+- Choice (dropdown with options - show options input when selected)
+- Email (text with email validation)
+- Phone (text with phone format)
+- URL (text with URL validation)
+- Image (file upload)
+- File (file upload)
+- Lookup (links to another table - show relationship picker)
+
+Bottom panel - Field Properties (when field row is clicked):
+Show detailed properties for the selected field:
+- Field Size (for text: max length)
+- Format (for numbers/dates: display format)
+- Input Mask
+- Caption (label to show on forms)
+- Default Value
+- Validation Rule (e.g. > 0)
+- Validation Text (error message)
+- Required (yes/no)
+- Allow Zero Length
+- Indexed (yes/no/unique)
+
+Also show a Datasheet View toggle button in top bar:
+When clicked switches from Design View to a live data grid
+showing actual records in this table with ability to add/edit rows.
+
+Save Table button:
+- Saves table definition to Supabase workspace_tables table
+- Creates corresponding app_data structure
+- If table already has data, handles schema changes gracefully
+
+SQL to store table definitions:
+CREATE TABLE IF NOT EXISTS workspace_tables (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  fields JSONB DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE workspace_tables ENABLE ROW LEVEL SECURITY;
+CREATE POLICY owner_tables ON workspace_tables FOR ALL USING (
+  workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid())
+);
+
+Each field stored in JSONB array like:
+[
+  { "name": "id", "type": "AutoNumber", "required": true, "primaryKey": true },
+  { "name": "name", "type": "Short Text", "required": true, "maxLength": 255, "caption": "Customer Name" },
+  { "name": "status", "type": "Choice", "options": ["Active","Inactive","Trial"], "default": "Active" },
+  { "name": "revenue", "type": "Currency", "default": 0 }
+]
+
+=== TASK 2 - RELATIONSHIPS VIEW ===
+
+Add a Relationships button in Tables tab toolbar.
+
+When clicked shows a visual relationships diagram:
+- Each table shown as a box with its field list
+- Lines drawn between related fields (Lookup fields)
+- Drag tables to reposition them
+- Click a relationship line to see join type (one-to-many, one-to-one)
+- Add Relationship button: pick two tables and their linking fields
+- Can set referential integrity rules
+
+Store relationships in Supabase:
+CREATE TABLE IF NOT EXISTS workspace_relationships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+  from_table TEXT,
+  from_field TEXT,
+  to_table TEXT,
+  to_field TEXT,
+  relationship_type TEXT DEFAULT 'one-to-many',
+  enforce_integrity BOOLEAN DEFAULT true
+);
+ALTER TABLE workspace_relationships ENABLE ROW LEVEL SECURITY;
+CREATE POLICY owner_rel ON workspace_relationships FOR ALL USING (
+  workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid())
+);
+
+=== TASK 3 - QUERY BUILDER (FULL QBE) ===
+
+Create src/app/(app)/studio/[slug]/queries/page.tsx
+
+Exactly like MS Access Query Design View.
+
+Top area - Table pane:
+- Shows draggable table boxes (like in Relationships view)
+- Each box shows table name and list of fields
+- User drags a table from left panel into this area
+- Can add multiple tables and draw join lines between them
+- Join line drawn when user drags from one field to another
+- Double-click join line to set join type (inner, left, right)
+
+Bottom area - QBE Grid (Query By Example):
+Columns: Field | Table | Sort | Show | Criteria | Or | Or
+
+Each column in the grid is one field in the query result:
+- Field: dropdown of all fields from all tables in query
+- Table: which table this field comes from (auto-filled)
+- Sort: None / Ascending / Descending
+- Show: checkbox (include in results)
+- Criteria: text input (e.g. "USA" or ">100" or "Like 'A*'")
+- Or: additional criteria rows for OR conditions
+
+Toolbar buttons:
+- Run (execute the query, show results in datasheet)
+- Save (save query definition)
+- Query Type: Select | Make Table | Append | Update | Delete
+- Show Table (add another table to query)
+- Totals (show Group By, Sum, Avg, Count etc)
+- Top Values input (return only top N records)
+
+When Run is clicked:
+- Build the query from the QBE grid
+- Execute against app_data in Supabase
+- Show results in a datasheet view below
+- Show record count
+
+Query results datasheet:
+- Scrollable grid with column headers
+- Alternating row colors
+- Click row to select
+- Export to CSV button
+- Copy to clipboard button
+
+Save query:
+CREATE TABLE IF NOT EXISTS workspace_queries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  definition JSONB,
+  sql_preview TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE workspace_queries ENABLE ROW LEVEL SECURITY;
+CREATE POLICY owner_queries ON workspace_queries FOR ALL USING (
+  workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid())
+);
+
+=== TASK 4 - FORM DESIGNER WITH TABLE BINDING ===
+
+This is the most important part.
+
+When user creates a new Form, first ask:
+"What is this form based on?"
+Options:
+- A Table (pick from dropdown of workspace tables)
+- A Query (pick from dropdown of saved queries)
+- Blank (no data binding)
+
+If they pick a Table or Query:
+- The form is now BOUND to that data source
+- The Record Source property is set
+- In properties panel a "Add All Fields" button appears
+- Clicking it auto-generates controls for each field:
+  - Short Text, Email, URL, Phone → TextBox
+  - Long Text → TextArea (new control type)
+  - Number, Decimal, Currency → NumberBox
+  - Date/Time → DatePicker
+  - Yes/No → CheckBox
+  - Choice → ComboBox (with the options from field definition)
+  - Image, File → ImageViewer
+  - Lookup → ComboBox (populated from related table)
+- Controls are laid out automatically in a 2-column grid
+- User can then move/resize them as needed
+
+Form Properties when form is bound to table:
+Show in Properties panel when no control selected (form properties):
+- Record Source: [table/query name]
+- Filter: (criteria to limit records shown)
+- Order By: (field to sort by)
+- Allow Edits: yes/no
+- Allow Additions: yes/no
+- Allow Deletions: yes/no
+- Default View: Single Form / Continuous Forms / Datasheet
+- Navigation Buttons: yes/no
+- Record Selectors: yes/no
+- Scroll Bars: both/neither/horizontal/vertical
+
+Control Properties when bound control selected:
+Add these to existing properties panel:
+- Control Source: dropdown of fields from the bound table/query
+  (when set, the control reads/writes this field automatically)
+- Input Mask (for text fields)
+- Validation Rule
+- Validation Text
+- Status Bar Text (help text shown at bottom)
+- Tab Stop: yes/no
+- Tab Index: number (order of tab key navigation)
+
+Navigation bar at bottom of published form:
+When form is bound to a table show MS Access style navigation:
+[|<] [<] Record [___] of 47 [>] [>|] [+] 🔍
+
+=== TASK 5 - SUBFORM CONTROL ===
+
+The Subform control type should be fully functional.
+
+When user drops a Subform control onto the canvas:
+Properties panel shows:
+- Source Form: dropdown of other forms in this workspace
+- Link Master Fields: field in parent form to link on
+- Link Child Fields: field in subform to match
+- Allow Edits: yes/no
+- Allow Additions: yes/no
+
+How it works:
+- Parent form is bound to Customers table
+- Subform is bound to Orders table
+- Link Master = Customers.id
+- Link Child = Orders.customer_id
+- So when user views Customer #3, subform shows only orders for customer #3
+
+In design view: show a placeholder box with "Subform: [source]" label
+In preview/published: show the actual subform with filtered data
+
+=== TASK 6 - FORM TYPES ===
+
+When creating a new form let user choose the form type:
+
+1. Single Form (default)
+   Shows one record at a time
+   Navigation buttons at bottom
+   Fields laid out as designed
+
+2. Continuous Forms
+   Shows multiple records stacked vertically
+   Each record shows same layout
+   Scroll to see more records
+   Click a record to select/edit it
+
+3. Datasheet Form
+   Shows records in spreadsheet grid
+   Click cell to edit
+   Like MS Access datasheet view
+   Has Add Row at bottom
+
+4. Split Form
+   Top half: Single form view of selected record
+   Bottom half: Datasheet of all records
+   Click row in datasheet to navigate form
+
+5. Dialog / Popup Form
+   Opens as a modal over the main form
+   Has OK and Cancel buttons
+   Used for data entry popups
+
+6. Wizard Form
+   Multi-step form with Next/Previous buttons
+   Each page of wizard = one step
+   Progress indicator at top
+   Finish button on last step
+
+Store form type in forms table:
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS form_type TEXT DEFAULT 'single';
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS record_source TEXT;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS form_filter TEXT;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS order_by TEXT;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_edits BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_additions BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_deletions BOOLEAN DEFAULT true;
+
+=== TASK 7 - STUDIO NAVIGATION REDESIGN ===
+
+Redesign the studio top area to look like MS Access:
+
+TOP: NexBase logo | Workspace name | [Tables] [Queries] [Forms] [Macros] | Preview | Publish | Settings
+
+When Tables is clicked: show the Table Designer
+When Queries is clicked: show the Query Builder
+When Forms is clicked: show the Form Designer (canvas - current)
+When Macros is clicked: show the Macro list and editor
+
+Left navigation panel (like Access navigation pane):
+Show grouped list of all objects:
+TABLES section:
+  - Customers
+  - Orders
+  - Products
+
+QUERIES section:
+  - US Customers
+  - Recent Orders
+
+FORMS section:
+  - Customer Form
+  - Order Entry
+  - Main Menu
+
+MACROS section:
+  - Save Customer
+  - Export Data
+
+Double-click any object to open it in the main area.
+Right-click: Open, Design View, Rename, Delete, Export
+
+=== TASK 8 - MAIN MENU FORM ===
+
+Add a "Main Menu" template form that every new workspace gets.
+
+It looks like an MS Access main menu/switchboard:
+- Title of the application at top (workspace brand name)
+- Large buttons in a grid layout:
+  [Customers] [Orders] [Products]
+  [Reports] [Settings] [Exit]
+- Each button navigates to a form
+- Nice professional look with workspace brand color
+
+This is the default home page for published apps.
+Users can edit it like any other form.
+
+=== TASK 9 - FORM WIZARD ===
+
+Add "Form Wizard" button when creating a new form.
+
+Step 1: Choose table or query
+Step 2: Choose which fields to include (move fields between Available and Selected lists with >> and << buttons like MS Access)
+Step 3: Choose layout (Columnar, Tabular, Datasheet, Justified)
+Step 4: Choose style (color theme matching workspace brand)
+Step 5: Name the form and click Finish
+
+Result: A complete form is auto-generated with all chosen fields, properly labeled, with navigation buttons and save/delete buttons already placed.
+
+=== TASK 10 - REPORT DESIGNER (BASIC) ===
+
+Add a Reports tab to the studio.
+
+Create src/app/(app)/studio/[slug]/reports/page.tsx
+
+Basic report designer:
+- Choose data source (table or query)
+- Choose fields to include
+- Choose grouping field (e.g. group orders by customer)
+- Choose sorting
+- Choose layout: Tabular (table format) or Summary (totals only)
+
+Report preview shows:
+- Report title
+- Date generated
+- Column headers
+- Data rows
+- Group headers if grouping selected
+- Subtotals per group if numeric fields
+- Grand total at bottom
+
+Print button: opens print dialog
+Export PDF button: generates PDF using browser print
+Export Excel button: downloads CSV
+
+=== SQL TO RUN IN SUPABASE FIRST ===
+
+CREATE TABLE IF NOT EXISTS workspace_tables (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  fields JSONB DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE workspace_tables ENABLE ROW LEVEL SECURITY;
+CREATE POLICY owner_tables ON workspace_tables FOR ALL USING (
+  workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid())
+);
+
+CREATE TABLE IF NOT EXISTS workspace_relationships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+  from_table TEXT,
+  from_field TEXT,
+  to_table TEXT,
+  to_field TEXT,
+  relationship_type TEXT DEFAULT 'one-to-many',
+  enforce_integrity BOOLEAN DEFAULT true
+);
+ALTER TABLE workspace_relationships ENABLE ROW LEVEL SECURITY;
+CREATE POLICY owner_rel ON workspace_relationships FOR ALL USING (
+  workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid())
+);
+
+CREATE TABLE IF NOT EXISTS workspace_queries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  definition JSONB,
+  sql_preview TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE workspace_queries ENABLE ROW LEVEL SECURITY;
+CREATE POLICY owner_queries ON workspace_queries FOR ALL USING (
+  workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid())
+);
+
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS form_type TEXT DEFAULT 'single';
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS record_source TEXT;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS form_filter TEXT;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS order_by TEXT;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_edits BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_additions BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_deletions BOOLEAN DEFAULT true;
+
+=== AFTER ALL TASKS DONE ===
+
+1. npm run build (fix any TypeScript errors)
+2. git add -A
+3. git commit -m "Phase 7 Full MS Access workflow - Tables Queries Forms Subforms Reports"
+4. git push origin main
