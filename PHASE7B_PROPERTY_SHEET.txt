@@ -1,0 +1,371 @@
+NexBase - Phase 7B - Full MS Access Property Sheet
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+PROBLEM: The properties panel only shows colors and basic stuff.
+It needs to work exactly like MS Access Property Sheet.
+
+Look at the screenshots of real MS Access:
+- Property Sheet has tabs: Format | Data | Event | Other | All
+- When a FORM is selected: shows Record Source (table dropdown)
+- When a TEXTBOX is selected: shows Control Source (field dropdown from that table)
+- This is how forms become BOUND to tables
+
+THIS IS THE MOST IMPORTANT FEATURE OF NEXBASE.
+Build it exactly like MS Access.
+
+=== UNDERSTAND THE CONCEPT FIRST ===
+
+In MS Access:
+- FORM has "Record Source" property = which table/query it reads from
+- TEXTBOX has "Control Source" property = which field from that table
+- When user navigates records, ALL bound controls update automatically
+- This is called a BOUND FORM
+
+In NexBase:
+- PAGE (form) needs "recordSource" = workspace table name
+- CONTROL needs "controlSource" = field name from that table
+- When form loads it fetches records from Supabase app_data
+- Navigation buttons move between records
+- All bound controls show the current record's field values
+
+=== TASK 1 - REDESIGN PROPERTIES PANEL LIKE MS ACCESS ===
+
+The properties panel on the right side of the studio needs to look 
+and work exactly like MS Access Property Sheet.
+
+When NOTHING is selected show:
+- "Property Sheet" title
+- "Selection type: Form" 
+- The FORM properties (not control properties)
+
+When a CONTROL is selected show:
+- "Property Sheet" title  
+- "Selection type: [TextBox / Button / Label / etc]"
+- Control name dropdown at top (like Access shows "UserID" in the name box)
+- 5 tabs: Format | Data | Event | Other | All
+
+TAB 1 - FORMAT tab properties:
+(Visual/display properties)
+- Caption (for Labels and Buttons)
+- Width (in px)
+- Height (in px)
+- Left (x position)
+- Top (y position)
+- Background Color (color picker)
+- Foreground Color / Font Color (color picker)
+- Font Name (dropdown: Plus Jakarta Sans, Arial, Georgia, Courier)
+- Font Size (number input)
+- Font Weight (Normal / Bold)
+- Font Italic (Yes/No)
+- Text Align (Left / Center / Right)
+- Border Style (None / Solid / Dashed)
+- Border Color
+- Border Width
+- Special Effect (Flat / Raised / Sunken / Shadow)
+- Border Radius (px)
+- Visible (Yes/No)
+
+TAB 2 - DATA tab properties:
+(This is the most important tab - data binding)
+
+When FORM is selected (no control selected):
+- Record Source: [dropdown of all workspace tables + queries]
+  When changed: updates page.recordSource in Supabase
+  This is THE binding that connects form to data
+
+- Filter: text input (e.g. "status = Active")
+- Order By: dropdown of fields from selected table + ASC/DESC
+- Allow Edits: Yes/No toggle
+- Allow Additions: Yes/No toggle  
+- Allow Deletions: Yes/No toggle
+- Record Locks: No Locks / All Records / Edited Record
+
+When a CONTROL is selected (TextBox, ComboBox, etc):
+- Control Source: [dropdown of ALL fields from the form's Record Source table]
+  This is THE binding that connects control to a field
+  When set: control shows/edits that field value
+  Dropdown shows: (none), then all fields from the bound table
+  e.g. if form Record Source = Customers table:
+  Shows: (none), id, name, email, country, status, revenue, created_at
+
+- Input Mask: text input (format pattern)
+- Default Value: text input
+- Validation Rule: text input (e.g. >0 or Like "A*")
+- Validation Text: text input (error message shown if validation fails)
+- Enabled: Yes/No
+- Locked: Yes/No (show but not editable)
+
+For COMBOBOX additionally:
+- Row Source Type: Table/Query or Value List
+- Row Source: table name or comma-separated values
+- Bound Column: number (which column is the value)
+- Column Count: number
+- Column Widths: e.g. "2cm;3cm"
+- List Rows: number of rows to show in dropdown
+- List Width: width of dropdown
+
+For BUTTON:
+- On Click: [dropdown of macro names] or (Event Procedure)
+
+TAB 3 - EVENT tab properties:
+(Macro/automation triggers)
+
+For FORM:
+- On Open: macro to run when form opens
+- On Load: macro to run after form loads data
+- On Close: macro to run when form closes
+- On Current: macro to run when record changes
+- Before Insert: macro to run before new record saved
+- After Insert: macro to run after new record saved
+- Before Update: macro to run before record updated
+- After Update: macro to run after record updated
+- Before Delete: macro to run before delete
+- On Error: macro to run on error
+
+For CONTROLS:
+- On Click: macro or action
+- On Double Click: macro or action
+- On Got Focus: macro or action
+- On Lost Focus: macro or action
+- Before Update: macro or action
+- After Update: macro or action
+- On Key Press: macro or action
+- On Change: macro or action (fires as user types)
+
+Each event property shows a dropdown of saved macros in this workspace
+Or user can type a macro action directly.
+
+TAB 4 - OTHER tab properties:
+- Name: control name (must be unique, no spaces)
+- Status Bar Text: help text shown in status bar when control focused
+- Tab Stop: Yes/No (whether Tab key stops here)
+- Tab Index: number (order of tabbing)
+- Shortcut Menu: Yes/No
+- Tag: any text (for developer notes)
+
+TAB 5 - ALL tab:
+Shows ALL properties from all tabs in one scrollable list
+Same as MS Access "All" tab
+
+=== TASK 2 - FORM PROPERTIES WHEN NOTHING SELECTED ===
+
+When user clicks on empty canvas (no control selected):
+Show FORM properties in the property sheet.
+
+The form property sheet shows:
+Selection type: Form
+Name: [form/page name - editable]
+
+FORMAT tab:
+- Caption: form title shown in title bar
+- Default View: Single Form / Continuous Forms / Datasheet / Split Form
+- Allow Form View: Yes/No
+- Allow Datasheet View: Yes/No
+- Scroll Bars: Both / Horizontal Only / Vertical Only / Neither
+- Record Selectors: Yes/No
+- Navigation Buttons: Yes/No (show the record nav bar at bottom)
+- Dividing Lines: Yes/No
+- Auto Resize: Yes/No
+- Auto Center: Yes/No
+- Border Style: None / Thin / Sizable / Dialog
+- Close Button: Yes/No
+- Min Max Buttons: None / Min Only / Max Only / Both
+- Moveable: Yes/No (for popups)
+
+DATA tab (MOST IMPORTANT):
+- Record Source: [dropdown of ALL tables and queries in this workspace]
+  Tables shown with table icon
+  Queries shown with query icon
+  When user selects a table here:
+    - Save to page.recordSource in Supabase
+    - All controls on this form can now bind to fields from this table
+    - Control Source dropdown on each control shows these fields
+    
+- Filter: text input
+- Filter On Load: Yes/No
+- Order By: text input (e.g. "name ASC")
+- Order By On Load: Yes/No
+- Allow Edits: Yes/No
+- Allow Additions: Yes/No
+- Allow Deletions: Yes/No
+- Record Locks: No Locks / All Records / Edited Record
+
+EVENT tab:
+- On Open, On Load, On Close, On Current, etc (as above)
+
+=== TASK 3 - RECORD NAVIGATION BAR ===
+
+When form has a Record Source bound to a table, 
+show MS Access style navigation bar at bottom of canvas:
+
+[|<] [<] Record: [_3_] of 47 [>] [>|] [+New] | 🔍 Search: [_______]
+
+In Design View: show it as a visual element at bottom of canvas (not interactive)
+In Preview Mode: make it fully interactive:
+- |< goes to first record
+- < goes to previous record  
+- Number input: type a number and jump to that record
+- > goes to next record
+- >| goes to last record
+- + New clears form for new entry
+- Search: filter records by any field
+
+The nav bar reads from and writes to the currentRecordIndex state.
+Records are fetched from Supabase app_data where workspace_id and table_name match.
+
+=== TASK 4 - AUTO GENERATE FORM FROM TABLE ===
+
+When Record Source is set on a form, show a button in the studio:
+"Add All Fields" (like MS Access Field List pane)
+
+Clicking it:
+1. Fetches the table definition from workspace_tables
+2. For each field creates a Label + bound control pair:
+   - Short Text → Label + TextBox (controlSource = fieldName)
+   - Long Text → Label + TextBox (multiline)
+   - Number/Currency → Label + NumberBox (controlSource = fieldName)
+   - Date/Time → Label + DatePicker (controlSource = fieldName)
+   - Yes/No → CheckBox (controlSource = fieldName)
+   - Choice → Label + ComboBox with options (controlSource = fieldName)
+   - Email → Label + TextBox with email type
+   - Lookup → Label + ComboBox bound to related table
+3. Lays them out automatically in 2 columns
+4. Also adds Save Button and Delete Button at bottom
+5. Also adds Navigation Bar at bottom
+
+=== TASK 5 - CONTROL SOURCE BINDING IN PREVIEW/PUBLISHED MODE ===
+
+When form is in Preview or Published mode:
+
+ON LOAD:
+1. Check page.recordSource (which table this form is bound to)
+2. Fetch first record from app_data where table_name = recordSource
+3. Store all records in recordset state array
+4. Set currentIndex = 0
+5. For each bound control (controlSource is set):
+   - Set control value = recordset[currentIndex][controlSource]
+
+ON NAVIGATION:
+1. currentIndex changes
+2. For each bound control:
+   - Update displayed value = recordset[currentIndex][controlSource]
+
+ON SAVE BUTTON (macro action = save):
+1. Collect all bound control values: { fieldName: value }
+2. If currentRecord has id: UPDATE that record in app_data
+3. If new record: INSERT into app_data
+
+ON DELETE BUTTON (macro action = delrec):
+1. Show confirm dialog
+2. DELETE from app_data where id = currentRecord.id
+3. Move to next record
+
+=== TASK 6 - FIELD LIST PANEL ===
+
+Add a "Field List" panel toggle button in studio top bar.
+
+When clicked shows a floating panel on the right:
+Title: "Field List"
+If form has no Record Source: shows "Set Record Source first"
+If form has Record Source: shows:
+  Table: [Customers]
+  Fields:
+  📝 id
+  📝 name
+  📝 email
+  📝 country
+  📝 status
+  💰 revenue
+  📅 created_at
+
+User can DRAG a field from this list onto the canvas.
+Dropping it creates a Label + bound TextBox pair automatically
+with controlSource already set to that field name.
+
+This is exactly how MS Access Field List works.
+
+=== TASK 7 - SUBFORM WITH MASTER-CHILD LINKING ===
+
+When Subform control is dropped on canvas:
+Properties panel Data tab shows:
+- Source Object: [dropdown of all forms in this workspace]
+- Link Master Fields: [dropdown of fields from PARENT form's table]
+- Link Child Fields: [dropdown of fields from SUBFORM's table]
+
+Example:
+Parent form Record Source = Customers (id, name, email)
+Subform Source Object = Orders Form
+Subform Link Master Fields = id (from Customers)
+Subform Link Child Fields = customer_id (from Orders)
+
+In Preview/Published mode:
+When showing Customer record with id=3:
+Subform automatically filters to show only Orders where customer_id=3
+
+=== TASK 8 - COMBO BOX ROW SOURCE ===
+
+ComboBox Data tab shows:
+- Row Source Type: Table/Query | Value List | Field List
+- Row Source: 
+  If Table/Query: dropdown of all workspace tables + queries
+  If Value List: text input comma separated "Active,Inactive,Trial"
+- Bound Column: 1
+- Column Count: 1
+
+In Preview/Published mode:
+If Row Source Type = Table/Query:
+  Fetch records from that table, show as dropdown options
+  Value = first field, Display = second field (or same)
+If Row Source Type = Value List:
+  Split by comma, show as dropdown options
+
+=== TASK 9 - PROPERTY SHEET STYLE ===
+
+Style the property sheet exactly like MS Access:
+- Light gray background (#f0f0f0)
+- Tab buttons: Format | Data | Event | Other | All
+- Active tab has white background and bottom border removed (tab style)
+- Property rows: two columns
+  Left: property name (gray text, 120px wide)
+  Right: value input (white background, full border)
+- Property name and input on same row, alternating very light background
+- Dropdown inputs show a small dropdown arrow button
+- Color properties show a small color swatch + [...] button
+- Yes/No properties show a dropdown with Yes and No options
+- Inputs are small (22px height, 11px font) like real Access
+
+=== SQL TO RUN IN SUPABASE FIRST ===
+
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS record_source TEXT;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS form_filter TEXT;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS order_by TEXT;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_edits BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_additions BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_deletions BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS navigation_buttons BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS default_view TEXT DEFAULT 'single';
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS on_open_macro TEXT;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS on_load_macro TEXT;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS on_close_macro TEXT;
+
+CREATE TABLE IF NOT EXISTS workspace_tables (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  fields JSONB DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(workspace_id, slug)
+);
+ALTER TABLE workspace_tables ENABLE ROW LEVEL SECURITY;
+CREATE POLICY owner_wt ON workspace_tables FOR ALL USING (
+  workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid())
+);
+
+=== AFTER ALL TASKS DONE ===
+
+1. npm run build (fix any TypeScript errors)
+2. git add -A
+3. git commit -m "Phase 7B Full MS Access Property Sheet with Data binding"
+4. git push origin main

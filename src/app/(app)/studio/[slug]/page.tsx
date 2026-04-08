@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import Toast, { ToastMessage } from '@/components/Toast'
 import TableDesigner from '@/components/TableDesigner'
 import QueryBuilder from '@/components/QueryBuilder'
+import PropertySheet from '@/components/PropertySheet'
 
 const GRID = 8
 const snap = (v: number, on: boolean) => on ? Math.round(v / GRID) * GRID : v
@@ -24,6 +25,37 @@ type Ctrl = {
   rowsPerPage?: number
   showSearch?: boolean
   sourceTable?: string
+  // New MS Access-style properties
+  name?: string
+  controlSource?: string
+  fontName?: string
+  fontWeight?: string
+  fontItalic?: boolean
+  textAlign?: string
+  borderStyle?: string
+  borderColor?: string
+  borderWidth?: number
+  visible?: boolean
+  defaultValue?: string
+  validationRule?: string
+  validationText?: string
+  enabled?: boolean
+  locked?: boolean
+  rowSourceType?: string
+  rowSource?: string
+  boundColumn?: number
+  columnCount?: number
+  onClickMacro?: string
+  onDblClickMacro?: string
+  onGotFocusMacro?: string
+  onLostFocusMacro?: string
+  beforeUpdateMacro?: string
+  afterUpdateMacro?: string
+  onChangeMacro?: string
+  statusBarText?: string
+  tabStop?: boolean
+  tabIndex?: number
+  tag?: string
 }
 
 const DEFAULTS: Record<string, Partial<Ctrl>> = {
@@ -113,13 +145,16 @@ const TOOL_GROUPS = [
 const COLORS = ['#4f46e5','#059669','#dc2626','#d97706','#7c3aed',
                 '#0891b2','#be185d','#1e293b','#ffffff','#f3f4f6']
 
-function renderCtrl(c: Ctrl, isPreview: boolean = false) {
+function renderCtrl(c: Ctrl, isPreview: boolean = false, boundData: any = {}) {
   const base: React.CSSProperties = {
     width:'100%', height:'100%', overflow:'hidden',
     borderRadius: c.radius, fontSize: c.fontSize,
     color: c.color, fontFamily: 'inherit', userSelect:'none',
     pointerEvents: isPreview ? 'auto' : 'none',
   }
+
+  // Get bound value if control has fieldKey
+  const boundValue = c.fieldKey && boundData[c.fieldKey] !== undefined ? boundData[c.fieldKey] : null
 
   if (c.type === 'Heading') return (
     <div style={{...base,display:'flex',alignItems:'center',fontWeight:800,background:'transparent',letterSpacing:'-0.02em'}}>{c.caption}</div>
@@ -128,7 +163,8 @@ function renderCtrl(c: Ctrl, isPreview: boolean = false) {
     <div style={{...base,display:'flex',alignItems:'center',background:'transparent'}}>{c.caption}</div>
   )
   if (c.type === 'TextBox') {
-    if (isPreview) return <input type="text" placeholder={c.placeholder} style={{...base,background:c.bg,border:'1.5px solid #e2e8f0',padding:'0 12px',outline:'none'}} />
+    const displayValue = boundValue !== null ? String(boundValue) : ''
+    if (isPreview) return <input type="text" placeholder={c.placeholder} value={displayValue} readOnly style={{...base,background:c.bg,border:'1.5px solid #e2e8f0',padding:'0 12px',outline:'none'}} />
     return (
       <div style={{...base,background:c.bg,border:'1.5px solid #e2e8f0',display:'flex',alignItems:'center',padding:'0 12px',boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}>
         <span style={{color:'#9ca3af'}}>{c.placeholder || 'Type here...'}</span>
@@ -139,7 +175,13 @@ function renderCtrl(c: Ctrl, isPreview: boolean = false) {
     <div style={{...base,background:c.bg,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,boxShadow:`0 4px 14px ${c.bg}55`,cursor:isPreview?'pointer':'default'}}>{c.caption}</div>
   )
   if (c.type === 'ComboBox') {
-    if (isPreview) return <select style={{...base,background:c.bg,border:'1.5px solid #e2e8f0',padding:'0 12px'}}><option>{c.placeholder}</option></select>
+    const displayValue = boundValue !== null ? String(boundValue) : ''
+    if (isPreview) return (
+      <select value={displayValue} disabled style={{...base,background:c.bg,border:'1.5px solid #e2e8f0',padding:'0 12px'}}>
+        <option value="">{c.placeholder || 'Select...'}</option>
+        <option value={displayValue}>{displayValue}</option>
+      </select>
+    )
     return (
       <div style={{...base,background:c.bg,border:'1.5px solid #e2e8f0',display:'flex',alignItems:'center',padding:'0 12px',justifyContent:'space-between'}}>
         <span style={{color:'#9ca3af'}}>{c.placeholder || 'Select...'}</span>
@@ -177,6 +219,20 @@ export default function StudioPage() {
   const [selectedSource, setSelectedSource] = useState('')
   const [tables, setTables] = useState<any[]>([])
   const [queries, setQueries] = useState<any[]>([])
+  const [formProperties, setFormProperties] = useState<any>({
+    recordSource: null,
+    formFilter: '',
+    orderBy: '',
+    allowEdits: true,
+    allowAdditions: true,
+    allowDeletions: true,
+    navigationButtons: true,
+    defaultView: 'single',
+    caption: '',
+    name: '',
+  })
+  const [previewRecords, setPreviewRecords] = useState<any[]>([])
+  const [previewRecordIndex, setPreviewRecordIndex] = useState(0)
 
   const canvasRef = useRef<HTMLDivElement>(null)
   const isDrawing = useRef(false)
@@ -205,6 +261,44 @@ export default function StudioPage() {
     loadWorkspace()
   }, [slug])
 
+  useEffect(() => {
+    const currentPage = pages.find(p => p.id === currentPageId)
+    if (currentPage) {
+      loadFormProperties(currentPage)
+    }
+  }, [currentPageId, pages])
+
+  useEffect(() => {
+    if (isPreview && formProperties.recordSource && workspace) {
+      loadPreviewRecords()
+    } else {
+      setPreviewRecords([])
+      setPreviewRecordIndex(0)
+    }
+  }, [isPreview, formProperties.recordSource, workspace])
+
+  const loadPreviewRecords = async () => {
+    if (!formProperties.recordSource || !workspace) return
+
+    const { data } = await supabase
+      .from('app_data')
+      .select('*')
+      .eq('workspace_id', workspace.id)
+      .eq('table_name', formProperties.recordSource)
+      .order('created_at', { ascending: true })
+
+    if (data && data.length > 0) {
+      const records = data.map((row) => row.data)
+      setPreviewRecords(records)
+      setPreviewRecordIndex(0)
+    } else {
+      setPreviewRecords([])
+      setPreviewRecordIndex(0)
+    }
+  }
+
+  const currentRecord = previewRecords[previewRecordIndex] || {}
+
   const loadWorkspace = async () => {
     const { data } = await supabase.from('workspaces').select('*').eq('slug', slug).single()
     if (data) {
@@ -217,7 +311,58 @@ export default function StudioPage() {
 
   const loadPages = async (workspaceId: string) => {
     const { data } = await supabase.from('pages').select('*').eq('workspace_id', workspaceId)
-    if (data) setPages(data)
+    if (data) {
+      setPages(data)
+      if (data.length > 0 && !currentPageId) {
+        setCurrentPageId(data[0].id)
+        loadFormProperties(data[0])
+      }
+    }
+  }
+
+  const loadFormProperties = (page: any) => {
+    setFormProperties({
+      recordSource: page.record_source || null,
+      formFilter: page.form_filter || '',
+      orderBy: page.order_by || '',
+      allowEdits: page.allow_edits !== false,
+      allowAdditions: page.allow_additions !== false,
+      allowDeletions: page.allow_deletions !== false,
+      navigationButtons: page.navigation_buttons !== false,
+      defaultView: page.default_view || 'single',
+      caption: page.title || '',
+      name: page.slug || '',
+    })
+  }
+
+  const updateFormProperty = async (changes: any) => {
+    if (!currentPageId) return
+
+    // Map property names to database column names
+    const dbChanges: any = {}
+    if ('recordSource' in changes) dbChanges.record_source = changes.recordSource
+    if ('formFilter' in changes) dbChanges.form_filter = changes.formFilter
+    if ('orderBy' in changes) dbChanges.order_by = changes.orderBy
+    if ('allowEdits' in changes) dbChanges.allow_edits = changes.allowEdits
+    if ('allowAdditions' in changes) dbChanges.allow_additions = changes.allowAdditions
+    if ('allowDeletions' in changes) dbChanges.allow_deletions = changes.allowDeletions
+    if ('navigationButtons' in changes) dbChanges.navigation_buttons = changes.navigationButtons
+    if ('defaultView' in changes) dbChanges.default_view = changes.defaultView
+    if ('caption' in changes) dbChanges.title = changes.caption
+    if ('name' in changes) dbChanges.slug = changes.name
+
+    const { error } = await supabase
+      .from('pages')
+      .update(dbChanges)
+      .eq('id', currentPageId)
+
+    if (error) {
+      showToast('Failed to update form property', 'error')
+    } else {
+      setFormProperties((prev: any) => ({ ...prev, ...changes }))
+      // Reload pages to get updated data
+      if (workspace) loadPages(workspace.id)
+    }
   }
 
   const loadTables = async (workspaceId: string) => {
@@ -778,7 +923,7 @@ export default function StudioPage() {
                       outline: (selectedId===ctrl.id && !isPreview) ? '2.5px solid #6366f1' : 'none',
                       outlineOffset: 2,
                     }}>
-                    {renderCtrl(ctrl, isPreview)}
+                    {renderCtrl(ctrl, isPreview, currentRecord)}
                     {selectedId===ctrl.id && !isPreview && HANDLES.map(h => (
                       <div key={h} onMouseDown={e => onHandleMD(e, ctrl, h)}
                         style={{
@@ -801,6 +946,39 @@ export default function StudioPage() {
                 }}/>
               )}
             </div>
+
+            {/* Navigation Bar in Preview Mode */}
+            {isPreview && formProperties.recordSource && (
+              <div style={{ marginTop: 16, background: '#fff', borderRadius: 8, padding: '8px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <button
+                  onClick={() => setPreviewRecordIndex(0)}
+                  disabled={previewRecordIndex <= 0}
+                  style={{ padding: '6px 12px', background: previewRecordIndex <= 0 ? '#f3f4f6' : '#fff', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 12, cursor: previewRecordIndex <= 0 ? 'default' : 'pointer', color: previewRecordIndex <= 0 ? '#9ca3af' : '#1f2937' }}>
+                  |◀ First
+                </button>
+                <button
+                  onClick={() => setPreviewRecordIndex(Math.max(0, previewRecordIndex - 1))}
+                  disabled={previewRecordIndex <= 0}
+                  style={{ padding: '6px 12px', background: previewRecordIndex <= 0 ? '#f3f4f6' : '#fff', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 12, cursor: previewRecordIndex <= 0 ? 'default' : 'pointer', color: previewRecordIndex <= 0 ? '#9ca3af' : '#1f2937' }}>
+                  ◀ Previous
+                </button>
+                <div style={{ padding: '6px 12px', background: '#f9fafb', borderRadius: 6, fontSize: 12, color: '#6b7280', fontWeight: 600 }}>
+                  {previewRecords.length > 0 ? (previewRecordIndex + 1) : 0} of {previewRecords.length}
+                </div>
+                <button
+                  onClick={() => setPreviewRecordIndex(Math.min(previewRecords.length - 1, previewRecordIndex + 1))}
+                  disabled={previewRecordIndex >= previewRecords.length - 1}
+                  style={{ padding: '6px 12px', background: previewRecordIndex >= previewRecords.length - 1 ? '#f3f4f6' : '#fff', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 12, cursor: previewRecordIndex >= previewRecords.length - 1 ? 'default' : 'pointer', color: previewRecordIndex >= previewRecords.length - 1 ? '#9ca3af' : '#1f2937' }}>
+                  Next ▶
+                </button>
+                <button
+                  onClick={() => setPreviewRecordIndex(previewRecords.length - 1)}
+                  disabled={previewRecordIndex >= previewRecords.length - 1}
+                  style={{ padding: '6px 12px', background: previewRecordIndex >= previewRecords.length - 1 ? '#f3f4f6' : '#fff', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 12, cursor: previewRecordIndex >= previewRecords.length - 1 ? 'default' : 'pointer', color: previewRecordIndex >= previewRecords.length - 1 ? '#9ca3af' : '#1f2937' }}>
+                  Last ▶|
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -826,217 +1004,17 @@ export default function StudioPage() {
           </div>
         )}
 
-        {view === 'forms' && !isPreview && (
-          /* PROPERTIES PANEL */
-          <div style={{ width:260, background:'#181a28', borderLeft:'1px solid #252840',
-            display:'flex', flexDirection:'column', overflow:'hidden' }}>
-            <div style={{ padding:'10px 14px', background:'#1e2035',
-              borderBottom:'1px solid #252840', fontSize:12, fontWeight:600, color:'#e2e8f0' }}>
-              Properties
-            </div>
-            {selCtrl ? (
-              <div style={{ flex:1, overflow:'auto', padding:14 }}>
-                {/* Control Type */}
-                <div style={{ marginBottom:16, padding:'6px 10px', background:'#252840', borderRadius:6,
-                  fontSize:11, color:'#9ca3af', fontWeight:600 }}>
-                  {selCtrl.type}
-                </div>
-
-                {/* Position & Size */}
-                <div style={{ marginBottom:14 }}>
-                  <div style={{ fontSize:10, color:'#6b7280', marginBottom:6, fontWeight:600 }}>POSITION</div>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
-                    <div>
-                      <label style={{ fontSize:9, color:'#7480a8', display:'block', marginBottom:2 }}>X</label>
-                      <input type="number" value={selCtrl.x} onChange={e => updCtrl({ x: +e.target.value })}
-                        style={{ width:'100%', padding:'5px 8px', background:'#252840', border:'1px solid #3a3f5c',
-                          borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize:9, color:'#7480a8', display:'block', marginBottom:2 }}>Y</label>
-                      <input type="number" value={selCtrl.y} onChange={e => updCtrl({ y: +e.target.value })}
-                        style={{ width:'100%', padding:'5px 8px', background:'#252840', border:'1px solid #3a3f5c',
-                          borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom:14 }}>
-                  <div style={{ fontSize:10, color:'#6b7280', marginBottom:6, fontWeight:600 }}>SIZE</div>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
-                    <div>
-                      <label style={{ fontSize:9, color:'#7480a8', display:'block', marginBottom:2 }}>W</label>
-                      <input type="number" value={selCtrl.w} onChange={e => updCtrl({ w: Math.max(20, +e.target.value) })}
-                        style={{ width:'100%', padding:'5px 8px', background:'#252840', border:'1px solid #3a3f5c',
-                          borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize:9, color:'#7480a8', display:'block', marginBottom:2 }}>H</label>
-                      <input type="number" value={selCtrl.h} onChange={e => updCtrl({ h: Math.max(10, +e.target.value) })}
-                        style={{ width:'100%', padding:'5px 8px', background:'#252840', border:'1px solid #3a3f5c',
-                          borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Caption */}
-                {!['Divider'].includes(selCtrl.type) && (
-                  <div style={{ marginBottom:14 }}>
-                    <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>CAPTION</label>
-                    <input type="text" value={selCtrl.caption} onChange={e => updCtrl({ caption: e.target.value })}
-                      style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
-                        borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
-                  </div>
-                )}
-
-                {/* Placeholder */}
-                {['TextBox','ComboBox','Lookup','DatePicker'].includes(selCtrl.type) && (
-                  <div style={{ marginBottom:14 }}>
-                    <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>PLACEHOLDER</label>
-                    <input type="text" value={selCtrl.placeholder || ''} onChange={e => updCtrl({ placeholder: e.target.value })}
-                      style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
-                        borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
-                  </div>
-                )}
-
-                {/* Control Source - MS Access style */}
-                {['TextBox','ComboBox','CheckBox','DatePicker','NumberBox','Lookup'].includes(selCtrl.type) && (() => {
-                  const currentPage = pages.find(p => p.id === currentPageId)
-                  const boundTable = currentPage?.record_source ? tables.find(t => t.name === currentPage.record_source) : null
-                  return (
-                    <div style={{ marginBottom:14 }}>
-                      <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>CONTROL SOURCE</label>
-                      {boundTable && boundTable.fields ? (
-                        <select value={selCtrl.fieldKey || ''} onChange={e => updCtrl({ fieldKey: e.target.value })}
-                          style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
-                            borderRadius:5, color:'#e2e8f0', fontSize:11 }}>
-                          <option value="">-- Unbound --</option>
-                          {boundTable.fields.map((field: any) => (
-                            <option key={field.id} value={field.name}>{field.name}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input type="text" value={selCtrl.fieldKey || ''} onChange={e => updCtrl({ fieldKey: e.target.value })}
-                          placeholder="e.g. customer_name"
-                          style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
-                            borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
-                      )}
-                    </div>
-                  )
-                })()}
-
-                {/* Border Radius */}
-                <div style={{ marginBottom:14 }}>
-                  <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>BORDER RADIUS</label>
-                  <input type="number" min="0" value={selCtrl.radius} onChange={e => updCtrl({ radius: +e.target.value })}
-                    style={{ width:'100%', padding:'5px 8px', background:'#252840', border:'1px solid #3a3f5c',
-                      borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
-                </div>
-
-                {/* Background Color */}
-                {!['Label','Heading','CheckBox'].includes(selCtrl.type) && (
-                  <div style={{ marginBottom:14 }}>
-                    <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>BG COLOR</label>
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:4 }}>
-                      {COLORS.map(col => (
-                        <div key={col} onClick={() => updCtrl({ bg: col })}
-                          style={{ width:'100%', aspectRatio:'1', background:col, borderRadius:4,
-                            cursor:'pointer', border: selCtrl.bg === col ? '2px solid #6366f1' : '1px solid #3a3f5c' }} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Text Color */}
-                <div style={{ marginBottom:14 }}>
-                  <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>TEXT COLOR</label>
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:4 }}>
-                    {COLORS.map(col => (
-                      <div key={col} onClick={() => updCtrl({ color: col })}
-                        style={{ width:'100%', aspectRatio:'1', background:col, borderRadius:4,
-                          cursor:'pointer', border: selCtrl.color === col ? '2px solid #6366f1' : '1px solid #3a3f5c' }} />
-                    ))}
-                  </div>
-                </div>
-
-                {/* DataTable Columns */}
-                {selCtrl.type === 'DataTable' && (
-                  <div style={{ marginBottom:14 }}>
-                    <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>COLUMNS</label>
-                    <input type="text" value={selCtrl.columns || ''} onChange={e => updCtrl({ columns: e.target.value })}
-                      placeholder="Name,Email,Status"
-                      style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
-                        borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
-                    <div style={{ fontSize:9, color:'#6b7280', marginTop:4 }}>Comma-separated</div>
-                  </div>
-                )}
-
-                {/* DataTable Source */}
-                {selCtrl.type === 'DataTable' && (
-                  <div style={{ marginBottom:14 }}>
-                    <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>SOURCE TABLE</label>
-                    <input type="text" value={selCtrl.sourceTable || ''} onChange={e => updCtrl({ sourceTable: e.target.value })}
-                      placeholder="customers"
-                      style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
-                        borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
-                  </div>
-                )}
-
-                {/* TabPanel Tabs */}
-                {selCtrl.type === 'TabPanel' && (
-                  <div style={{ marginBottom:14 }}>
-                    <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>TABS</label>
-                    <input type="text" value={selCtrl.tabs || ''} onChange={e => updCtrl({ tabs: e.target.value })}
-                      placeholder="Tab 1,Tab 2,Tab 3"
-                      style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
-                        borderRadius:5, color:'#e2e8f0', fontSize:11 }} />
-                    <div style={{ fontSize:9, color:'#6b7280', marginTop:4 }}>Comma-separated</div>
-                  </div>
-                )}
-
-                {/* Chart Type */}
-                {selCtrl.type === 'Chart' && (
-                  <div style={{ marginBottom:14 }}>
-                    <label style={{ fontSize:10, color:'#6b7280', display:'block', marginBottom:6, fontWeight:600 }}>CHART TYPE</label>
-                    <select value={selCtrl.chartType || 'bar'} onChange={e => updCtrl({ chartType: e.target.value })}
-                      style={{ width:'100%', padding:'6px 10px', background:'#252840', border:'1px solid #3a3f5c',
-                        borderRadius:5, color:'#e2e8f0', fontSize:11 }}>
-                      <option value="bar">Bar</option>
-                      <option value="line">Line</option>
-                      <option value="pie">Pie</option>
-                      <option value="doughnut">Doughnut</option>
-                      <option value="area">Area</option>
-                    </select>
-                  </div>
-                )}
-
-                {/* Control List */}
-                <div style={{ marginTop:24, borderTop:'1px solid #252840', paddingTop:14 }}>
-                  <div style={{ fontSize:10, color:'#6b7280', marginBottom:8, fontWeight:600 }}>ALL CONTROLS</div>
-                  <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                    {controls.map(c => (
-                      <div key={c.id} onClick={() => setSelectedId(c.id)}
-                        style={{
-                          padding:'6px 10px', background: c.id === selectedId ? '#4f46e5' : '#252840',
-                          borderRadius:5, fontSize:10, color: c.id === selectedId ? '#fff' : '#9ca3af',
-                          cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center'
-                        }}>
-                        <span>{c.type}</span>
-                        <span style={{ fontSize:8, opacity:0.6 }}>{c.x},{c.y}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div style={{ flex:1, display:'flex', flexDirection:'column',
-                alignItems:'center', justifyContent:'center',
-                color:'#3a3f5c', gap:8, padding:16, textAlign:'center' }}>
-                <div style={{ fontSize:28, opacity:0.3 }}>✦</div>
-                <div style={{ fontSize:11 }}>Select a control to edit properties</div>
-              </div>
-            )}
-          </div>
+        {view === 'forms' && !isPreview && workspace && (
+          <PropertySheet
+            selectedControl={selCtrl || null}
+            controls={controls}
+            onUpdateControl={updCtrl}
+            onUpdateForm={updateFormProperty}
+            formProperties={formProperties}
+            tables={tables}
+            queries={queries}
+            workspaceId={workspace.id}
+          />
         )}
       </div>
 

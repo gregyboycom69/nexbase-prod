@@ -1,0 +1,702 @@
+NexBase - Phase 7C - Full Properties for EVERY Control Type
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+Add detailed MS Access style properties to EVERY control type.
+Every control must have Format tab, Data tab, Event tab, Other tab.
+The Data tab has Control Source dropdown showing fields from the bound table.
+
+=== PROPERTY SHEET TABS FOR ALL CONTROLS ===
+
+Every control when selected shows Property Sheet with 5 tabs:
+Format | Data | Event | Other | All
+
+The tabs work exactly like MS Access.
+Small compact rows, two columns: property name | value input.
+
+=== TEXTBOX PROPERTIES ===
+
+FORMAT tab:
+- Caption: (not used for textbox, grayed out)
+- Format: General / Currency / Fixed / Standard / Percent / Scientific / Short Date / Long Date / Medium Date / Short Time / Long Time / Yes/No / True/False
+- Decimal Places: Auto / 0 / 1 / 2 / 3 / 4
+- Input Mask: text (e.g. 00/00/0000 for date)
+- Width: number in px
+- Height: number in px
+- Left: number in px (x position)
+- Top: number in px (y position)
+- Back Style: Normal / Transparent
+- Back Color: color picker
+- Special Effect: Flat / Raised / Sunken / Etched / Shadowed / Chiseled
+- Border Style: Transparent / Solid / Dashes / Dots
+- Border Color: color picker
+- Border Width: Hairline / 1pt / 2pt / 3pt
+- Fore Color: color picker (text color)
+- Font Name: dropdown (Plus Jakarta Sans, Arial, Times New Roman, Courier New, Georgia)
+- Font Size: number
+- Font Weight: Thin / Light / Normal / Semi-bold / Bold / Extra Bold
+- Font Italic: Yes / No
+- Font Underline: Yes / No
+- Text Align: General / Left / Center / Right / Distribute
+- Reading Order: Left-to-Right / Right-to-Left
+- Vertical Alignment: Top / Center / Bottom
+- Visible: Yes / No
+- Display When: Always / Print Only / Screen Only
+
+DATA tab:
+- Control Source: [DROPDOWN of all fields from the form Record Source table]
+  This is the most important property!
+  Shows: (none) + all field names from the bound table
+  e.g. for Customers table: id, name, email, country, status, revenue, created_at
+- Input Mask: text pattern
+- Default Value: text or expression (e.g. =Date() for today)
+- Validation Rule: expression (e.g. >0 or Is Not Null)
+- Validation Text: error message shown when rule fails
+- Enabled: Yes / No (can user interact with it)
+- Locked: Yes / No (show value but cannot edit)
+- Filter Lookup: Database Default / Never / Always
+- Smart Tags: text
+
+EVENT tab:
+- Before Update: [dropdown of macros]
+- After Update: [dropdown of macros]
+- On Change: [dropdown of macros]
+- On Enter: [dropdown of macros]
+- On Exit: [dropdown of macros]
+- On Got Focus: [dropdown of macros]
+- On Lost Focus: [dropdown of macros]
+- On Click: [dropdown of macros]
+- On Double Click: [dropdown of macros]
+- On Key Down: [dropdown of macros]
+- On Key Up: [dropdown of macros]
+- On Key Press: [dropdown of macros]
+- On Mouse Down: [dropdown of macros]
+- On Mouse Up: [dropdown of macros]
+- On Mouse Move: [dropdown of macros]
+
+OTHER tab:
+- Name: unique control name (no spaces, like txtCustomerName)
+- Status Bar Text: help text shown at bottom when focused
+- Enter Key Behavior: Default / New Line In Field
+- Allow AutoCorrect: Yes / No
+- Vertical: Yes / No (rotate text)
+- Auto Tab: Yes / No (auto tab to next when field full)
+- Tab Stop: Yes / No
+- Tab Index: number
+- Shortcut Menu Bar: text
+- ControlTip Text: tooltip text shown on hover
+- Tag: any text for developer use
+- Right-Click Menu: Yes / No
+
+=== LABEL PROPERTIES ===
+
+FORMAT tab:
+- Caption: the text shown (editable)
+- Width, Height, Left, Top
+- Back Style: Normal / Transparent
+- Back Color
+- Special Effect: Flat / Raised / Sunken / Etched / Shadowed / Chiseled
+- Border Style, Border Color, Border Width
+- Fore Color (text color)
+- Font Name, Font Size, Font Weight, Font Italic, Font Underline
+- Text Align: Left / Center / Right
+- Visible: Yes / No
+- Hyperlink Address: URL (makes label a clickable link)
+- Hyperlink SubAddress
+
+DATA tab: (labels dont bind to data but show this)
+- No data properties for labels
+- Show message: "Labels display static text. Use Control Source on TextBox to bind data."
+
+EVENT tab:
+- On Click
+- On Double Click
+- On Mouse Down / Up / Move
+
+OTHER tab:
+- Name
+- ControlTip Text (tooltip)
+- Tag
+
+=== BUTTON PROPERTIES ===
+
+FORMAT tab:
+- Caption: button text
+- Picture: (image to show on button - future feature)
+- Picture Type: Embedded / Linked
+- Width, Height, Left, Top
+- Back Color (button background color)
+- Special Effect: Flat / Raised / Sunken / Shadowed / Chiseled
+- Border Style, Border Color, Border Width
+- Fore Color (text color)
+- Font Name, Font Size, Font Weight, Font Italic
+- Text Align
+- Visible: Yes / No
+- Transparent: Yes / No
+- Cursor on Hover: Default / Pointer / Hand
+
+DATA tab:
+- Default: Yes / No (is this the default button - Enter key activates it)
+- Cancel: Yes / No (is this the cancel button - Escape key activates it)
+- (Buttons don't have Control Source - they trigger actions)
+
+EVENT tab:
+- On Click: [dropdown of all macros in this workspace] ← MOST IMPORTANT
+- On Got Focus
+- On Lost Focus
+- On Double Click
+- On Mouse Down / Up / Move
+- On Key Down / Up / Press
+
+OTHER tab:
+- Name
+- Status Bar Text
+- Tab Stop: Yes / No
+- Tab Index
+- ControlTip Text
+- Tag
+
+=== COMBOBOX PROPERTIES ===
+
+FORMAT tab:
+- Width, Height, Left, Top
+- Back Color
+- Border Style, Border Color, Border Width
+- Fore Color
+- Font Name, Font Size, Font Weight, Font Italic
+- Text Align
+- Visible: Yes / No
+- Column Widths: text (e.g. "3cm;2cm")
+- List Rows: number (how many rows shown in dropdown, default 8)
+- List Width: number in px (width of dropdown)
+
+DATA tab:
+- Control Source: [dropdown of fields from bound table] ← saves selected value here
+- Row Source Type: Table/Query | Value List | Field List
+- Row Source: 
+  If Table/Query: dropdown of all workspace tables + queries
+  If Value List: text input (comma separated e.g. "Active,Inactive,Trial")
+- Bound Column: number (which column value is stored, default 1)
+- Limit To List: Yes / No (only allow values from list)
+- Default Value: text
+- Validation Rule, Validation Text
+- Enabled: Yes / No
+- Locked: Yes / No
+
+EVENT tab:
+- Before Update, After Update
+- On Change
+- On Enter, On Exit
+- On Got Focus, On Lost Focus
+- On Click
+- Not In List: macro to run when user types value not in list
+
+OTHER tab:
+- Name
+- Status Bar Text
+- Auto Expand: Yes / No (auto complete as user types)
+- Tab Stop, Tab Index
+- ControlTip Text
+- Tag
+
+=== CHECKBOX PROPERTIES ===
+
+FORMAT tab:
+- Caption: label text shown next to checkbox
+- Width, Height, Left, Top
+- Back Style: Normal / Transparent
+- Back Color
+- Special Effect: Normal / Sunken / Etched
+- Fore Color
+- Font Name, Font Size, Font Weight, Font Italic
+- Visible: Yes / No
+- Checkbox Size: small / medium / large (controls the checkbox square size)
+
+DATA tab:
+- Control Source: [dropdown of Yes/No fields from bound table]
+- Triple State: Yes / No (allows null/indeterminate state)
+- Default Value: Yes / No / Null
+- Validation Rule, Validation Text
+- Enabled: Yes / No
+- Locked: Yes / No
+
+EVENT tab:
+- Before Update, After Update
+- On Click
+- On Got Focus, On Lost Focus
+- On Enter, On Exit
+
+OTHER tab:
+- Name
+- Status Bar Text
+- Tab Stop, Tab Index
+- ControlTip Text
+- Tag
+
+=== DATEPICKER PROPERTIES ===
+
+FORMAT tab:
+- Width, Height, Left, Top
+- Back Color
+- Border Style, Border Color, Border Width
+- Fore Color
+- Font Name, Font Size
+- Visible: Yes / No
+- Show Calendar Button: Yes / No
+- Date Format: DD/MM/YYYY | MM/DD/YYYY | YYYY-MM-DD | Long Date | Short Date
+
+DATA tab:
+- Control Source: [dropdown of Date/Time fields from bound table]
+- Default Value: (none) / =Date() / =Now()
+- Minimum Date: date input
+- Maximum Date: date input
+- Validation Rule, Validation Text
+- Enabled: Yes / No
+- Locked: Yes / No
+
+EVENT tab:
+- Before Update, After Update
+- On Change
+- On Got Focus, On Lost Focus
+- On Enter, On Exit
+
+OTHER tab:
+- Name
+- Status Bar Text
+- Tab Stop, Tab Index
+- ControlTip Text
+- Tag
+
+=== NUMBERBOX PROPERTIES ===
+
+FORMAT tab:
+- Width, Height, Left, Top
+- Back Color, Fore Color
+- Border Style, Border Color, Border Width
+- Font Name, Font Size, Font Weight
+- Text Align: Right (default for numbers) / Left / Center
+- Visible: Yes / No
+- Show Spinner: Yes / No (show up/down arrows)
+
+DATA tab:
+- Control Source: [dropdown of Number/Currency fields from bound table]
+- Format: General / Currency / Fixed / Percent / Scientific
+- Decimal Places: 0 / 1 / 2 / 3 / 4 / Auto
+- Minimum Value: number
+- Maximum Value: number
+- Step: number (how much spinner changes by, default 1)
+- Default Value: number
+- Validation Rule (e.g. >=0 and <=100)
+- Validation Text
+- Enabled: Yes / No
+- Locked: Yes / No
+
+EVENT tab:
+- Before Update, After Update
+- On Change
+- On Got Focus, On Lost Focus
+
+OTHER tab:
+- Name, Status Bar Text, Tab Stop, Tab Index, ControlTip Text, Tag
+
+=== DATATABLE PROPERTIES ===
+
+FORMAT tab:
+- Width, Height, Left, Top
+- Back Color: table background
+- Grid Lines Color: color picker
+- Grid Lines: Both / Horizontal / Vertical / None
+- Row Height: number px
+- Header Back Color: header row background
+- Header Fore Color: header text color
+- Alternate Back Color: alternating row color
+- Font Name, Font Size
+- Visible: Yes / No
+
+DATA tab:
+- Record Source: [dropdown of workspace tables + queries] ← which table to show
+- Columns: text (comma separated field names to show, blank = show all)
+- Allow Edits: Yes / No
+- Allow Additions: Yes / No
+- Allow Deletions: Yes / No
+- Filter: expression to filter records (e.g. status = 'Active')
+- Order By: field name + ASC/DESC
+- Link Master Fields: (for subform - field from parent)
+- Link Child Fields: (for subform - field in this table)
+
+EVENT tab:
+- On Current: macro when record changes
+- Before Insert, After Insert
+- Before Update, After Update  
+- Before Delete, After Delete
+- On Double Click: macro when row double clicked
+
+OTHER tab:
+- Name
+- Show Search Box: Yes / No
+- Show Export Button: Yes / No
+- Records Per Page: 10 / 25 / 50 / 100
+- Tag
+
+=== CHART PROPERTIES ===
+
+FORMAT tab:
+- Width, Height, Left, Top
+- Chart Type: Bar / Line / Pie / Donut / Area / Scatter
+- Chart Title: text
+- Show Legend: Yes / No
+- Legend Position: Bottom / Right / Top / Left
+- Color Scheme: Indigo / Green / Orange / Multi / Monochrome
+- Show Data Labels: Yes / No
+- Background Color
+
+DATA tab:
+- Record Source: [dropdown of workspace tables + queries]
+- X Axis Field: [dropdown of fields] (category axis)
+- Y Axis Field: [dropdown of fields] (value axis)
+- Series Field: [dropdown of fields] (group by this for multiple series)
+- Filter: expression
+- Order By: field
+
+EVENT tab:
+- On Click (when user clicks a bar/point)
+
+OTHER tab:
+- Name, Tag
+
+=== MODAL PROPERTIES ===
+
+FORMAT tab:
+- Caption: title bar text
+- Width, Height
+- Back Color: modal background
+- Modal Style: Default / Info / Warning / Error / Success (changes title bar color)
+- Show Close Button: Yes / No
+- Show OK Button: Yes / No
+- Show Cancel Button: Yes / No
+- OK Button Caption: text (default "OK")
+- Cancel Button Caption: text (default "Cancel")
+- Border Style: Thin / Thick / Dialog
+- Popup: Yes / No (stays on top)
+
+DATA tab:
+- Record Source: [dropdown] (if modal contains a form)
+- On OK Macro: [dropdown of macros] (runs when OK clicked)
+- On Cancel Macro: [dropdown of macros] (runs when Cancel clicked)
+
+EVENT tab:
+- On Open: macro
+- On Close: macro
+- On OK Click: macro
+- On Cancel Click: macro
+
+OTHER tab:
+- Name
+- Auto Center: Yes / No (center on screen)
+- Tag
+
+=== TABPANEL PROPERTIES ===
+
+FORMAT tab:
+- Width, Height, Left, Top
+- Tab Names: text (comma separated, e.g. "General,Details,Notes")
+- Active Tab: number (1-based)
+- Tab Position: Top / Bottom / Left / Right
+- Tab Style: Tabs / Buttons / None
+- Back Color (content area background)
+- Tab Back Color
+- Tab Fore Color
+- Tab Font Name, Tab Font Size
+- Visible: Yes / No
+
+DATA tab:
+- (No data binding for tab panel itself - controls inside tabs are bound)
+- Multi-Row: Yes / No (wrap tabs to multiple rows if too many)
+
+EVENT tab:
+- On Change: macro when tab changes
+- Tab (index) On Activate: macro for specific tab
+
+OTHER tab:
+- Name, Tag
+
+=== LOOKUP/SEARCH BOX PROPERTIES ===
+
+FORMAT tab:
+- Width, Height, Left, Top
+- Back Color, Fore Color
+- Border Style, Border Color
+- Font Name, Font Size
+- Placeholder Text: text shown when empty
+- Show Search Icon: Yes / No
+- Show Dropdown Button: Yes / No
+- Visible: Yes / No
+
+DATA tab:
+- Control Source: [dropdown of fields from bound table] (stores selected value)
+- Row Source: [dropdown of tables/queries to search in]
+- Search Field: which field to search in (name, email, etc)
+- Display Field: which field to show in results
+- Bound Field: which field value to store (usually id)
+- Min Characters: number (minimum chars to type before searching, default 2)
+- Max Results: number (max dropdown rows, default 10)
+- Default Value
+- Enabled, Locked
+
+EVENT tab:
+- On Change: fires as user types
+- On Select: fires when user picks a result
+- After Update: fires after value stored
+
+OTHER tab:
+- Name, Status Bar Text, Tab Stop, Tab Index, ControlTip Text, Tag
+
+=== PROGRESSBAR PROPERTIES ===
+
+FORMAT tab:
+- Width, Height, Left, Top
+- Back Color: track background
+- Bar Color: filled portion color
+- Show Percentage Text: Yes / No
+- Text Position: Inside / Right / None
+- Visible: Yes / No
+- Animation: Yes / No (animated stripes while active)
+- Border Style, Border Color
+
+DATA tab:
+- Control Source: [dropdown of Number fields] (reads progress value from here)
+- Minimum Value: number (default 0)
+- Maximum Value: number (default 100)
+- Value: number (static value if no control source)
+
+OTHER tab:
+- Name, Tag
+
+=== SUBFORM PROPERTIES ===
+
+FORMAT tab:
+- Width, Height, Left, Top
+- Back Color
+- Border Style: None / Solid / Dashed
+- Border Color, Border Width
+- Show Subform Label: Yes / No
+- Label Caption: text shown above subform
+- Visible: Yes / No
+
+DATA tab:
+- Source Object: [dropdown of all FORMS in this workspace] ← which form to embed
+- Link Master Fields: [dropdown of fields from PARENT form Record Source]
+- Link Child Fields: [dropdown of fields from SUBFORM Record Source]
+  Example: Master=id, Child=customer_id
+  Means: show only subform records where customer_id = current parent id
+- Enabled: Yes / No
+
+EVENT tab:
+- On Enter, On Exit
+
+OTHER tab:
+- Name, Tag
+
+=== NAVIGATIONBUTTONS PROPERTIES ===
+
+FORMAT tab:
+- Width, Height, Left, Top
+- Back Color, Fore Color
+- Button Style: Default / Rounded / Square / Icon Only
+- Show Record Counter: Yes / No
+- Show New Button: Yes / No
+- Show Search: Yes / No
+- Visible: Yes / No
+
+DATA tab:
+- Linked Control: [dropdown of DataTable/DataGrid controls on same page]
+  (which table this navigates - if blank navigates the form itself)
+
+EVENT tab:
+- On First Click: macro
+- On Previous Click: macro
+- On Next Click: macro
+- On Last Click: macro
+- On New Click: macro
+
+OTHER tab:
+- Name, Tag
+
+=== BADGE PROPERTIES ===
+
+FORMAT tab:
+- Caption: text shown in badge
+- Width, Height, Left, Top
+- Back Color: badge background
+- Fore Color: badge text color
+- Border Radius: number (default 20 for pill shape)
+- Font Name, Font Size, Font Weight
+- Show Dot: Yes / No (colored dot before text)
+- Dot Color: color picker
+- Visible: Yes / No
+
+DATA tab:
+- Control Source: [dropdown of fields from bound table]
+  When set: badge shows the field value instead of static caption
+- Color Rules: (conditional formatting)
+  If value = "Active" then Back Color = green
+  If value = "Inactive" then Back Color = gray
+  If value = "Pending" then Back Color = yellow
+  (Show add rule button to add more conditions)
+
+EVENT tab:
+- On Click: macro
+
+OTHER tab:
+- Name, ControlTip Text, Tag
+
+=== CARD PROPERTIES ===
+
+FORMAT tab:
+- Width, Height, Left, Top
+- Caption: card title text
+- Back Color: card background
+- Border Style, Border Color, Border Width
+- Border Radius
+- Shadow: None / Small / Medium / Large
+- Show Header: Yes / No
+- Header Back Color
+- Header Fore Color
+- Header Font Size
+- Visible: Yes / No
+
+DATA tab:
+- Record Source: [dropdown of tables/queries] (if card shows data)
+- Filter: expression
+
+EVENT tab:
+- On Click: macro
+- On Double Click: macro
+
+OTHER tab:
+- Name, Tag
+
+=== IMAGE/IMAGEVIEWER PROPERTIES ===
+
+FORMAT tab:
+- Width, Height, Left, Top
+- Size Mode: Clip / Stretch / Zoom / Stretch Horizontal / Stretch Vertical
+- Back Color
+- Border Style, Border Color
+- Border Radius
+- Visible: Yes / No
+- Show Upload Button: Yes / No
+- Show Clear Button: Yes / No
+
+DATA tab:
+- Control Source: [dropdown of Image/File fields from bound table]
+  When set: loads image URL from that field
+- Picture: static URL if no control source
+
+EVENT tab:
+- On Click: macro
+- After Update: fires after new image uploaded
+
+OTHER tab:
+- Name, ControlTip Text, Tag
+
+=== STATUS BAR PROPERTIES ===
+
+FORMAT tab:
+- Width, Height, Left, Top
+- Back Color: status bar background (usually light gray)
+- Fore Color: text color
+- Font Name, Font Size
+- Visible: Yes / No
+- Show Record Status: Yes / No (shows "Record 1 of 47")
+- Show Filter Status: Yes / No (shows "Filtered" when filter active)
+- Show Edit Status: Yes / No (shows "Edit Mode" when editing)
+- Custom Text Left: text shown on left
+- Custom Text Right: text shown on right
+
+DATA tab:
+- Linked Control: [dropdown] which DataTable this shows status for
+
+OTHER tab:
+- Name, Tag
+
+=== SECTION HEADER PROPERTIES ===
+
+FORMAT tab:
+- Caption: section title text
+- Width, Height, Left, Top
+- Back Color: header background
+- Fore Color: text color
+- Font Name, Font Size, Font Weight
+- Show Divider Line: Yes / No
+- Line Color
+- Collapsible: Yes / No (can user collapse this section)
+- Initially Collapsed: Yes / No
+- Visible: Yes / No
+
+OTHER tab:
+- Name, Tag
+
+=== HOW TO BUILD THE PROPERTY SHEET COMPONENT ===
+
+Create src/components/studio/PropertySheet.tsx
+
+This component receives:
+- selectedControl: the selected control object (or null for form properties)
+- formRecordSource: the table/query the form is bound to
+- workspaceTables: array of all tables in this workspace
+- workspaceQueries: array of all queries in this workspace  
+- workspaceForms: array of all forms/pages in this workspace
+- workspaceMacros: array of all macros in this workspace
+- onUpdateControl: function to update control properties
+- onUpdateForm: function to update form/page properties
+
+State inside PropertySheet:
+- activeTab: 'format' | 'data' | 'event' | 'other' | 'all'
+
+The component renders:
+1. Header: "Property Sheet" title + "Selection type: TextBox" (or Form)
+2. Control name dropdown at top (like Access shows the control name in a box)
+3. Tab buttons: Format | Data | Event | Other | All
+4. Property rows for the active tab
+
+Each property row:
+<div style display grid gridTemplateColumns 140px 1fr>
+  <span style fontSize 11 color gray>{propertyName}</span>
+  <input or select or colorpicker for the value>
+</div>
+
+For DROPDOWN properties (like Control Source):
+Show a select element with all relevant options.
+When Control Source is shown, populate with fields from formRecordSource table.
+
+For COLOR properties:
+Show a small colored square + text input for hex value.
+Clicking square opens a simple color palette.
+
+For YES/NO properties:
+Show a select with Yes and No options.
+
+For MACRO event properties:
+Show a select with all workspace macro names + (None) option.
+
+=== IMPORTANT IMPLEMENTATION NOTE ===
+
+The Control Source dropdown in the Data tab is the KEY feature.
+
+To populate it:
+1. Get the form's recordSource (from page.recordSource in Supabase)
+2. Fetch the workspace_tables entry for that table
+3. Get the fields array from workspace_tables.fields JSONB
+4. Show each field.name in the Control Source dropdown
+
+If the form has no Record Source set:
+- Control Source dropdown shows only: "(not bound - set Record Source on form first)"
+- Show a hint message in blue: "Go to the canvas (deselect all) then set Record Source in Data tab"
+
+=== AFTER ALL TASKS DONE ===
+
+1. npm run build (fix any TypeScript errors)
+2. git add -A
+3. git commit -m "Phase 7C Full properties for every control type like MS Access"
+4. git push origin main
