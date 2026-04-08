@@ -1,0 +1,324 @@
+NexBase - Phase 5 - Stripe Billing + Subscriptions + Template Marketplace
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+Phases 1, 1B, 2, 3, 4 are all done.
+
+Now build Phase 5 - Make money. Stripe billing, plan limits, template marketplace.
+
+=== TASK 1 - INSTALL STRIPE ===
+
+npm install stripe @stripe/stripe-js
+
+Add to .env.local:
+STRIPE_SECRET_KEY=sk_test_... (Greg will fill this from stripe.com dashboard)
+STRIPE_WEBHOOK_SECRET=whsec_... (Greg will fill after setting up webhook)
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_... (Greg will fill this)
+
+Add to Vercel environment variables as well.
+
+=== TASK 2 - STRIPE PRODUCTS AND PRICES ===
+
+Create src/lib/stripe.ts with:
+- Stripe client initialization using STRIPE_SECRET_KEY
+- Price IDs for each plan (Greg will create these in Stripe dashboard):
+  STARTER_PRICE_ID = process.env.STRIPE_STARTER_PRICE_ID
+  BUILDER_PRICE_ID = process.env.STRIPE_BUILDER_PRICE_ID  
+  AGENCY_PRICE_ID = process.env.STRIPE_AGENCY_PRICE_ID
+
+Add these to .env.local too:
+STRIPE_STARTER_PRICE_ID=price_... 
+STRIPE_BUILDER_PRICE_ID=price_...
+STRIPE_AGENCY_PRICE_ID=price_...
+
+=== TASK 3 - UPDATE DATABASE FOR BILLING ===
+
+Run this SQL in Supabase:
+
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMPTZ;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS workspace_limit INT DEFAULT 1;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS pages_limit INT DEFAULT 5;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS rows_limit INT DEFAULT 1000;
+
+CREATE TABLE IF NOT EXISTS billing_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id),
+  event_type TEXT,
+  plan TEXT,
+  amount INT,
+  currency TEXT DEFAULT 'eur',
+  stripe_event_id TEXT UNIQUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE billing_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY billing_owner ON billing_events FOR ALL USING (user_id = auth.uid());
+
+UPDATE user_profiles SET 
+  workspace_limit = CASE plan
+    WHEN 'starter' THEN 1
+    WHEN 'builder' THEN 10
+    WHEN 'agency' THEN 999
+    ELSE 1
+  END,
+  pages_limit = CASE plan
+    WHEN 'starter' THEN 5
+    WHEN 'builder' THEN 999
+    WHEN 'agency' THEN 999
+    ELSE 5
+  END,
+  rows_limit = CASE plan
+    WHEN 'starter' THEN 1000
+    WHEN 'builder' THEN 50000
+    WHEN 'agency' THEN 9999999
+    ELSE 1000
+  END;
+
+=== TASK 4 - STRIPE CHECKOUT API ROUTES ===
+
+Create src/app/api/stripe/checkout/route.ts:
+- POST endpoint
+- Takes planId (starter, builder, agency) from request body
+- Gets current user from Supabase
+- Creates or retrieves Stripe customer for this user
+- Creates Stripe Checkout Session with:
+  - mode: subscription
+  - price: the price ID for the selected plan
+  - success_url: /dashboard?upgraded=true
+  - cancel_url: /pricing
+  - customer_email: user email
+  - metadata: { userId: user.id, plan: planId }
+- Returns { url: checkoutSession.url }
+
+Create src/app/api/stripe/portal/route.ts:
+- POST endpoint
+- Creates Stripe Customer Portal session for current user
+- Returns { url: portalSession.url }
+- This lets users manage their subscription, cancel, update payment method
+
+Create src/app/api/stripe/webhook/route.ts:
+- POST endpoint (raw body, not JSON parsed)
+- Verifies webhook signature using STRIPE_WEBHOOK_SECRET
+- Handles these events:
+
+  checkout.session.completed:
+    - Get userId and plan from metadata
+    - Update user_profiles: plan = plan, stripe_customer_id, stripe_subscription_id
+    - Set workspace_limit, pages_limit, rows_limit based on plan
+    - Insert billing_events row
+    - Send welcome email (just console.log for now)
+
+  customer.subscription.updated:
+    - Update user_profiles plan based on new price
+
+  customer.subscription.deleted:
+    - Set user_profiles plan = 'free'
+    - Set workspace_limit = 1
+
+=== TASK 5 - PRICING PAGE ===
+
+Update src/app/pricing/page.tsx (or create if not exists):
+
+Show 3 plan cards in a row, centered on page:
+
+STARTER - 19 EUR/month
+- 1 Workspace
+- 5 Pages per workspace
+- 1,000 data rows/month
+- Email support
+- Get Started button
+
+BUILDER - 49 EUR/month (show POPULAR badge)
+- 10 Workspaces
+- Unlimited pages
+- 50,000 data rows/month
+- Priority support
+- Custom branding
+- Get Started button (indigo, filled)
+
+AGENCY - 149 EUR/month
+- Unlimited workspaces
+- Unlimited pages
+- Unlimited data rows
+- White-label (remove NexBase branding)
+- API access
+- 24/7 support
+- Get Started button
+
+Each Get Started button:
+- If user is not logged in: redirect to /signup?plan=starter (or builder/agency)
+- If user is logged in: call /api/stripe/checkout with the plan
+- On success redirect to Stripe Checkout page
+
+Also show a comparison table below the cards:
+Features vs plans grid showing checkmarks and X marks.
+
+=== TASK 6 - PLAN LIMITS ENFORCEMENT ===
+
+Create src/lib/limits.ts:
+- checkWorkspaceLimit(userId): returns true if user can create more workspaces
+- checkPagesLimit(userId, workspaceId): returns true if user can add more pages
+- checkRowsLimit(userId, workspaceId): returns true if user can add more rows
+
+In dashboard page:
+- Before creating new workspace, call checkWorkspaceLimit
+- If limit reached: show upgrade modal instead of create modal
+- Upgrade modal shows current plan and next plan benefits with upgrade button
+
+In studio page:
+- Before adding new page, call checkPagesLimit
+- If limit reached: show upgrade prompt
+
+In published app:
+- Before saving a record, call checkRowsLimit
+- If limit reached: show message "Data limit reached. Ask admin to upgrade plan."
+
+=== TASK 7 - BILLING DASHBOARD ===
+
+Update src/app/dashboard/page.tsx to add a Billing section:
+
+Add a "Billing" card below the workspaces list showing:
+- Current plan name (Starter / Builder / Agency / Free)
+- Plan badge with color (gray=free, blue=starter, indigo=builder, purple=agency)
+- Usage stats:
+  - Workspaces: 2 / 10 used (progress bar)
+  - Pages: 8 / unlimited
+  - Data rows: 450 / 50,000 (progress bar)
+- Upgrade Plan button (if not on Agency)
+- Manage Billing button (opens Stripe Customer Portal)
+- Next billing date
+
+=== TASK 8 - UPGRADE MODAL ===
+
+Create src/components/UpgradeModal.tsx:
+A modal that shows when user hits a plan limit:
+
+Title: "Upgrade Your Plan"
+Message: "You've reached the [feature] limit on the [plan] plan."
+Shows: what they currently have vs what next plan offers
+Two buttons:
+- Upgrade to Builder (49 EUR/mo) - indigo button
+- Upgrade to Agency (149 EUR/mo) - purple button
+- Maybe later - text link
+
+Clicking upgrade goes to Stripe Checkout for that plan.
+
+=== TASK 9 - FREE TRIAL ===
+
+When a new user signs up (trigger already exists):
+Set their plan to 'trial' with:
+- trial_ends_at = NOW() + INTERVAL '14 days'
+- workspace_limit = 3
+- pages_limit = 999
+- rows_limit = 5000
+
+Add trial_ends_at column to user_profiles:
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '14 days');
+
+Show trial banner in dashboard:
+- Yellow/amber banner at top: "Your free trial ends in X days. Upgrade now to keep access."
+- Upgrade button in the banner
+- After trial_ends_at, downgrade to free plan limits
+
+=== TASK 10 - TEMPLATE MARKETPLACE ===
+
+Create src/app/templates/page.tsx - Template marketplace page:
+
+Show a grid of template cards. Each card has:
+- Preview screenshot (gray placeholder image for now)
+- Template name
+- Category tag (CRM, Inventory, HR, Club Management, etc)
+- Description (1-2 sentences)
+- Price badge (Free or EUR amount)
+- Use Template button
+
+Templates to show (hardcoded for now, Supabase table later):
+1. Customer CRM - Free - Basic customer management with contacts and notes
+2. Golf Club Manager - 49 EUR - Membership, events, scores tracking
+3. Lending Tracker - 39 EUR - Loan management with payment tracking
+4. Inventory System - 49 EUR - Products, stock levels, reorder alerts
+5. HR System - 49 EUR - Employees, leave requests, performance
+6. Order Planning - 79 EUR - Purchase orders, suppliers, shipments
+7. Event Manager - 29 EUR - Events, registrations, attendance
+8. Invoice Tracker - 39 EUR - Invoices, payments, clients
+
+When user clicks Use Template (free):
+- Copy the workspace structure to their account
+- Navigate to the new workspace in studio
+
+When user clicks Use Template (paid):
+- Go to Stripe Checkout for that template
+- After payment: copy workspace structure to their account
+
+Add a Templates link in the main landing page navigation.
+Add a Templates link in the dashboard sidebar.
+
+=== TASK 11 - LANDING PAGE UPDATES ===
+
+Update src/app/page.tsx (landing page) to add:
+
+1. Navigation bar at top:
+   - NexBase logo left
+   - Links: Features, Pricing, Templates, Docs
+   - Sign In and Get Started buttons right
+
+2. Hero section (already exists - just make sure it has):
+   - Big headline: "Build Your Own CRM Without Code"
+   - Subtitle: "Drag, drop, and publish. Your clients get a professional app in minutes."
+   - Two buttons: Start Free Trial (indigo) and See Templates (outline)
+   - Hero image/mockup placeholder
+
+3. Features section with 6 feature cards:
+   - Drag & Drop Designer
+   - MS Access Style Controls
+   - Real Database (Supabase)
+   - Publish in One Click
+   - Client Branding
+   - Macro Automation
+
+4. Social proof section:
+   - "Trusted by freelancers and consultants"
+   - 3 fake testimonial cards (placeholder)
+
+5. Pricing section (same as /pricing page, shortened)
+
+6. CTA section at bottom:
+   - "Ready to build your first app?"
+   - Start Free Trial button
+
+7. Footer:
+   - Links: Privacy, Terms, Contact
+   - Copyright NexBase 2026
+
+=== AFTER ALL TASKS DONE ===
+
+1. npm run build (fix any TypeScript errors)
+2. git add -A
+3. git commit -m "Phase 5 Stripe billing + templates + landing page"
+4. git push origin main
+
+=== STRIPE SETUP INSTRUCTIONS FOR GREG ===
+
+After Claude Code finishes:
+
+1. Go to stripe.com and create account
+2. Go to Stripe Dashboard > Products > Add Product
+3. Create 3 products:
+   NexBase Starter - 19 EUR/month recurring
+   NexBase Builder - 49 EUR/month recurring
+   NexBase Agency - 149 EUR/month recurring
+4. Copy the Price IDs (price_xxx) for each
+5. Add to Vercel environment variables:
+   STRIPE_STARTER_PRICE_ID=price_xxx
+   STRIPE_BUILDER_PRICE_ID=price_xxx
+   STRIPE_AGENCY_PRICE_ID=price_xxx
+   STRIPE_SECRET_KEY=sk_live_xxx
+   STRIPE_WEBHOOK_SECRET=whsec_xxx
+   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_xxx
+6. In Stripe Dashboard > Webhooks > Add Endpoint:
+   URL: https://nexbase-inky.vercel.app/api/stripe/webhook
+   Events: checkout.session.completed, customer.subscription.updated, customer.subscription.deleted
+7. Copy the webhook signing secret to STRIPE_WEBHOOK_SECRET
+8. Redeploy Vercel after adding all env vars

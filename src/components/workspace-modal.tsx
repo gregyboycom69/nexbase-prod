@@ -3,6 +3,8 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { checkWorkspaceLimit, getUserPlan } from '@/lib/limits';
+import UpgradeModal from './UpgradeModal';
 
 interface WorkspaceModalProps {
   userId: string;
@@ -14,6 +16,8 @@ export default function WorkspaceModal({ userId }: WorkspaceModalProps) {
   const [brandName, setBrandName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState('free');
 
   const generateSlug = (name: string): string => {
     return name
@@ -57,6 +61,18 @@ export default function WorkspaceModal({ userId }: WorkspaceModalProps) {
     setLoading(true);
 
     try {
+      // Check workspace limit
+      const limitCheck = await checkWorkspaceLimit(userId);
+      if (!limitCheck.allowed) {
+        // Get user's current plan
+        const { plan } = await getUserPlan(userId);
+        setCurrentPlan(plan);
+        setLoading(false);
+        setIsOpen(false);
+        setShowUpgradeModal(true);
+        return;
+      }
+
       const supabase = createClient();
       const baseSlug = generateSlug(brandName);
 
@@ -91,6 +107,13 @@ export default function WorkspaceModal({ userId }: WorkspaceModalProps) {
 
   return (
     <>
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        currentPlan={currentPlan}
+        limitType="workspace"
+      />
+
       <button
         onClick={() => setIsOpen(true)}
         className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 font-medium transition-colors"

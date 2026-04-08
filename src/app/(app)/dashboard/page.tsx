@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { Workspace } from '@/lib/types';
 import Link from 'next/link';
 import WorkspaceModal from '@/components/workspace-modal';
+import { getUserPlan, checkWorkspaceLimit, checkPagesLimit, checkRowsLimit } from '@/lib/limits';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -23,6 +24,42 @@ export default async function DashboardPage() {
 
   if (error) {
     console.error('Error fetching workspaces:', error);
+  }
+
+  // Get user's plan and limits
+  const { plan, limits } = await getUserPlan(user.id);
+  const workspaceLimit = await checkWorkspaceLimit(user.id);
+
+  // Calculate total pages and rows across all workspaces
+  let totalPages = 0;
+  let totalRows = 0;
+
+  if (workspaces) {
+    for (const workspace of workspaces) {
+      const { data: pages } = await supabase
+        .from('pages')
+        .select('*', { count: 'exact', head: true })
+        .eq('workspace_id', workspace.id);
+
+      const { data: rows } = await supabase
+        .from('app_data')
+        .select('*', { count: 'exact', head: true })
+        .eq('workspace_id', workspace.id);
+
+      totalPages += (pages as any)?.count || 0;
+      totalRows += (rows as any)?.count || 0;
+    }
+  }
+
+  // Calculate trial days remaining
+  let trialDaysRemaining = null;
+  if (limits.trial_ends_at) {
+    const trialEnd = new Date(limits.trial_ends_at);
+    const now = new Date();
+    const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysLeft > 0) {
+      trialDaysRemaining = daysLeft;
+    }
   }
 
   return (
@@ -49,6 +86,164 @@ export default async function DashboardPage() {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Trial Banner */}
+        {trialDaysRemaining !== null && (
+          <div className="mb-6 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg p-4 shadow-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="font-bold text-lg">
+                    You have {trialDaysRemaining} day{trialDaysRemaining !== 1 ? 's' : ''} left in your trial
+                  </div>
+                  <div className="text-sm opacity-90">
+                    Upgrade now to continue using NexBase after your trial ends
+                  </div>
+                </div>
+              </div>
+              <Link
+                href="/pricing"
+                className="bg-white text-orange-600 px-6 py-2 rounded-lg font-bold hover:bg-gray-100 transition-colors"
+              >
+                Upgrade Now
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Billing Section */}
+        <div className="mb-8 bg-white rounded-lg shadow-md border border-gray-200 p-6">
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Your Plan</h3>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-primary-600 capitalize">{plan}</span>
+                {plan === 'free' && (
+                  <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">
+                    Free
+                  </span>
+                )}
+                {plan === 'trial' && (
+                  <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-sm font-medium">
+                    Trial
+                  </span>
+                )}
+                {plan === 'starter' && (
+                  <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
+                    Starter
+                  </span>
+                )}
+                {plan === 'builder' && (
+                  <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
+                    Builder
+                  </span>
+                )}
+                {plan === 'agency' && (
+                  <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm font-medium">
+                    Agency
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {plan !== 'agency' && (
+                <Link
+                  href="/pricing"
+                  className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 font-medium transition-colors"
+                >
+                  Upgrade Plan
+                </Link>
+              )}
+              {plan !== 'free' && plan !== 'trial' && (
+                <form action="/api/stripe/portal" method="POST">
+                  <button
+                    type="submit"
+                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 font-medium transition-colors"
+                  >
+                    Manage Subscription
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+
+          {/* Usage Stats */}
+          <div className="space-y-4">
+            {/* Workspaces */}
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="font-medium text-gray-700">Workspaces</span>
+                <span className="text-gray-600">
+                  {workspaceLimit.current} / {workspaceLimit.limit === 999 ? '∞' : workspaceLimit.limit}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full transition-all ${
+                    workspaceLimit.current >= workspaceLimit.limit ? 'bg-red-500' : 'bg-primary-600'
+                  }`}
+                  style={{
+                    width: `${Math.min(
+                      (workspaceLimit.current / (workspaceLimit.limit === 999 ? workspaceLimit.current + 1 : workspaceLimit.limit)) * 100,
+                      100
+                    )}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Pages */}
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="font-medium text-gray-700">Pages</span>
+                <span className="text-gray-600">
+                  {totalPages} / {limits.pages_limit === 999 ? '∞' : limits.pages_limit}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full transition-all ${
+                    totalPages >= limits.pages_limit && limits.pages_limit !== 999 ? 'bg-red-500' : 'bg-primary-600'
+                  }`}
+                  style={{
+                    width: `${Math.min(
+                      (totalPages / (limits.pages_limit === 999 ? totalPages + 1 : limits.pages_limit)) * 100,
+                      100
+                    )}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Data Rows */}
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="font-medium text-gray-700">Data Rows</span>
+                <span className="text-gray-600">
+                  {totalRows.toLocaleString()} / {limits.rows_limit === 9999999 ? '∞' : limits.rows_limit.toLocaleString()}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full transition-all ${
+                    totalRows >= limits.rows_limit && limits.rows_limit !== 9999999 ? 'bg-red-500' : 'bg-primary-600'
+                  }`}
+                  style={{
+                    width: `${Math.min(
+                      (totalRows / (limits.rows_limit === 9999999 ? totalRows + 1 : limits.rows_limit)) * 100,
+                      100
+                    )}%`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-3xl font-bold text-gray-900">My Workspaces</h2>
