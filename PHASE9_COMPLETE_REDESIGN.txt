@@ -1,0 +1,530 @@
+NexBase - Phase 9 - Complete Studio Redesign - MS Access Style
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+COMPLETELY REWRITE the studio. Throw away the current studio page.
+Build it fresh to work EXACTLY like MS Access.
+
+=== HOW MS ACCESS WORKS (what we are building) ===
+
+When you open a database in MS Access:
+1. Left panel shows ALL objects: Tables, Queries, Forms, Reports, Macros
+2. Main area is blank until you open an object
+3. Double-click a Table → opens in datasheet view (spreadsheet)
+4. Double-click a Form → opens in form view (shows the form)
+5. Right-click → Design View → opens the designer for that object
+6. You can have MANY forms open at once as tabs
+7. Each form has its own designer with its own controls
+
+THIS is what we need to build.
+
+=== LAYOUT ===
+
+The studio page at /studio/[slug] must look like this:
+
+┌─────────────────────────────────────────────────────┐
+│ TOP BAR: ← ggg | Tables Queries Forms Macros | ...  │
+├──────────────┬──────────────────────────────────────┤
+│              │                                       │
+│  NAVIGATION  │   MAIN WORKSPACE AREA                │
+│  PANE        │   (blank until object opened)        │
+│  (200px)     │   Objects open as TABS here          │
+│              │                                       │
+│  TABLES      │                                       │
+│  > Customers │                                       │
+│  > Orders    │                                       │
+│              │                                       │
+│  QUERIES     │                                       │
+│  > USA Custs │                                       │
+│              │                                       │
+│  FORMS       │                                       │
+│  > MainMenu  │                                       │
+│  > CustForm  │                                       │
+│              │                                       │
+│  MACROS      │                                       │
+│  > SaveCust  │                                       │
+│              │                                       │
+│  [+ New]     │                                       │
+└──────────────┴──────────────────────────────────────┘
+
+=== TOP BAR ===
+
+Left side:
+- Back arrow → goes to /workspace/[slug]
+- Workspace name (e.g. "ggg") in indigo
+
+Center tabs (like MS Access ribbon tabs):
+- Tables | Queries | Forms | Macros
+- Clicking a tab FILTERS the navigation pane to show only that type
+- Active tab highlighted in indigo
+
+Right side:
+- Published green dot or Draft gray dot
+- Preview button
+- Publish/Unpublish button
+- User email
+
+=== NAVIGATION PANE (left 200px) ===
+
+Always visible. Shows ALL database objects.
+
+If no tab filter active: shows all grouped:
+  TABLES (with grid icon)
+  [list of tables]
+  
+  QUERIES (with funnel icon)  
+  [list of queries]
+  
+  FORMS (with form icon)
+  [list of forms]
+  
+  MACROS (with lightning icon)
+  [list of macros]
+
+Search box at top filters the list.
+
+Each section has a collapse/expand arrow.
+
+Each object in list:
+- Icon + name
+- Single click = select it (highlight)
+- Double click = OPEN it in main area as a tab
+- Right click = context menu: Open | Design View | Rename | Duplicate | Delete | Export
+
+At bottom of nav pane:
+- "+ New" button that shows submenu: New Table | New Query | New Form | New Macro
+
+When New Table clicked:
+- Ask for table name in small input
+- Create entry in workspace_tables
+- Open the new table in Table Design View tab
+
+When New Form clicked:  
+- Ask for form name
+- Ask: Bind to Table? Bind to Query? Blank?
+- If table: show dropdown of available tables
+- Create entry in pages table
+- Open new form in Form Design View tab
+
+=== MAIN WORKSPACE AREA ===
+
+Shows opened objects as TABS at the top (like browser tabs or VS Code tabs):
+[Customers X] [Customer Form X] [MainMenu X]
+
+Each tab shows the object name and a close X button.
+Active tab is highlighted.
+
+Below the tab bar: the content of the active tab.
+
+When NO tabs open: show welcome screen:
+- "Welcome to [workspace name]"
+- "Get started:" 
+- [Create a Table] [Create a Form] [Create a Query]
+- Recent objects list
+
+=== WHEN TABLE TAB IS OPEN ===
+
+Shows the table in TWO possible views:
+
+VIEW 1 - DATASHEET VIEW (default when double-clicking from nav):
+Like MS Access table datasheet:
+- Column headers = field names
+- Rows = actual data records from app_data table in Supabase
+- Click cell to edit inline
+- Tab to next cell
+- New row at bottom with * marker
+- Right-click row: Delete Record
+- Top toolbar: Save | Refresh | New Record | Delete Record | Filter | Sort
+- Shows record count at bottom: "Record 1 of 47"
+
+VIEW 2 - DESIGN VIEW (when right-click → Design View):
+Like MS Access table design view:
+- Top half: grid of fields
+  Columns: Field Name | Data Type | Description
+  Rows: one per field
+  First row: id (AutoNumber, locked, primary key icon)
+  Click + row at bottom to add field
+  
+  Data Type dropdown per row:
+  Short Text | Long Text | Number | Decimal | Currency | 
+  AutoNumber | Date/Time | Yes/No | Choice | Email | Phone | URL | Lookup
+
+- Bottom half: Field Properties for selected field
+  Shows: Field Size | Format | Input Mask | Caption | Default Value | 
+  Validation Rule | Validation Text | Required | Indexed
+
+- Toolbar: Save Table | Add Field | Delete Field | Primary Key | Indexes
+- View toggle button: Design View ↔ Datasheet View
+
+=== WHEN FORM TAB IS OPEN ===
+
+Shows the form in THREE possible views:
+
+VIEW 1 - FORM VIEW (default - like seeing the final form):
+Shows the form as it will look to the user.
+If bound to a table: shows first record data in the controls.
+TextBoxes show actual field values.
+Navigation bar at bottom: |< < Record 1 of 5 > >| + New
+Buttons are clickable and run their macros.
+This is PREVIEW mode.
+
+VIEW 2 - DESIGN VIEW (right-click → Design View or Design button):
+This is the canvas designer.
+Shows:
+- LEFT TOOLBOX (64px): all control types grouped
+- CENTER CANVAS: white canvas with dot grid
+  Form has 3 sections: Form Header | Detail | Form Footer
+  Each section has a gray bar with its name
+  Controls placed in Detail section by default
+  Ruler along top and left
+- RIGHT PROPERTY SHEET: full MS Access style property sheet
+- TOP TOOLBAR: View buttons | Save | control alignment tools | field list toggle
+
+The canvas shows the form sections:
+┌─────────────────────┐
+│ ▼ Form Header        │
+│ [drag controls here] │
+├─────────────────────┤
+│ ▼ Detail             │
+│ [main controls here] │  ← most controls go here
+├─────────────────────┤
+│ ▼ Form Footer        │
+│ [nav buttons here]   │
+└─────────────────────┘
+
+VIEW 3 - DATASHEET VIEW:
+Shows form records in a grid (like Access form in datasheet view).
+
+View switching: Button group top-left: [Form View] [Design] [Datasheet]
+
+=== PROPERTY SHEET (right panel in Design View) ===
+
+STYLING - dark theme matching studio:
+- Outer background: #1a1d2e
+- Header "Property Sheet": #252840 bg, #e2e8f0 text, 13px bold
+- "Selection type: TextBox": #252840 bg, #8890b8 text, 11px
+- Control name box: #0f1117 bg, #c8d0f0 text, border #2d3055
+- Tab buttons: Format | Data | Event | Other | All
+  - Active tab: #6366f1 bg, white text
+  - Inactive tabs: #252840 bg, #7480a8 text
+- Property rows: alternating #1a1d2e and #1e2139
+- Property label (left): #8890b8, 11px, font JetBrains Mono, 130px wide
+- Property value (right): input with #0f1117 bg, #c8d0f0 text, no border, 11px
+- Section dividers inside tabs: #252840 bg, #6366f1 text, 9px uppercase
+
+Property row height: 24px
+Use a proper grid: grid-template-columns: 130px 1fr
+
+For Yes/No properties: small select with Yes/No
+For dropdown properties: small select
+For color properties: input type=color + hex text input side by side
+For number properties: input type=number
+For text properties: input type=text
+For event properties (On Click etc): select showing macro names + "(none)"
+
+=== PROPERTY SHEET CONTENT BY CONTROL TYPE ===
+
+When FORM selected (nothing clicked on canvas):
+DATA tab shows:
+  Record Source: [select showing all workspace tables + queries]
+  Filter: [text input]
+  Order By: [text input]  
+  Allow Edits: [Yes/No select]
+  Allow Additions: [Yes/No select]
+  Allow Deletions: [Yes/No select]
+
+FORMAT tab shows:
+  Caption: [text input]
+  Default View: [Single Form/Continuous/Datasheet select]
+  Navigation Buttons: [Yes/No]
+  Scroll Bars: [Both/None/Vertical/Horizontal select]
+  Border Style: [None/Thin/Sizable select]
+  Auto Center: [Yes/No]
+
+When TEXTBOX selected:
+DATA tab:
+  Control Source: [select showing fields from form's Record Source table]
+  Default Value: [text]
+  Validation Rule: [text]
+  Validation Text: [text]
+  Enabled: [Yes/No]
+  Locked: [Yes/No]
+
+FORMAT tab:
+  Width: [number] Height: [number] Left: [number] Top: [number]
+  Back Color: [color]
+  Border Style: [select]
+  Font Name: [select]
+  Font Size: [number]
+  Font Weight: [Normal/Bold select]
+  Font Italic: [Yes/No]
+  Text Align: [Left/Center/Right select]
+  Visible: [Yes/No]
+
+EVENT tab:
+  On Click: [macro select]
+  Before Update: [macro select]
+  After Update: [macro select]
+  On Got Focus: [macro select]
+  On Lost Focus: [macro select]
+
+OTHER tab:
+  Name: [text - control name]
+  Status Bar Text: [text]
+  Tab Stop: [Yes/No]
+  Tab Index: [number]
+  ControlTip Text: [text]
+
+When BUTTON selected:
+FORMAT tab same as textbox plus:
+  Caption: [text]
+  Back Color: [color]
+
+DATA tab:
+  Default: [Yes/No]
+  Cancel: [Yes/No]
+
+EVENT tab:
+  On Click: [macro select] ← MOST IMPORTANT
+
+When COMBOBOX selected:
+DATA tab:
+  Control Source: [field select]
+  Row Source Type: [Table/Query | Value List select]
+  Row Source: [text or table select based on Row Source Type]
+  Default Value: [text]
+  Enabled: [Yes/No]
+  Locked: [Yes/No]
+
+When CHECKBOX selected:
+DATA tab:
+  Control Source: [Yes/No field select]
+  Default Value: [Yes/No]
+  Enabled: [Yes/No]
+
+When DATEPICKER selected:
+DATA tab:
+  Control Source: [Date/Time field select]
+  Default Value: [text]
+  Minimum Date: [date input]
+  Maximum Date: [date input]
+
+FORMAT tab extra:
+  Date Format: [DD/MM/YYYY | MM/DD/YYYY | YYYY-MM-DD select]
+  Show Calendar Button: [Yes/No]
+
+When DATATABLE selected:
+DATA tab:
+  Record Source: [table select]
+  Filter: [text]
+  Order By: [text]
+  Allow Edits: [Yes/No]
+  Allow Additions: [Yes/No]
+  Allow Deletions: [Yes/No]
+
+FORMAT tab extra:
+  Columns: [text - comma separated field names to show]
+  Row Height: [number]
+  Show Search: [Yes/No]
+  Show Export: [Yes/No]
+
+=== CONTROL RENDERING IN DESIGN VIEW ===
+
+Make all controls look like their real type:
+
+Label: text on transparent background. Not a box.
+Heading: large bold text. Not a box.
+TextBox: white rectangle with thin border. Left accent line in indigo. Placeholder text in gray.
+Button: colored rectangle with rounded corners. Caption centered. Shadow.
+ComboBox: white box with border + dropdown arrow button on right (gray button ▾)
+CheckBox: small square + label text. Square has border. Check mark if checked.
+DatePicker: white box + 📅 icon left + "DD/MM/YYYY" gray text + calendar button right
+NumberBox: white box + number + ▲▼ spinner arrows stacked on right
+DataTable: mini spreadsheet with indigo header row + field names + 3 sample rows
+Chart: colored bar chart visual - 5 bars of different heights in indigo shades
+Modal: appears as floating dialog box with title bar + content + footer buttons
+TabPanel: tab buttons at top + content area below
+Badge: pill shape with dot + text
+Card: white rounded box with subtle shadow + title
+ProgressBar: gray track + indigo filled portion + percentage text
+NavigationButtons: |< < [1] > >| button row
+StatusBar: gray bar with "Ready" + "Record 1 of 5" text
+
+=== FORM HEADER AND FOOTER ===
+
+The canvas has 3 sections separated by draggable bars:
+- Form Header: for logo, title, branding elements
+- Detail: main form content (most controls go here)  
+- Form Footer: navigation buttons, save/cancel buttons, status
+
+Each section bar shows the section name and height.
+Dragging the bar resizes the section.
+
+In Design View the sections have slightly different backgrounds:
+- Form Header: #f0f4ff (very light blue)
+- Detail: #ffffff (white with grid dots)
+- Form Footer: #f0f4ff (very light blue)
+
+=== FIELD LIST PANEL ===
+
+Toggle button "Field List" in toolbar shows/hides a floating panel.
+
+Panel appears as a floating box (not docked, can be moved):
+Title: "Field List"
+Content: list of fields from the form's Record Source
+If no Record Source: "Select a Record Source in the Data tab first"
+
+User drags a field from Field List onto the canvas:
+- Creates a Label + TextBox pair
+- Label caption = field.caption or field.name
+- TextBox controlSource = field.name
+- Both placed at drop location
+
+=== SAVING ===
+
+Auto-save: when any control is moved/resized/property changed:
+- Debounce 1 second
+- Save to Supabase controls table
+- Show small "Saving..." indicator top right
+- Then show "Saved ✓"
+
+Manual save: Ctrl+S or Save button
+- Saves everything immediately
+- Shows "Saved!" toast
+
+=== SUPABASE OPERATIONS ===
+
+Load studio:
+1. GET workspace from workspaces table by slug
+2. GET all workspace_tables for this workspace
+3. GET all workspace_queries for this workspace
+4. GET all pages for this workspace (forms)
+5. Populate navigation pane with all of these
+
+Open a form (double-click from nav pane):
+1. GET all controls for that page from controls table
+2. Show form in design view or form view
+
+Save a control:
+UPSERT into controls table:
+{ id, page_id, type, x, y, w, h, props: {...all properties}, macro_steps: [] }
+
+Open a table (double-click from nav pane):
+1. GET table definition from workspace_tables
+2. GET records from app_data where workspace_id and table_name match
+3. Show in datasheet view
+
+Save a table definition:
+UPSERT workspace_tables SET fields = [...] WHERE id = tableId
+
+=== PREVIEW MODE ===
+
+Preview button in toolbar switches the current form tab to Form View.
+In Form View:
+- All controls become INTERACTIVE
+- TextBox: real <input type="text"> user can type in
+- ComboBox: real <select>
+- CheckBox: clickable
+- DatePicker: real <input type="date">
+- NumberBox: real <input type="number">
+- Button: clickable, runs macro steps
+- If form has Record Source: loads first record, shows data in controls
+- Navigation bar works: clicking > loads next record
+- Save button macro: collects all control values, saves to app_data
+
+Design button switches back to design view.
+
+=== MACRO EDITOR ===
+
+Macros tab in nav pane shows list of saved macros.
+Click + in Macros section → Create New Macro dialog → ask for name.
+Double-click a macro → opens Macro Editor as a tab.
+
+Macro Editor tab:
+- Left: Action catalog (grouped by category)
+- Center: Steps list with parameters
+- Toolbar: Run | Save | Clear
+
+Same macro engine as before (save, goto, toast, filter, expcsv etc).
+But now macros are SAVED to workspace (not just on a button).
+Saved macros appear in Event tab dropdowns for all controls.
+
+Store macros in:
+CREATE TABLE IF NOT EXISTS workspace_macros (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  steps JSONB DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE workspace_macros ENABLE ROW LEVEL SECURITY;
+CREATE POLICY owner_macros ON workspace_macros FOR ALL USING (
+  workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid())
+);
+
+=== SQL TO RUN IN SUPABASE BEFORE STARTING ===
+
+CREATE TABLE IF NOT EXISTS workspace_tables (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  fields JSONB DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE workspace_tables ENABLE ROW LEVEL SECURITY;
+CREATE POLICY IF NOT EXISTS owner_wt ON workspace_tables FOR ALL USING (
+  workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid())
+);
+
+CREATE TABLE IF NOT EXISTS workspace_queries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  definition JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE workspace_queries ENABLE ROW LEVEL SECURITY;
+CREATE POLICY IF NOT EXISTS owner_wq ON workspace_queries FOR ALL USING (
+  workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid())
+);
+
+CREATE TABLE IF NOT EXISTS workspace_macros (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  steps JSONB DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE workspace_macros ENABLE ROW LEVEL SECURITY;
+CREATE POLICY IF NOT EXISTS owner_macros ON workspace_macros FOR ALL USING (
+  workspace_id IN (SELECT id FROM workspaces WHERE owner_id = auth.uid())
+);
+
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS record_source TEXT;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_edits BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_additions BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_deletions BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS navigation_buttons BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS form_section TEXT DEFAULT 'detail';
+
+=== FILE STRUCTURE ===
+
+src/app/(app)/studio/[slug]/page.tsx - Main studio shell (nav pane + tab manager)
+src/components/studio/NavPane.tsx - Left navigation pane with all objects
+src/components/studio/TabManager.tsx - Tab bar + tab content switcher
+src/components/studio/TableDesigner.tsx - Table design view + datasheet view
+src/components/studio/FormDesigner.tsx - Form design view + form view
+src/components/studio/QueryBuilder.tsx - Query designer
+src/components/studio/MacroEditor.tsx - Macro editor
+src/components/studio/PropertySheet.tsx - Right property sheet panel
+src/components/studio/Toolbox.tsx - Left toolbox (inside form designer)
+src/components/studio/Canvas.tsx - Drag-drop canvas (inside form designer)
+src/components/controls/CtrlRender.tsx - Renders each control type
+
+=== AFTER ALL TASKS DONE ===
+
+1. npm run build
+2. git add -A  
+3. git commit -m "Phase 9 Complete Studio Redesign - MS Access style"
+4. git push origin main
