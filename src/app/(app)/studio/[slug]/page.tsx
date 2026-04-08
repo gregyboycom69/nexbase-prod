@@ -145,7 +145,7 @@ const TOOL_GROUPS = [
 const COLORS = ['#4f46e5','#059669','#dc2626','#d97706','#7c3aed',
                 '#0891b2','#be185d','#1e293b','#ffffff','#f3f4f6']
 
-function renderCtrl(c: Ctrl, isPreview: boolean = false, boundData: any = {}) {
+function renderCtrl(c: Ctrl, isPreview: boolean = false, boundData: any = {}, rowSourceCache: Record<string, any[]> = {}) {
   const base: React.CSSProperties = {
     width:'100%', height:'100%', overflow:'hidden',
     borderRadius: c.radius, fontSize: c.fontSize,
@@ -176,12 +176,40 @@ function renderCtrl(c: Ctrl, isPreview: boolean = false, boundData: any = {}) {
   )
   if (c.type === 'ComboBox') {
     const displayValue = boundValue !== null ? String(boundValue) : ''
-    if (isPreview) return (
-      <select value={displayValue} disabled style={{...base,background:c.bg,border:'1.5px solid #e2e8f0',padding:'0 12px'}}>
-        <option value="">{c.placeholder || 'Select...'}</option>
-        <option value={displayValue}>{displayValue}</option>
-      </select>
-    )
+
+    if (isPreview) {
+      let options: any[] = []
+
+      // Handle different row source types
+      if (c.rowSourceType === 'table' && c.rowSource && rowSourceCache[c.id]) {
+        // Table/Query row source
+        options = rowSourceCache[c.id].map((row, idx) => {
+          const keys = Object.keys(row)
+          const value = keys[0] ? row[keys[0]] : idx
+          const label = keys[1] ? row[keys[1]] : row[keys[0]]
+          return { value, label }
+        })
+      } else if (c.rowSourceType === 'valuelist' && c.rowSource) {
+        // Value list row source
+        options = c.rowSource.split(',').map(v => {
+          const val = v.trim()
+          return { value: val, label: val }
+        })
+      }
+
+      return (
+        <select value={displayValue} disabled style={{...base,background:c.bg,border:'1.5px solid #e2e8f0',padding:'0 12px'}}>
+          <option value="">{c.placeholder || 'Select...'}</option>
+          {options.map((opt, idx) => (
+            <option key={idx} value={opt.value}>{opt.label}</option>
+          ))}
+          {displayValue && !options.find(o => o.value === displayValue) && (
+            <option value={displayValue}>{displayValue}</option>
+          )}
+        </select>
+      )
+    }
+
     return (
       <div style={{...base,background:c.bg,border:'1.5px solid #e2e8f0',display:'flex',alignItems:'center',padding:'0 12px',justifyContent:'space-between'}}>
         <span style={{color:'#9ca3af'}}>{c.placeholder || 'Select...'}</span>
@@ -233,6 +261,7 @@ export default function StudioPage() {
   })
   const [previewRecords, setPreviewRecords] = useState<any[]>([])
   const [previewRecordIndex, setPreviewRecordIndex] = useState(0)
+  const [comboRowSourceData, setComboRowSourceData] = useState<Record<string, any[]>>({})
 
   const canvasRef = useRef<HTMLDivElement>(null)
   const isDrawing = useRef(false)
@@ -275,7 +304,34 @@ export default function StudioPage() {
       setPreviewRecords([])
       setPreviewRecordIndex(0)
     }
-  }, [isPreview, formProperties.recordSource, workspace])
+    if (isPreview && workspace) {
+      loadComboRowSources()
+    }
+  }, [isPreview, formProperties.recordSource, workspace, controls])
+
+  const loadComboRowSources = async () => {
+    if (!workspace) return
+
+    const combos = controls.filter(c => c.type === 'ComboBox' && c.rowSourceType === 'table' && c.rowSource)
+    const dataCache: Record<string, any[]> = {}
+
+    for (const combo of combos) {
+      if (!combo.rowSource) continue
+
+      const { data } = await supabase
+        .from('app_data')
+        .select('*')
+        .eq('workspace_id', workspace.id)
+        .eq('table_name', combo.rowSource)
+        .order('created_at', { ascending: true })
+
+      if (data && data.length > 0) {
+        dataCache[combo.id] = data.map(row => row.data)
+      }
+    }
+
+    setComboRowSourceData(dataCache)
+  }
 
   const loadPreviewRecords = async () => {
     if (!formProperties.recordSource || !workspace) return
@@ -923,7 +979,7 @@ export default function StudioPage() {
                       outline: (selectedId===ctrl.id && !isPreview) ? '2.5px solid #6366f1' : 'none',
                       outlineOffset: 2,
                     }}>
-                    {renderCtrl(ctrl, isPreview, currentRecord)}
+                    {renderCtrl(ctrl, isPreview, currentRecord, comboRowSourceData)}
                     {selectedId===ctrl.id && !isPreview && HANDLES.map(h => (
                       <div key={h} onMouseDown={e => onHandleMD(e, ctrl, h)}
                         style={{
