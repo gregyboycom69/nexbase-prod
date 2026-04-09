@@ -611,10 +611,10 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
           id: ctrl.id,
           page_id: pageId,
           type: ctrl.type,
-          x: ctrl.x,
-          y: ctrl.y,
-          w: ctrl.w,
-          h: ctrl.h,
+          x: Math.round(ctrl.x),
+          y: Math.round(ctrl.y),
+          w: Math.round(ctrl.w),
+          h: Math.round(ctrl.h),
           section: ctrl.section,
           props: ctrl.props,
           display_order: index,
@@ -644,10 +644,10 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
             id: ctrl.id,
             page_id: targetPageId,
             type: ctrl.type,
-            x: ctrl.x,
-            y: ctrl.y,
-            w: ctrl.w,
-            h: ctrl.h,
+            x: Math.round(ctrl.x),
+            y: Math.round(ctrl.y),
+            w: Math.round(ctrl.w),
+            h: Math.round(ctrl.h),
             section: ctrl.section,
             props: ctrl.props,
             display_order: index,
@@ -748,10 +748,10 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
           id: `ctrl-${Date.now()}`,
           page_id: pageId,
           type: activeTool,
-          x: ghostRect.x,
-          y: ghostRect.y,
-          w: finalW,
-          h: finalH,
+          x: Math.round(ghostRect.x),
+          y: Math.round(ghostRect.y),
+          w: Math.round(finalW),
+          h: Math.round(finalH),
           section: currentSection,
           props: getDefaultProps(activeTool),
         }
@@ -808,7 +808,14 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   }
 
   function updateControlGeometry(controlId: string, updates: Partial<Control>) {
-    const updated = controls.map(c => c.id === controlId ? { ...c, ...updates, w: updates.w !== undefined ? Math.max(20, updates.w) : c.w, h: updates.h !== undefined ? Math.max(16, updates.h) : c.h } : c)
+    const updated = controls.map(c => c.id === controlId ? {
+      ...c,
+      ...updates,
+      x: updates.x !== undefined ? Math.round(updates.x) : c.x,
+      y: updates.y !== undefined ? Math.round(updates.y) : c.y,
+      w: updates.w !== undefined ? Math.round(Math.max(20, updates.w)) : c.w,
+      h: updates.h !== undefined ? Math.round(Math.max(16, updates.h)) : c.h
+    } : c)
     addControlToHistory(updated)
     triggerAutoSave()
   }
@@ -843,8 +850,8 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     const newControl: Control = {
       ...clipboardControl,
       id: `ctrl-${Date.now()}`,
-      x: clipboardControl.x + 20,
-      y: clipboardControl.y + 20,
+      x: Math.round(clipboardControl.x + 20),
+      y: Math.round(clipboardControl.y + 20),
     }
 
     addControlToHistory([...controls, newControl])
@@ -1269,23 +1276,26 @@ function ControlWrapper({ control, selected, onSelect, onUpdate, onContextMenu }
       const dy = e.clientY - dragStart.current.y
 
       if (isDragging) {
-        onUpdate({ x: dragStart.current.ctrlX + dx, y: dragStart.current.ctrlY + dy })
+        onUpdate({
+          x: Math.round(dragStart.current.ctrlX + dx),
+          y: Math.round(dragStart.current.ctrlY + dy)
+        })
       } else if (isResizing) {
         const updates: any = {}
 
         if (resizeHandle.includes('e')) {
-          updates.w = Math.max(20, dragStart.current.ctrlW + dx)
+          updates.w = Math.round(Math.max(20, dragStart.current.ctrlW + dx))
         }
         if (resizeHandle.includes('w')) {
-          updates.w = Math.max(20, dragStart.current.ctrlW - dx)
-          updates.x = dragStart.current.ctrlX + dx
+          updates.w = Math.round(Math.max(20, dragStart.current.ctrlW - dx))
+          updates.x = Math.round(dragStart.current.ctrlX + dx)
         }
         if (resizeHandle.includes('s')) {
-          updates.h = Math.max(16, dragStart.current.ctrlH + dy)
+          updates.h = Math.round(Math.max(16, dragStart.current.ctrlH + dy))
         }
         if (resizeHandle.includes('n')) {
-          updates.h = Math.max(16, dragStart.current.ctrlH - dy)
-          updates.y = dragStart.current.ctrlY + dy
+          updates.h = Math.round(Math.max(16, dragStart.current.ctrlH - dy))
+          updates.y = Math.round(dragStart.current.ctrlY + dy)
         }
 
         onUpdate(updates)
