@@ -1,0 +1,317 @@
+NexBase - Phase 12 - Fix Form Designer Issues
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+Fix these issues found in the form designer:
+
+=== ISSUE 1 - CONTROLS TOO BIG WHEN DRAGGED ===
+
+When drawing a control on canvas it is too large.
+Fix the default sizes for each control type:
+
+Label:    w:120, h:20
+Heading:  w:200, h:32
+TextBox:  w:200, h:24
+Button:   w:100, h:28
+ComboBox: w:180, h:24
+CheckBox: w:150, h:20
+DatePicker: w:160, h:24
+NumberBox: w:100, h:24
+Lookup:   w:180, h:24
+DataTable: w:400, h:160
+Chart:    w:300, h:160
+Subform:  w:380, h:140
+Card:     w:220, h:100
+TabPanel: w:340, h:180
+Modal:    w:280, h:180
+Divider:  w:300, h:2
+ProgressBar: w:200, h:16
+NavigationButtons: w:240, h:28
+Badge:    w:80, h:22
+Image:    w:120, h:80
+StatusBar: w:400, h:20
+
+These are the DEFAULT sizes when user draws the control.
+The actual drawn size should be whatever the user draws IF they draw bigger than minimum.
+If user draws smaller than the default minimum: use the default minimum.
+
+Also make sure the resize handles work properly on all 8 corners and edges.
+Minimum resize: w:20, h:16 for all controls.
+
+=== ISSUE 2 - PROPERTY SHEET DATA TAB - RECORD SOURCE ===
+
+When nothing is selected on canvas (form properties):
+DATA tab must show Record Source dropdown.
+
+The Record Source dropdown must:
+1. Load all workspace_tables for this workspace from Supabase
+2. Load all workspace_queries for this workspace from Supabase
+3. Show them grouped:
+   --- Tables ---
+   Customers
+   Orders
+   --- Queries ---
+   Active Customers
+4. When user selects a table/query: 
+   - Save to pages table: UPDATE pages SET record_source = selectedTable WHERE id = pageId
+   - Store the selected table fields in local state
+   - Show success indicator
+
+The Control Source dropdown (when a control is selected):
+- Must show all fields from the form's current Record Source table
+- Fields come from workspace_tables.fields JSONB for the selected table
+- If no Record Source set: show "(Set Record Source on form first)" disabled option
+- When user picks a field: save to control props.controlSource
+
+=== ISSUE 3 - PROPERTY SHEET SHOWS NOTHING ===
+
+The property sheet on the right is empty/not showing properties.
+
+Fix: When a control is selected, the property sheet must show ALL relevant properties.
+
+For EACH control type show at minimum these in FORMAT tab:
+- Caption (for Label, Heading, Button, Badge)
+- Width (number input - matches ctrl.w)
+- Height (number input - matches ctrl.h)  
+- Left/X (number input - matches ctrl.x)
+- Top/Y (number input - matches ctrl.y)
+- Back Color (color input)
+- Fore Color (color input)
+- Font Size (number input)
+- Font Bold (Yes/No select)
+- Visible (Yes/No select)
+- Border Radius (number input)
+
+And in DATA tab:
+- Control Source (field dropdown from record source table)
+- Default Value (text input)
+- Enabled (Yes/No)
+- Locked (Yes/No)
+
+And in EVENT tab:
+- On Click (macro select - shows all workspace_macros names)
+- Before Update (macro select)
+- After Update (macro select)
+
+And in OTHER tab:
+- Name (text input - unique control name)
+- ControlTip Text (tooltip text)
+- Tab Stop (Yes/No)
+- Tab Index (number)
+
+All changes must update the control immediately on canvas.
+
+=== ISSUE 4 - FORM VIEW / PREVIEW ===
+
+The Form View button must show an interactive preview of the form.
+
+When Form View is clicked:
+1. Hide toolbox and property sheet
+2. Canvas takes full width
+3. All controls become interactive:
+
+TextBox → <input type="text" className="p-inp"> 
+  value comes from formData[ctrl.props.controlSource] or formData[ctrl.id]
+  onChange updates formData state
+
+ComboBox → <select className="p-sel">
+  options from ctrl.props.options (comma split) 
+  OR if Row Source = table: load from app_data
+  onChange updates formData
+
+CheckBox → real clickable checkbox
+  checked = formData[ctrl.props.controlSource]
+
+DatePicker → <input type="date">
+  value from formData
+
+NumberBox → <input type="number">
+  value from formData
+
+Button → clickable button with hover effect
+  onClick runs ctrl.props.steps (macro steps)
+
+Label and Heading → static text (not interactive)
+
+If form has Record Source:
+- On load: fetch records from app_data WHERE workspace_id AND table_name = recordSource
+- Populate bound controls with first record values
+- Show navigation bar at bottom of form:
+
+NAVIGATION BAR:
+|◀| |◀| Record [_1_] of [47] |▶| |▶|  [+ New]  🔍[search input]
+
+Navigation bar behavior:
+- |◀| First: go to record index 0
+- |◀| Prev: go to previous record
+- Number input: type number, jump to that record
+- |▶| Next: go to next record  
+- |▶| Last: go to last record
+- + New: clear formData for new record entry
+- Search: filter records by typing (searches all text fields)
+
+When navigating: update all bound controls with new record values.
+
+SAVE in form view:
+When Button with action "save" is clicked:
+Collect all formData values.
+If current record has id: UPDATE app_data SET data = formData WHERE id = recordId
+If new record: INSERT into app_data: { workspace_id, table_name: recordSource, data: formData }
+Show success toast.
+
+=== ISSUE 5 - MODAL / POPUP FORMS ===
+
+Add ability to create a form as a POPUP/MODAL type.
+
+When creating a new form (clicking + in Forms section of nav pane):
+Show dialog with options:
+- Form Name: [text input]
+- Form Type: 
+  ○ Regular Form (shows as a full page)
+  ○ Popup / Modal (shows as a dialog over another form)
+  ○ Subform (embedded inside another form)
+- Bind to: [Table dropdown] [Query dropdown] [Blank]
+
+For Popup forms:
+- Canvas shows in a dialog/modal frame with title bar and X button
+- Has OK and Cancel buttons in footer by default
+- When published: does not appear in sidebar navigation
+- Can be called from a Button on another form using macro action "openForm"
+
+Add new macro action "openForm":
+action: "openForm"
+params: [{ k:"form", l:"Form Name", t:"pgsel" }]
+When executed in published app: shows that form as a modal overlay
+
+Add new macro action "closeForm":
+action: "closeForm"  
+params: []
+When executed: closes the current modal
+
+=== ISSUE 6 - ADD MORE ACCESS-LIKE FEATURES ===
+
+Add these MS Access features that are missing:
+
+1. FORM HEADER/FOOTER sections - make them actually work:
+   - Controls placed in Form Header appear at top of every page
+   - Controls in Detail section are the main form
+   - Controls in Form Footer appear at bottom
+   - In design view: clear visual separation between sections
+   - Section height shown in pixels, user can drag to resize
+
+2. CONTINUOUS FORMS view:
+   When form Default View = "Continuous Forms":
+   In Form View: show ALL records stacked vertically
+   Each record shows the same Detail section layout
+   Scroll to see more records
+   Click a record to select/edit it (highlight)
+   One DetailSection per record
+
+3. SPLIT FORM:
+   When Default View = "Split Form":
+   Top half: Single form view of selected record
+   Bottom half: Datasheet of all records
+   Clicking a row in datasheet: updates top form
+
+4. AUTO-GENERATE FORM FROM TABLE:
+   "Add All Fields" button in toolbar (only shown when Record Source is set):
+   Clicking it:
+   - Gets all fields from the bound table definition
+   - For each field (except id): creates a Label + bound control pair
+   - Short Text/Email/URL → TextBox with controlSource = fieldName
+   - Number/Currency → NumberBox with controlSource = fieldName
+   - Date/Time → DatePicker with controlSource = fieldName
+   - Yes/No → CheckBox with controlSource = fieldName
+   - Choice → ComboBox with options from field.options, controlSource = fieldName
+   - Lookup → ComboBox with Row Source = related table
+   - Lays them out in 2-column grid starting at x:20, y:20
+   - Each pair: Label at x, y and TextBox at x+120, y
+   - Next pair: y += 36
+   - After all fields: adds Save Button and New Button at bottom
+   - If navigation_buttons = Yes: adds NavigationButtons control in footer
+
+5. PRINT / REPORT PREVIEW:
+   Print button in toolbar:
+   Opens a print-friendly version of the current form with current record
+   Uses window.print()
+
+6. KEYBOARD SHORTCUTS in designer:
+   Ctrl+S = Save
+   Ctrl+Z = Undo (keep last 20 states)
+   Ctrl+Y = Redo
+   Delete = Delete selected control
+   Escape = Deselect
+   Ctrl+D = Duplicate selected
+   Arrow keys = move selected control 1px
+   Shift+Arrow = move 8px
+   Ctrl+A = select all controls
+
+=== ISSUE 7 - CONTROL RIGHT-CLICK MENU ===
+
+Right-click on a control in design view shows context menu:
+- Cut
+- Copy  
+- Paste
+- Duplicate
+- Delete
+- ---- divider ----
+- Bring to Front
+- Send to Back
+- ---- divider ----
+- Properties (focuses property sheet)
+- Build Event... (opens macro builder for On Click)
+
+=== ISSUE 8 - MACRO BUILDER FOR BUTTONS ===
+
+When Button control is selected:
+In EVENT tab → On Click → shows dropdown of macros.
+Also shows a "..." button next to the dropdown.
+Clicking "..." opens the full Macro Builder:
+
+Macro Builder (same as before) in a modal:
+- Left: action catalog (Records, Navigate, Messages, Data, Export, Logic)
+- Right: steps list with parameters
+- Add step by clicking action
+- Reorder with ↑↓ buttons
+- Delete step with ✕
+- Run button to test
+
+New actions to add to catalog:
+- Open Form (openForm): opens a popup form by name
+- Close Form (closeForm): closes current modal form
+- Refresh Data (refresh): reloads records from Supabase
+- Go To Control (gotoCtrl): sets focus to a specific control
+- Set Focus (setFocus): focus a specific field
+- Show/Hide (visibility): show or hide a control by name
+- Run Macro (runMacro): runs another saved macro by name
+
+=== ISSUE 9 - FORM SELECTOR IN STUDIO ===
+
+Left nav pane shows FORMS section with list of forms.
+Clicking a form in the list opens it in the main canvas.
+
+Also add a small dropdown in the studio toolbar showing current form name.
+User can switch forms from this dropdown.
+
+When switching forms:
+- Save current form first (auto-save)
+- Load new form controls from Supabase
+- Update property sheet
+
+=== SQL NEEDED ===
+
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS form_type TEXT DEFAULT 'regular';
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS record_source TEXT;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_edits BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_additions BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_deletions BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS navigation_buttons BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS default_view TEXT DEFAULT 'single';
+ALTER TABLE controls ADD COLUMN IF NOT EXISTS section TEXT DEFAULT 'detail';
+
+=== AFTER DONE ===
+
+npm run build
+git add -A
+git commit -m "Phase 12 Fix form designer - sizing, properties, record source, preview, modals"
+git push origin main
