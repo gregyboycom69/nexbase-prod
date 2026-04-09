@@ -567,10 +567,27 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
       }
     }
 
-    const { data: controlsData } = await supabase.from('controls').select('*').eq('page_id', pageId).order('created_at')
-    setControls(controlsData || [])
-    setHistory([controlsData || []])
-    setHistoryIndex(0)
+    const { data: controlsData } = await supabase
+      .from('controls')
+      .select('*')
+      .eq('page_id', pageId)
+      .order('display_order')
+
+    console.log('📥 Loaded controls:', controlsData?.length || 0)
+
+    if (controlsData) {
+      const parsedControls = controlsData.map(c => ({
+        ...c,
+        props: c.props || {},
+      }))
+      setControls(parsedControls)
+      setHistory([parsedControls])
+      setHistoryIndex(0)
+    } else {
+      setControls([])
+      setHistory([[]])
+      setHistoryIndex(0)
+    }
   }
 
   async function loadRecords() {
@@ -602,47 +619,64 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   // FIX 1: Save all controls to Supabase
   async function saveAllControls() {
     console.log('💾 Saving all controls...', controls.length)
+    console.log('currentPageId:', pageId)
     setSaveStatus('saving')
 
-    // Delete all existing controls
-    await supabase.from('controls').delete().eq('page_id', pageId)
+    if (!pageId) {
+      console.error('❌ No pageId - cannot save')
+      alert('Error: No page ID found. Cannot save controls.')
+      setSaveStatus('unsaved')
+      return
+    }
 
-    // Insert all current controls
+    // Use UPSERT to save all controls
     if (controls.length > 0) {
-      const { error } = await supabase.from('controls').insert(
-        controls.map((ctrl, index) => ({
-          id: ctrl.id,
-          page_id: pageId,
-          type: ctrl.type,
-          x: Math.round(ctrl.x),
-          y: Math.round(ctrl.y),
-          w: Math.round(ctrl.w),
-          h: Math.round(ctrl.h),
-          section: ctrl.section,
-          props: ctrl.props,
-          display_order: index,
-        }))
-      )
+      const { error } = await supabase
+        .from('controls')
+        .upsert(
+          controls.map((ctrl, index) => ({
+            id: ctrl.id,
+            page_id: pageId,
+            type: ctrl.type,
+            x: Math.round(ctrl.x),
+            y: Math.round(ctrl.y),
+            w: Math.round(ctrl.w),
+            h: Math.round(ctrl.h),
+            section: ctrl.section || 'detail',
+            props: ctrl.props || {},
+            macro_steps: ctrl.props?.steps || [],
+            display_order: index,
+          })),
+          { onConflict: 'id' }
+        )
 
       if (error) {
         console.error('❌ Save error:', error)
         alert('Error saving: ' + error.message)
         setSaveStatus('unsaved')
       } else {
-        console.log('✅ All controls saved')
+        console.log('✅ All controls saved successfully')
+        alert('Saved successfully!')
         setSaveStatus('saved')
         setTimeout(() => setSaveStatus('saved'), 2000)
       }
     } else {
+      console.log('✅ No controls to save')
       setSaveStatus('saved')
     }
   }
 
   // Helper for synchronous save when switching forms
   function saveAllControlsSync(targetPageId: string, controlsToSave: Control[]) {
-    supabase.from('controls').delete().eq('page_id', targetPageId).then(() => {
-      if (controlsToSave.length > 0) {
-        supabase.from('controls').insert(
+    if (!targetPageId) {
+      console.error('❌ No targetPageId - cannot save')
+      return
+    }
+
+    if (controlsToSave.length > 0) {
+      supabase
+        .from('controls')
+        .upsert(
           controlsToSave.map((ctrl, index) => ({
             id: ctrl.id,
             page_id: targetPageId,
@@ -651,13 +685,21 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
             y: Math.round(ctrl.y),
             w: Math.round(ctrl.w),
             h: Math.round(ctrl.h),
-            section: ctrl.section,
-            props: ctrl.props,
+            section: ctrl.section || 'detail',
+            props: ctrl.props || {},
+            macro_steps: ctrl.props?.steps || [],
             display_order: index,
-          }))
+          })),
+          { onConflict: 'id' }
         )
-      }
-    })
+        .then(({ error }) => {
+          if (error) {
+            console.error('❌ Sync save error:', error)
+          } else {
+            console.log('✅ Controls synced for page:', targetPageId)
+          }
+        })
+    }
   }
 
   // FIX 1: Auto-save with debounce
