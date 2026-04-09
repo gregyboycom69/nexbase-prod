@@ -6,6 +6,9 @@ import { createClient } from '@/lib/supabase/client'
 import Toast, { ToastMessage } from '@/components/Toast'
 import { runMacro } from '@/lib/macroEngine'
 
+// UUID generator for toast IDs
+const generateId = () => crypto.randomUUID()
+
 export default function PublishedAppPage() {
   const params = useParams()
   const router = useRouter()
@@ -135,7 +138,7 @@ export default function PublishedAppPage() {
   }
 
   const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info') => {
-    const id = Date.now().toString()
+    const id = generateId()
     setToasts((prev) => [...prev, { id, message, type }])
   }
 

@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+// UUID generator for field IDs
+const generateId = () => crypto.randomUUID()
+
 type Field = {
   id: string
   name: string
@@ -78,7 +81,7 @@ export default function TableDesigner({ workspaceId }: { workspaceId: string }) 
     const tableSlug = newTableName.toLowerCase().replace(/[^a-z0-9]/g, '_')
     const defaultFields: Field[] = [
       {
-        id: Date.now().toString(),
+        id: generateId(),
         name: 'id',
         type: 'AutoNumber',
         description: 'Primary key',
@@ -117,7 +120,7 @@ export default function TableDesigner({ workspaceId }: { workspaceId: string }) 
     if (!selectedTable) return
 
     const newField: Field = {
-      id: Date.now().toString(),
+      id: generateId(),
       name: '',
       type: 'Short Text',
       description: '',

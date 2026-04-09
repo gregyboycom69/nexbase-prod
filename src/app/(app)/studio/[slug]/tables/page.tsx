@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
+// UUID generator for field IDs
+const generateId = () => crypto.randomUUID()
+
 type Field = {
   id: string
   name: string
@@ -337,7 +340,7 @@ export default function TableDesignerPage() {
 
   function handleAddField() {
     const newField: Field = {
-      id: `field-${Date.now()}`,
+      id: generateId(),
       name: '',
       type: 'Short Text',
       description: '',

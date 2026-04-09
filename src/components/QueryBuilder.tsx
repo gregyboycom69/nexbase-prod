@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+// UUID generator for query row IDs
+const generateId = () => crypto.randomUUID()
+
 type Table = {
   id: string
   name: string
@@ -103,7 +106,7 @@ export default function QueryBuilder({ workspaceId }: { workspaceId: string }) {
 
   const addQBERow = () => {
     const newRow: QBERow = {
-      id: Date.now().toString(),
+      id: generateId(),
       field: '',
       table: tables[0]?.name || '',
       sort: 'None',

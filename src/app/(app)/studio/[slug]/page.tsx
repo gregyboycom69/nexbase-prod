@@ -6,6 +6,9 @@ import { createClient } from '@/lib/supabase/client'
 import NavPane from '@/components/studio/NavPane'
 import CtrlRender from '@/components/controls/CtrlRender'
 
+// UUID generator for control IDs
+const generateId = () => crypto.randomUUID()
+
 type Tab = {
   id: string
   type: 'table' | 'query' | 'form' | 'macro'
@@ -132,7 +135,7 @@ export default function StudioPage() {
     }
 
     const newTab: Tab = {
-      id: `tab-${Date.now()}`,
+      id: generateId(),
       type: baseType as any,
       objectId: id,
       name,
@@ -745,7 +748,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
         const finalH = Math.max(ghostRect.h, defaultSize.h)
 
         const newControl: Control = {
-          id: `ctrl-${Date.now()}`,
+          id: generateId(),
           page_id: pageId,
           type: activeTool,
           x: Math.round(ghostRect.x),
@@ -849,7 +852,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
 
     const newControl: Control = {
       ...clipboardControl,
-      id: `ctrl-${Date.now()}`,
+      id: generateId(),
       x: Math.round(clipboardControl.x + 20),
       y: Math.round(clipboardControl.y + 20),
     }
@@ -905,7 +908,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
 
     table.fields.filter((f: any) => f.name !== 'id').forEach((field: any, index: number) => {
       newControls.push({
-        id: `ctrl-label-${Date.now()}-${index}`,
+        id: generateId(),
         page_id: pageId,
         type: 'Label',
         x: 20,
@@ -934,7 +937,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
       const defaultSize = DEFAULT_SIZES[controlType] || { w: 200, h: 24 }
 
       newControls.push({
-        id: `ctrl-input-${Date.now()}-${index}`,
+        id: generateId(),
         page_id: pageId,
         type: controlType,
         x: 150,
@@ -949,7 +952,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     })
 
     newControls.push({
-      id: `ctrl-save-${Date.now()}`,
+      id: generateId(),
       page_id: pageId,
       type: 'Button',
       x: 150,
@@ -961,7 +964,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     })
 
     newControls.push({
-      id: `ctrl-new-${Date.now()}`,
+      id: generateId(),
       page_id: pageId,
       type: 'Button',
       x: 260,
@@ -974,7 +977,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
 
     if (formProps.navigationButtons) {
       newControls.push({
-        id: `ctrl-nav-${Date.now()}`,
+        id: generateId(),
         page_id: pageId,
         type: 'NavigationButtons',
         x: 20,
