@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import NavPane from '@/components/studio/NavPane'
 import CtrlRender from '@/components/controls/CtrlRender'
+import Toast, { ToastMessage } from '@/components/Toast'
 
 // UUID generator for control IDs
 const generateId = () => crypto.randomUUID()
@@ -441,6 +442,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   const [recordSourceFields, setRecordSourceFields] = useState<any[]>([])
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; controlId?: string } | null>(null)
+  const [toasts, setToasts] = useState<ToastMessage[]>([])
 
   // FIX 4: Clipboard for copy/paste
   const [clipboardControl, setClipboardControl] = useState<Control | null>(null)
@@ -463,6 +465,16 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
 
   // FIX 1: Auto-save debounce
   const saveTimeout = useRef<NodeJS.Timeout>()
+
+  // Toast notifications
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info') => {
+    const id = generateId()
+    setToasts((prev) => [...prev, { id, message, type }])
+  }
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }
 
   useEffect(() => {
     // Save controls before switching to new form
@@ -492,7 +504,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
       // FIX 1: Ctrl+S = Save
       if (e.ctrlKey && e.key === 's') {
         e.preventDefault()
-        saveAllControls()
+        saveAllControls(true) // Show success toast for manual save
       }
       // FIX 7: Ctrl+Z = Undo
       else if (e.ctrlKey && e.key === 'z') {
@@ -617,14 +629,14 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   }, [view, formProps.recordSource])
 
   // FIX 1: Save all controls to Supabase
-  async function saveAllControls() {
+  async function saveAllControls(showSuccessToast = false) {
     console.log('💾 Saving all controls...', controls.length)
     console.log('currentPageId:', pageId)
     setSaveStatus('saving')
 
     if (!pageId) {
       console.error('❌ No pageId - cannot save')
-      alert('Error: No page ID found. Cannot save controls.')
+      showToast('Error: No page ID found. Cannot save controls.', 'error')
       setSaveStatus('unsaved')
       return
     }
@@ -652,12 +664,16 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
 
       if (error) {
         console.error('❌ Save error:', error)
-        alert('Error saving: ' + error.message)
+        showToast('Save failed: ' + error.message, 'error')
         setSaveStatus('unsaved')
       } else {
         console.log('✅ All controls saved successfully')
-        alert('Saved successfully!')
+        // Only show success toast if manually saved (button click), not auto-save
+        if (showSuccessToast) {
+          showToast('Saved!', 'success')
+        }
         setSaveStatus('saved')
+        // Keep "Saved ✓" indicator visible for 2 seconds
         setTimeout(() => setSaveStatus('saved'), 2000)
       }
     } else {
@@ -1060,7 +1076,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
         )}
         <div style={{ flex: 1 }} />
         {/* FIX 1: Large prominent Save button */}
-        <button onClick={saveAllControls} disabled={saveStatus === 'saving'} style={{ padding: '8px 20px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: saveStatus === 'saving' ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 8px rgba(99,102,241,0.3)' }}>
+        <button onClick={() => saveAllControls(true)} disabled={saveStatus === 'saving'} style={{ padding: '8px 20px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: saveStatus === 'saving' ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 8px rgba(99,102,241,0.3)' }}>
           💾 {saveStatus === 'saving' ? 'Saving...' : 'Save Form'}
         </button>
         <div style={{ fontSize: 10, color: saveStatus === 'saving' ? '#fbbf24' : saveStatus === 'saved' ? '#10b981' : '#ef4444', minWidth: 60, textAlign: 'right' }}>
@@ -1273,6 +1289,9 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
           )}
         </div>
       )}
+
+      {/* Toast Notifications */}
+      <Toast toasts={toasts} removeToast={removeToast} />
     </div>
   )
 }
