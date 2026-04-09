@@ -1,0 +1,206 @@
+NexBase - Phase 13 - Fix Core Saving + Form Options
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+The most critical problems to fix. Do these in order.
+
+=== FIX 1 - SAVE BUTTON ALWAYS VISIBLE ===
+
+Add a clearly visible SAVE button in the studio toolbar.
+Make it prominent - large indigo button with 💾 icon.
+Label: "Save Form"
+
+When clicked:
+1. Take all controls currently on canvas
+2. Delete all existing controls for this page: DELETE FROM controls WHERE page_id = currentPageId
+3. Insert all current controls fresh:
+   INSERT INTO controls (id, page_id, type, x, y, w, h, section, props, display_order)
+   VALUES (each control...)
+4. Show green "Saved!" toast notification
+5. Log any errors to console
+
+Also add AUTO-SAVE:
+Every time a control is added, moved, resized, or property changed:
+- Wait 1 second (debounce)
+- Save ALL controls to Supabase
+- Show "Saving..." in small text top right
+- Then show "Saved ✓" in green
+
+The save must happen BEFORE navigating away.
+Add beforeunload warning if unsaved changes exist.
+
+=== FIX 2 - FORM OPENING FROM NAV PANE ===
+
+Clicking a form name in the left FORMS section must open that form in the designer.
+
+When form is clicked in nav pane:
+1. Set activePageId = clicked page id
+2. Fetch controls: SELECT * FROM controls WHERE page_id = activePageId ORDER BY display_order
+3. Fetch page details: SELECT * FROM pages WHERE id = activePageId
+4. Show controls on canvas
+5. Show form name in tab at top
+
+Currently clicking a form shows "table - test" text which is wrong.
+Fix it to show the actual form designer with the form's controls.
+
+=== FIX 3 - CREATE FORM DIALOG ===
+
+When user clicks + to create new form show a dialog with these options:
+
+Form Name: [text input]
+
+Form Type:
+○ Single Form - shows one record at a time
+○ Continuous Form - shows multiple records stacked  
+○ Datasheet - shows records in grid
+○ Split Form - form on top, datasheet on bottom
+○ Popup / Modal - opens as dialog over another form
+○ Blank - no data, just visual design
+
+Bind to Table:
+[dropdown of all workspace_tables - or "None"]
+
+Click Create:
+1. INSERT into pages table:
+   { workspace_id, name, slug, icon, form_type, record_source, is_home: false }
+2. Open the new form in designer immediately
+3. If a table was selected: set record_source and load table fields
+
+=== FIX 4 - COPY PASTE CONTROLS ===
+
+Add copy/paste support:
+
+Ctrl+C = copy selected control (save to clipboardControl state)
+Ctrl+V = paste (create new control at +20px offset from original)
+Ctrl+D = duplicate (copy + paste in one step)
+Ctrl+X = cut (copy then delete)
+
+Also add right-click context menu on canvas controls:
+Position: at mouse cursor
+Options:
+- Copy (Ctrl+C)
+- Paste (Ctrl+V)  
+- Duplicate (Ctrl+D)
+- Cut (Ctrl+X)
+- Delete (Del)
+- ─────────────
+- Bring to Front
+- Send to Back
+- ─────────────
+- Properties
+
+Context menu is a small dark popup div with these options.
+Clicking outside dismisses it.
+Escape key dismisses it.
+
+=== FIX 5 - PROPERTY SHEET MUST SHOW PROPERTIES ===
+
+This is critical. The property sheet tabs are empty.
+
+Find the PropertySheet component file.
+For EVERY tab (Format, Data, Event, Other, All) 
+the content must be visible with actual inputs.
+
+Minimum properties to show for each control:
+
+FORMAT tab - ALL controls show:
+Row: "Caption" | <input value={ctrl.props.caption} onChange={...}>
+Row: "Width" | <input type="number" value={ctrl.w} onChange={e => updateCtrl({w: Number(e.target.value)})}>
+Row: "Height" | <input type="number" value={ctrl.h} onChange={...}>
+Row: "Left (X)" | <input type="number" value={ctrl.x} onChange={...}>
+Row: "Top (Y)" | <input type="number" value={ctrl.y} onChange={...}>
+Row: "Font Size" | <input type="number" value={ctrl.props.fontSize || 13} onChange={...}>
+Row: "Bold" | <select value={ctrl.props.bold ? 'Yes':'No'} onChange={...}><option>Yes</option><option>No</option></select>
+Row: "Back Color" | <input type="color" value={ctrl.props.bg || '#ffffff'} onChange={...}>
+Row: "Text Color" | <input type="color" value={ctrl.props.color || '#1e293b'} onChange={...}>
+Row: "Border Radius" | <input type="number" value={ctrl.props.radius || 0} onChange={...}>
+Row: "Visible" | <select>Yes/No</select>
+
+DATA tab - ALL controls show:
+Row: "Control Source" | <select> showing fields from form record source table
+Row: "Default Value" | <input text>
+Row: "Enabled" | <select>Yes/No</select>
+Row: "Locked" | <select>Yes/No</select>
+
+EVENT tab - ALL controls show:
+Row: "On Click" | <select> showing workspace macros list + "(none)"
+Row: "Before Update" | <select> macros
+Row: "After Update" | <select> macros
+Row: "On Got Focus" | <select> macros
+Row: "On Lost Focus" | <select> macros
+
+OTHER tab - ALL controls show:
+Row: "Name" | <input text value={ctrl.props.name || ctrl.type + ctrl.id}>
+Row: "ControlTip" | <input text value={ctrl.props.tooltip || ''}>
+Row: "Tab Stop" | <select>Yes/No</select>
+Row: "Tab Index" | <input type="number">
+
+ALL tab: shows everything from all tabs in one scrollable list.
+
+WHEN FORM SELECTED (canvas background clicked, no control):
+Format tab: Caption | Default View (Single/Continuous/Datasheet/Split) | Navigation Buttons | Scroll Bars
+Data tab: Record Source (table dropdown) | Filter | Order By | Allow Edits | Allow Additions | Allow Deletions
+Event tab: On Open | On Load | On Close | On Current
+
+STYLING OF EACH ROW:
+<div style="display:grid; grid-template-columns:130px 1fr; border-bottom:1px solid #252840; min-height:24px; align-items:center; padding:0 8px">
+  <span style="font-size:11px; color:#8890b8; font-family:'JetBrains Mono'">{propName}</span>
+  <input style="background:#0f1117; color:#c8d0f0; border:none; font-size:11px; width:100%; padding:2px 4px">
+</div>
+
+For select elements:
+<select style="background:#0f1117; color:#c8d0f0; border:none; font-size:11px; width:100%; padding:2px 4px; cursor:pointer">
+
+=== FIX 6 - TABLE DESIGNER SAVING ===
+
+When user is in Table Designer and clicks Save:
+1. Collect all field rows from the grid
+2. Build fields array: [{name, type, required, caption, defaultValue, ...}]
+3. UPSERT workspace_tables:
+   UPDATE workspace_tables SET fields = fieldsArray, name = tableName WHERE id = tableId
+   If new table: INSERT with all values
+4. Show "Saved!" green toast
+
+Also: when user right-clicks a table in left nav pane:
+Show context menu: Open | Design View | Rename | Delete
+
+When Design View clicked: open that table in table designer view
+
+=== FIX 7 - KEYBOARD SHORTCUTS ===
+
+Add to studio:
+Ctrl+S = Save current form controls to Supabase immediately
+Ctrl+Z = Undo (restore previous controls state)
+Ctrl+Y = Redo
+Ctrl+D = Duplicate selected control
+Delete = Delete selected control  
+Escape = Deselect all / close context menu
+Ctrl+A = Select all controls (future: multi-select)
+
+Keep history array of last 20 control states for undo/redo.
+
+=== FIX 8 - FORM VIEW (PREVIEW) ===
+
+Form View button must work.
+
+When clicked:
+- Switch canvas to preview mode
+- All controls become interactive
+- TextBox: real <input> that user can type in
+- ComboBox: real <select>
+- CheckBox: clickable
+- Button: shows hover effect, onClick triggers macro
+
+If form has record_source:
+- Fetch records from app_data WHERE workspace_id AND table_name = record_source
+- Show first record values in bound controls
+- Show navigation bar: |◀ ◀ [1/5] ▶ ▶| [+New]
+
+Design View button: switch back to design mode with toolbox and property sheet.
+
+=== AFTER ALL DONE ===
+
+npm run build
+git add -A
+git commit -m "Phase 13 Fix saving, form options, copy paste, properties, preview"
+git push origin main

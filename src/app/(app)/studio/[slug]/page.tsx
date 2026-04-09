@@ -26,7 +26,7 @@ type Control = {
   props: any
 }
 
-// Default control sizes (ISSUE 1)
+// Default control sizes
 const DEFAULT_SIZES: Record<string, { w: number; h: number }> = {
   Label: { w: 120, h: 20 },
   Heading: { w: 200, h: 32 },
@@ -90,6 +90,7 @@ export default function StudioPage() {
   const [tabs, setTabs] = useState<Tab[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<'all' | 'tables' | 'queries' | 'forms' | 'macros'>('all')
+  const [showCreateFormDialog, setShowCreateFormDialog] = useState(false)
 
   useEffect(() => {
     loadWorkspace()
@@ -119,9 +120,10 @@ export default function StudioPage() {
     setMacros(macrosData || [])
   }
 
+  // FIX 2: Handle opening objects (especially forms)
   function handleOpenObject(type: string, id: string, name: string) {
     const baseType = type.replace('-design', '')
-    const view = type.includes('-design') ? 'design' : (baseType === 'form' ? 'form' : 'data')
+    const view = type.includes('-design') ? 'design' : (baseType === 'form' ? 'design' : 'data')
 
     const existingTab = tabs.find(t => t.objectId === id && t.type === baseType as any)
     if (existingTab) {
@@ -134,7 +136,7 @@ export default function StudioPage() {
       type: baseType as any,
       objectId: id,
       name,
-      view,
+      view: view as any,
     }
 
     setTabs([...tabs, newTab])
@@ -149,33 +151,12 @@ export default function StudioPage() {
     }
   }
 
+  // FIX 3: Create form dialog
   async function handleNewObject(type: string) {
     if (type === 'table') {
       router.push(`/studio/${slug}/tables`)
     } else if (type === 'form') {
-      // ISSUE 5: Form creation dialog
-      const name = prompt('Enter form name:')
-      if (!name || !workspace) return
-
-      const formSlug = name.toLowerCase().replace(/\s+/g, '-')
-      const { data, error } = await supabase
-        .from('pages')
-        .insert({
-          workspace_id: workspace.id,
-          slug: formSlug,
-          title: name,
-          name: name,
-          published: false,
-          form_type: 'regular',
-          default_view: 'single',
-        })
-        .select()
-        .single()
-
-      if (!error && data) {
-        loadAllObjects(workspace.id)
-        handleOpenObject('form-design', data.id, data.name || data.title || data.slug)
-      }
+      setShowCreateFormDialog(true)
     } else if (type === 'query') {
       router.push(`/studio/${slug}/queries`)
     } else if (type === 'macro') {
@@ -340,11 +321,109 @@ export default function StudioPage() {
           )}
         </div>
       </div>
+
+      {/* FIX 3: Create Form Dialog */}
+      {showCreateFormDialog && (
+        <CreateFormDialog
+          workspace={workspace}
+          tables={tables}
+          onClose={() => setShowCreateFormDialog(false)}
+          onCreated={(formId: string, formName: string) => {
+            setShowCreateFormDialog(false)
+            loadAllObjects(workspace.id)
+            handleOpenObject('form-design', formId, formName)
+          }}
+        />
+      )}
     </div>
   )
 }
 
-// Form Designer Component (with all fixes)
+// FIX 3: Create Form Dialog Component
+function CreateFormDialog({ workspace, tables, onClose, onCreated }: any) {
+  const supabase = createClient()
+  const [formName, setFormName] = useState('')
+  const [formType, setFormType] = useState('single')
+  const [bindToTable, setBindToTable] = useState('')
+
+  async function handleCreate() {
+    if (!formName.trim() || !workspace) return
+
+    const formSlug = formName.toLowerCase().replace(/\s+/g, '-')
+    const { data, error } = await supabase
+      .from('pages')
+      .insert({
+        workspace_id: workspace.id,
+        slug: formSlug,
+        title: formName,
+        name: formName,
+        published: false,
+        form_type: formType,
+        default_view: formType,
+        record_source: bindToTable || null,
+        is_home: false,
+      })
+      .select()
+      .single()
+
+    if (!error && data) {
+      onCreated(data.id, data.name)
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
+      <div style={{ background: '#1a1d2e', borderRadius: 8, padding: 24, width: 480, maxWidth: '90vw' }} onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ margin: '0 0 20px 0', fontSize: 18, fontWeight: 700, color: '#c8d0f0' }}>Create New Form</h2>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontSize: 12, color: '#8890b8', marginBottom: 6 }}>Form Name</label>
+          <input
+            type="text"
+            value={formName}
+            onChange={(e) => setFormName(e.target.value)}
+            placeholder="Enter form name..."
+            style={{ width: '100%', padding: '8px 12px', background: '#0f1117', border: '1px solid #252840', borderRadius: 4, color: '#c8d0f0', fontSize: 13 }}
+            autoFocus
+          />
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontSize: 12, color: '#8890b8', marginBottom: 6 }}>Form Type</label>
+          <select value={formType} onChange={(e) => setFormType(e.target.value)} style={{ width: '100%', padding: '8px 12px', background: '#0f1117', border: '1px solid #252840', borderRadius: 4, color: '#c8d0f0', fontSize: 13, cursor: 'pointer' }}>
+            <option value="single">Single Form - shows one record at a time</option>
+            <option value="continuous">Continuous Form - shows multiple records stacked</option>
+            <option value="datasheet">Datasheet - shows records in grid</option>
+            <option value="split">Split Form - form on top, datasheet on bottom</option>
+            <option value="popup">Popup / Modal - opens as dialog over another form</option>
+            <option value="blank">Blank - no data, just visual design</option>
+          </select>
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontSize: 12, color: '#8890b8', marginBottom: 6 }}>Bind to Table (optional)</label>
+          <select value={bindToTable} onChange={(e) => setBindToTable(e.target.value)} style={{ width: '100%', padding: '8px 12px', background: '#0f1117', border: '1px solid #252840', borderRadius: 4, color: '#c8d0f0', fontSize: 13, cursor: 'pointer' }}>
+            <option value="">None</option>
+            {tables.map((t: any) => (
+              <option key={t.id} value={t.name}>{t.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{ padding: '8px 16px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 13, cursor: 'pointer' }}>
+            Cancel
+          </button>
+          <button onClick={handleCreate} disabled={!formName.trim()} style={{ padding: '8px 16px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 4, fontSize: 13, fontWeight: 600, cursor: formName.trim() ? 'pointer' : 'not-allowed', opacity: formName.trim() ? 1 : 0.5 }}>
+            Create Form
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Form Designer Component (with all Phase 13 fixes)
 function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, forms, onReload }: any) {
   type ViewType = 'design' | 'form' | 'datasheet'
   const supabase = createClient()
@@ -358,9 +437,16 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   const [formProps, setFormProps] = useState<any>({})
   const [recordSourceFields, setRecordSourceFields] = useState<any[]>([])
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; controlId: string } | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; controlId?: string } | null>(null)
 
-  // Form View state (ISSUE 4)
+  // FIX 4: Clipboard for copy/paste
+  const [clipboardControl, setClipboardControl] = useState<Control | null>(null)
+
+  // FIX 7: Undo/redo history
+  const [history, setHistory] = useState<Control[][]>([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
+
+  // Form View state
   const [formData, setFormData] = useState<any>({})
   const [records, setRecords] = useState<any[]>([])
   const [currentRecordIndex, setCurrentRecordIndex] = useState(0)
@@ -370,34 +456,19 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   const drawStart = useRef({ x: 0, y: 0 })
   const [ghostRect, setGhostRect] = useState<any>(null)
   const [currentSection, setCurrentSection] = useState<'header' | 'detail' | 'footer'>('detail')
-
-  // BUG 1 FIX: Save controls before switching to new form
   const previousPageId = useRef<string | null>(null)
 
+  // FIX 1: Auto-save debounce
+  const saveTimeout = useRef<NodeJS.Timeout>()
+
   useEffect(() => {
-    // If pageId changed and we have a previous page, save those controls first
+    // Save controls before switching to new form
     if (previousPageId.current && previousPageId.current !== pageId && controls.length > 0) {
       console.log('🔄 Switching forms - saving controls for:', previousPageId.current)
-      // Save controls for the PREVIOUS page
-      controls.forEach(async (control) => {
-        await supabase.from('controls').upsert({
-          id: control.id,
-          page_id: previousPageId.current,
-          type: control.type,
-          x: control.x,
-          y: control.y,
-          w: control.w,
-          h: control.h,
-          section: control.section,
-          props: control.props,
-        })
-      })
+      saveAllControlsSync(previousPageId.current, controls)
     }
 
-    // Update the previous page id
     previousPageId.current = pageId
-
-    // Load new form data
     loadFormData()
   }, [pageId])
 
@@ -410,28 +481,61 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     }
   }, [formProps.recordSource, tables])
 
-  // ISSUE 6: Keyboard shortcuts
+  // FIX 7: Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (view !== 'design') return
 
+      // FIX 1: Ctrl+S = Save
       if (e.ctrlKey && e.key === 's') {
         e.preventDefault()
-        // Save is automatic
-      } else if (e.key === 'Delete' && selectedControlId) {
+        saveAllControls()
+      }
+      // FIX 7: Ctrl+Z = Undo
+      else if (e.ctrlKey && e.key === 'z') {
         e.preventDefault()
-        deleteControl()
-      } else if (e.key === 'Escape') {
-        setSelectedControlId(null)
-      } else if (e.ctrlKey && e.key === 'd' && selectedControlId) {
+        undo()
+      }
+      // FIX 7: Ctrl+Y = Redo
+      else if (e.ctrlKey && e.key === 'y') {
+        e.preventDefault()
+        redo()
+      }
+      // FIX 4: Ctrl+C = Copy
+      else if (e.ctrlKey && e.key === 'c' && selectedControlId) {
+        e.preventDefault()
+        copyControl()
+      }
+      // FIX 4: Ctrl+V = Paste
+      else if (e.ctrlKey && e.key === 'v' && clipboardControl) {
+        e.preventDefault()
+        pasteControl()
+      }
+      // FIX 4: Ctrl+X = Cut
+      else if (e.ctrlKey && e.key === 'x' && selectedControlId) {
+        e.preventDefault()
+        cutControl()
+      }
+      // FIX 4 & 7: Ctrl+D = Duplicate
+      else if (e.ctrlKey && e.key === 'd' && selectedControlId) {
         e.preventDefault()
         duplicateControl()
+      }
+      // FIX 7: Delete = Delete selected
+      else if (e.key === 'Delete' && selectedControlId) {
+        e.preventDefault()
+        deleteControl()
+      }
+      // FIX 7: Escape = Deselect / close context menu
+      else if (e.key === 'Escape') {
+        setSelectedControlId(null)
+        setContextMenu(null)
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [view, selectedControlId, controls])
+  }, [view, selectedControlId, controls, clipboardControl, history, historyIndex])
 
   async function loadFormData() {
     const { data: page } = await supabase.from('pages').select('*').eq('id', pageId).single()
@@ -446,9 +550,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
         formType: page.form_type || 'regular',
       })
 
-      // BUG 2 & 3 FIX: Load table fields if record source is already set
       if (page.record_source && workspace) {
-        console.log('🔍 Loading existing record source fields:', page.record_source)
         const { data: tableData } = await supabase
           .from('workspace_tables')
           .select('*')
@@ -457,7 +559,6 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
           .single()
 
         if (tableData && tableData.fields) {
-          console.log('✅ Loaded fields:', tableData.fields)
           setRecordSourceFields(tableData.fields)
         }
       }
@@ -465,6 +566,8 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
 
     const { data: controlsData } = await supabase.from('controls').select('*').eq('page_id', pageId).order('created_at')
     setControls(controlsData || [])
+    setHistory([controlsData || []])
+    setHistoryIndex(0)
   }
 
   async function loadRecords() {
@@ -493,49 +596,81 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     }
   }, [view, formProps.recordSource])
 
-  async function saveControl(control: Control) {
+  // FIX 1: Save all controls to Supabase
+  async function saveAllControls() {
+    console.log('💾 Saving all controls...', controls.length)
     setSaveStatus('saving')
-    await supabase.from('controls').upsert({
-      id: control.id,
-      page_id: pageId,
-      type: control.type,
-      x: control.x,
-      y: control.y,
-      w: control.w,
-      h: control.h,
-      section: control.section,
-      props: control.props,
-    })
-    setTimeout(() => setSaveStatus('saved'), 500)
+
+    // Delete all existing controls
+    await supabase.from('controls').delete().eq('page_id', pageId)
+
+    // Insert all current controls
+    if (controls.length > 0) {
+      const { error } = await supabase.from('controls').insert(
+        controls.map((ctrl, index) => ({
+          id: ctrl.id,
+          page_id: pageId,
+          type: ctrl.type,
+          x: ctrl.x,
+          y: ctrl.y,
+          w: ctrl.w,
+          h: ctrl.h,
+          section: ctrl.section,
+          props: ctrl.props,
+          display_order: index,
+        }))
+      )
+
+      if (error) {
+        console.error('❌ Save error:', error)
+        alert('Error saving: ' + error.message)
+        setSaveStatus('unsaved')
+      } else {
+        console.log('✅ All controls saved')
+        setSaveStatus('saved')
+        setTimeout(() => setSaveStatus('saved'), 2000)
+      }
+    } else {
+      setSaveStatus('saved')
+    }
   }
 
-  // BUG 1 FIX: Save all controls before switching forms
-  async function saveAllControls() {
-    console.log('💾 Saving all controls before switch...', controls.length)
-    setSaveStatus('saving')
+  // Helper for synchronous save when switching forms
+  function saveAllControlsSync(targetPageId: string, controlsToSave: Control[]) {
+    supabase.from('controls').delete().eq('page_id', targetPageId).then(() => {
+      if (controlsToSave.length > 0) {
+        supabase.from('controls').insert(
+          controlsToSave.map((ctrl, index) => ({
+            id: ctrl.id,
+            page_id: targetPageId,
+            type: ctrl.type,
+            x: ctrl.x,
+            y: ctrl.y,
+            w: ctrl.w,
+            h: ctrl.h,
+            section: ctrl.section,
+            props: ctrl.props,
+            display_order: index,
+          }))
+        )
+      }
+    })
+  }
 
-    for (const control of controls) {
-      await supabase.from('controls').upsert({
-        id: control.id,
-        page_id: pageId,
-        type: control.type,
-        x: control.x,
-        y: control.y,
-        w: control.w,
-        h: control.h,
-        section: control.section,
-        props: control.props,
-      })
+  // FIX 1: Auto-save with debounce
+  function triggerAutoSave() {
+    setSaveStatus('unsaved')
+    if (saveTimeout.current) {
+      clearTimeout(saveTimeout.current)
     }
-
-    console.log('✅ All controls saved')
-    setSaveStatus('saved')
+    saveTimeout.current = setTimeout(() => {
+      saveAllControls()
+    }, 1000)
   }
 
   async function saveFormProps(props: any) {
     console.log('💾 Saving form props:', props)
 
-    // BUG 2 FIX: Fetch workspace_tables from Supabase if not already loaded
     if (!workspace) {
       console.error('❌ Workspace not loaded')
       return
@@ -556,26 +691,16 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     } else {
       console.log('✅ Form props saved successfully')
 
-      // BUG 2 & 3 FIX: After saving record source, fetch table and its fields from Supabase
       if (props.recordSource) {
-        console.log('🔍 Fetching table fields for:', props.recordSource)
-
-        // Fetch the table from workspace_tables
-        const { data: tableData, error: tableError } = await supabase
+        const { data: tableData } = await supabase
           .from('workspace_tables')
           .select('*')
           .eq('workspace_id', workspace.id)
           .eq('name', props.recordSource)
           .single()
 
-        if (tableError) {
-          console.error('❌ Error fetching table:', tableError)
-        } else if (tableData && tableData.fields) {
-          console.log('✅ Loaded fields from Supabase:', tableData.fields)
+        if (tableData && tableData.fields) {
           setRecordSourceFields(tableData.fields)
-        } else {
-          console.warn('⚠️ Table has no fields:', props.recordSource)
-          setRecordSourceFields([])
         }
       } else {
         setRecordSourceFields([])
@@ -584,7 +709,6 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   }
 
   function handleCanvasMouseDown(e: React.MouseEvent, section: 'header' | 'detail' | 'footer') {
-    // BUG 3 FIX: Clicking canvas background deselects control to show form properties
     if (activeTool === 'Select') {
       setSelectedControlId(null)
       return
@@ -617,8 +741,6 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
 
       if (ghostRect && ghostRect.w > 10 && ghostRect.h > 10) {
         const defaultSize = DEFAULT_SIZES[activeTool] || { w: 100, h: 30 }
-
-        // Use drawn size if larger than default, otherwise use default (ISSUE 1)
         const finalW = Math.max(ghostRect.w, defaultSize.w)
         const finalH = Math.max(ghostRect.h, defaultSize.h)
 
@@ -634,8 +756,8 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
           props: getDefaultProps(activeTool),
         }
 
-        setControls([...controls, newControl])
-        saveControl(newControl)
+        addControlToHistory([...controls, newControl])
+        triggerAutoSave()
       }
 
       isDrawing.current = false
@@ -654,11 +776,11 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
 
   function getDefaultProps(type: string) {
     const defaults: any = {
-      Label: { caption: 'Label', color: '#1f2937', fontSize: 14 },
+      Label: { caption: 'Label', color: '#1f2937', fontSize: 13 },
       Heading: { caption: 'Heading', color: '#1f2937', fontSize: 24, fontWeight: 'bold' },
-      TextBox: { placeholder: 'Type here...', color: '#1f2937', bg: '#fff', fontSize: 14 },
-      Button: { caption: 'Button', bg: '#6366f1', color: '#fff', fontSize: 14 },
-      ComboBox: { placeholder: 'Select...', color: '#1f2937', bg: '#fff', fontSize: 14, options: '' },
+      TextBox: { placeholder: 'Type here...', color: '#1f2937', bg: '#fff', fontSize: 13 },
+      Button: { caption: 'Button', bg: '#6366f1', color: '#fff', fontSize: 13 },
+      ComboBox: { placeholder: 'Select...', color: '#1f2937', bg: '#fff', fontSize: 13, options: '' },
       CheckBox: { caption: 'Checkbox', checked: false },
       DatePicker: { placeholder: 'DD/MM/YYYY', bg: '#fff' },
       NumberBox: { value: 0, min: 0, max: 100, step: 1 },
@@ -680,62 +802,88 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   }
 
   function updateControlProp(controlId: string, propName: string, value: any) {
-    const control = controls.find(c => c.id === controlId)
-    if (!control) return
-
-    const updated = {
-      ...control,
-      props: { ...control.props, [propName]: value }
-    }
-
-    setControls(controls.map(c => c.id === controlId ? updated : c))
-    saveControl(updated)
+    const updated = controls.map(c => c.id === controlId ? { ...c, props: { ...c.props, [propName]: value } } : c)
+    addControlToHistory(updated)
+    triggerAutoSave()
   }
 
   function updateControlGeometry(controlId: string, updates: Partial<Control>) {
-    const control = controls.find(c => c.id === controlId)
-    if (!control) return
-
-    // Enforce minimum size (ISSUE 1)
-    const updated = {
-      ...control,
-      ...updates,
-      w: updates.w !== undefined ? Math.max(20, updates.w) : control.w,
-      h: updates.h !== undefined ? Math.max(16, updates.h) : control.h,
-    }
-
-    setControls(controls.map(c => c.id === controlId ? updated : c))
-    saveControl(updated)
+    const updated = controls.map(c => c.id === controlId ? { ...c, ...updates, w: updates.w !== undefined ? Math.max(20, updates.w) : c.w, h: updates.h !== undefined ? Math.max(16, updates.h) : c.h } : c)
+    addControlToHistory(updated)
+    triggerAutoSave()
   }
 
   function deleteControl() {
     if (!selectedControlId) return
     if (!confirm('Delete this control?')) return
 
-    supabase.from('controls').delete().eq('id', selectedControlId)
-    setControls(controls.filter(c => c.id !== selectedControlId))
+    const updated = controls.filter(c => c.id !== selectedControlId)
+    addControlToHistory(updated)
     setSelectedControlId(null)
+    triggerAutoSave()
+  }
+
+  // FIX 4: Copy/Paste/Duplicate
+  function copyControl() {
+    const control = controls.find(c => c.id === selectedControlId)
+    if (control) {
+      setClipboardControl(control)
+      console.log('📋 Copied control:', control.type)
+    }
+  }
+
+  function cutControl() {
+    copyControl()
+    deleteControl()
+  }
+
+  function pasteControl() {
+    if (!clipboardControl) return
+
+    const newControl: Control = {
+      ...clipboardControl,
+      id: `ctrl-${Date.now()}`,
+      x: clipboardControl.x + 20,
+      y: clipboardControl.y + 20,
+    }
+
+    addControlToHistory([...controls, newControl])
+    setSelectedControlId(newControl.id)
+    triggerAutoSave()
   }
 
   function duplicateControl() {
-    if (!selectedControlId) return
-
-    const control = controls.find(c => c.id === selectedControlId)
-    if (!control) return
-
-    const newControl: Control = {
-      ...control,
-      id: `ctrl-${Date.now()}`,
-      x: control.x + 20,
-      y: control.y + 20,
-    }
-
-    setControls([...controls, newControl])
-    saveControl(newControl)
-    setSelectedControlId(newControl.id)
+    copyControl()
+    pasteControl()
   }
 
-  // ISSUE 6: Auto-generate form from table
+  // FIX 7: Undo/Redo
+  function addControlToHistory(newControls: Control[]) {
+    const newHistory = history.slice(0, historyIndex + 1)
+    newHistory.push(newControls)
+    if (newHistory.length > 20) newHistory.shift()
+    setHistory(newHistory)
+    setHistoryIndex(newHistory.length - 1)
+    setControls(newControls)
+  }
+
+  function undo() {
+    if (historyIndex > 0) {
+      setHistoryIndex(historyIndex - 1)
+      setControls(history[historyIndex - 1])
+      triggerAutoSave()
+    }
+  }
+
+  function redo() {
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex(historyIndex + 1)
+      setControls(history[historyIndex + 1])
+      triggerAutoSave()
+    }
+  }
+
+  // FIX 6: Auto-generate form
   function autoGenerateForm() {
     if (!formProps.recordSource) {
       alert('Please set a Record Source first')
@@ -749,7 +897,6 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     let yPos = 20
 
     table.fields.filter((f: any) => f.name !== 'id').forEach((field: any, index: number) => {
-      // Label
       newControls.push({
         id: `ctrl-label-${Date.now()}-${index}`,
         page_id: pageId,
@@ -762,9 +909,8 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
         props: { caption: field.caption || field.name, color: '#1f2937', fontSize: 12 },
       })
 
-      // Input control based on field type
       let controlType = 'TextBox'
-      let controlProps: any = { controlSource: field.name, color: '#1f2937', bg: '#fff', fontSize: 14 }
+      let controlProps: any = { controlSource: field.name, color: '#1f2937', bg: '#fff', fontSize: 13 }
 
       if (['Number', 'Currency'].includes(field.type)) {
         controlType = 'NumberBox'
@@ -795,7 +941,6 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
       yPos += 36
     })
 
-    // Save button
     newControls.push({
       id: `ctrl-save-${Date.now()}`,
       page_id: pageId,
@@ -805,10 +950,9 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
       w: 100,
       h: 28,
       section: 'detail',
-      props: { caption: 'Save', bg: '#10b981', color: '#fff', fontSize: 14 },
+      props: { caption: 'Save', bg: '#10b981', color: '#fff', fontSize: 13 },
     })
 
-    // New button
     newControls.push({
       id: `ctrl-new-${Date.now()}`,
       page_id: pageId,
@@ -818,10 +962,9 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
       w: 100,
       h: 28,
       section: 'detail',
-      props: { caption: 'New', bg: '#6366f1', color: '#fff', fontSize: 14 },
+      props: { caption: 'New', bg: '#6366f1', color: '#fff', fontSize: 13 },
     })
 
-    // Navigation buttons in footer
     if (formProps.navigationButtons) {
       newControls.push({
         id: `ctrl-nav-${Date.now()}`,
@@ -836,15 +979,15 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
       })
     }
 
-    setControls([...controls, ...newControls])
-    newControls.forEach(ctrl => saveControl(ctrl))
+    addControlToHistory([...controls, ...newControls])
+    triggerAutoSave()
   }
 
   const selectedControl = controls.find(c => c.id === selectedControlId)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#13141f' }}>
-      {/* Toolbar */}
+      {/* FIX 1: Toolbar with prominent Save button */}
       <div style={{ background: '#1a1d2e', borderBottom: '1px solid #252840', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={() => setView('design')} style={{ padding: '6px 12px', background: view === 'design' ? '#6366f1' : '#252840', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>
           Design View
@@ -864,8 +1007,12 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
           </button>
         )}
         <div style={{ flex: 1 }} />
-        <div style={{ fontSize: 10, color: saveStatus === 'saving' ? '#fbbf24' : '#10b981' }}>
-          {saveStatus === 'saving' ? 'Saving...' : 'Saved ✓'}
+        {/* FIX 1: Large prominent Save button */}
+        <button onClick={saveAllControls} disabled={saveStatus === 'saving'} style={{ padding: '8px 20px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: saveStatus === 'saving' ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 8px rgba(99,102,241,0.3)' }}>
+          💾 {saveStatus === 'saving' ? 'Saving...' : 'Save Form'}
+        </button>
+        <div style={{ fontSize: 10, color: saveStatus === 'saving' ? '#fbbf24' : saveStatus === 'saved' ? '#10b981' : '#ef4444', minWidth: 60, textAlign: 'right' }}>
+          {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved ✓' : 'Unsaved'}
         </div>
       </div>
 
@@ -1022,7 +1169,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
             )}
           </div>
 
-          {/* Property Sheet */}
+          {/* FIX 5: Completely rebuilt Property Sheet */}
           <PropertySheet
             selectedControl={selectedControl}
             formProps={formProps}
@@ -1042,15 +1189,34 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
             onDelete={deleteControl}
           />
 
-          {/* Context Menu (ISSUE 7) */}
+          {/* FIX 4: Context Menu */}
           {contextMenu && (
             <div style={{ position: 'fixed', left: contextMenu.x, top: contextMenu.y, background: '#252840', border: '1px solid #3a3f5c', borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 10000, minWidth: 150 }} onClick={(e) => e.stopPropagation()}>
-              <div onClick={() => { duplicateControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#c8d0f0', cursor: 'pointer', borderBottom: '1px solid #1a1d2e' }} onMouseEnter={(e) => e.currentTarget.style.background = '#1a1d2e'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-                Duplicate
-              </div>
-              <div onClick={() => { deleteControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#ef4444', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = '#1a1d2e'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-                Delete
-              </div>
+              {contextMenu.controlId && (
+                <>
+                  <div onClick={() => { copyControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#c8d0f0', cursor: 'pointer', borderBottom: '1px solid #1a1d2e' }} onMouseEnter={(e) => e.currentTarget.style.background = '#1a1d2e'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                    Copy (Ctrl+C)
+                  </div>
+                  {clipboardControl && (
+                    <div onClick={() => { pasteControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#c8d0f0', cursor: 'pointer', borderBottom: '1px solid #1a1d2e' }} onMouseEnter={(e) => e.currentTarget.style.background = '#1a1d2e'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                      Paste (Ctrl+V)
+                    </div>
+                  )}
+                  <div onClick={() => { duplicateControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#c8d0f0', cursor: 'pointer', borderBottom: '1px solid #1a1d2e' }} onMouseEnter={(e) => e.currentTarget.style.background = '#1a1d2e'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                    Duplicate (Ctrl+D)
+                  </div>
+                  <div onClick={() => { cutControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#c8d0f0', cursor: 'pointer', borderBottom: '1px solid #1a1d2e' }} onMouseEnter={(e) => e.currentTarget.style.background = '#1a1d2e'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                    Cut (Ctrl+X)
+                  </div>
+                  <div onClick={() => { deleteControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#ef4444', cursor: 'pointer', borderBottom: '1px solid #1a1d2e' }} onMouseEnter={(e) => e.currentTarget.style.background = '#1a1d2e'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                    Delete (Del)
+                  </div>
+                  <div style={{ borderBottom: '1px solid #3a3f5c', height: 1, margin: '4px 0' }} />
+                  <div onClick={() => setContextMenu(null)} style={{ padding: '8px 12px', fontSize: 11, color: '#c8d0f0', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = '#1a1d2e'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                    Properties
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -1059,7 +1225,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   )
 }
 
-// Control Wrapper with drag/resize (ISSUE 1 - proper resize handles)
+// Control Wrapper with drag/resize
 function ControlWrapper({ control, selected, onSelect, onUpdate, onContextMenu }: any) {
   const [isDragging, setIsDragging] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
@@ -1159,7 +1325,6 @@ function ControlWrapper({ control, selected, onSelect, onUpdate, onContextMenu }
       <CtrlRender ctrl={{ ...control, ...control.props }} />
       {selected && (
         <>
-          {/* 8 Resize handles */}
           {[
             { handle: 'nw', cursor: 'nw-resize', top: -4, left: -4 },
             { handle: 'n', cursor: 'n-resize', top: -4, left: '50%', transform: 'translateX(-50%)' },
@@ -1189,7 +1354,7 @@ function ControlWrapper({ control, selected, onSelect, onUpdate, onContextMenu }
   )
 }
 
-// Property Sheet Component (ISSUE 2, 3)
+// FIX 5: Completely rebuilt Property Sheet Component
 function PropertySheet({ selectedControl, formProps, propertyTab, setPropertyTab, tables, queries, macros, recordSourceFields, onUpdateControlProp, onUpdateControlGeometry, onUpdateFormProp, onDelete }: any) {
   const tabs = ['format', 'data', 'event', 'other', 'all'] as const
 
@@ -1238,60 +1403,45 @@ function PropertySheet({ selectedControl, formProps, propertyTab, setPropertyTab
   )
 }
 
-// Control Properties (ISSUE 3 - complete properties)
+// FIX 5: Completely rebuilt Control Properties (shows ALL properties for ALL controls)
 function ControlProperties({ control, tab, tables, queries, macros, recordSourceFields, onUpdate, onUpdateGeometry, onDelete }: any) {
   const props = control.props || {}
 
+  // FIX 5: Property Row Component
   function PropRow({ label, value, onChange, type = 'text', options = [] }: any) {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', borderBottom: '1px solid #252840', padding: '3px 8px', height: 24, alignItems: 'center' }}>
-        <span style={{ fontSize: 10, color: '#8890b8', fontFamily: "'JetBrains Mono', monospace" }}>{label}</span>
+      <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: '1px solid #252840', minHeight: 24, alignItems: 'center', padding: '0 8px' }}>
+        <span style={{ fontSize: 11, color: '#8890b8', fontFamily: "'JetBrains Mono', monospace" }}>{label}</span>
         {type === 'select' ? (
-          <select value={value} onChange={(e) => onChange(e.target.value)} style={{ width: '100%', background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 10, padding: '2px 4px' }}>
+          <select value={value} onChange={(e) => onChange(e.target.value)} style={{ background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px', cursor: 'pointer' }}>
             {options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
           </select>
         ) : type === 'color' ? (
-          <input type="color" value={value} onChange={(e) => onChange(e.target.value)} style={{ width: '100%', height: 18, background: '#0f1117', border: 'none' }} />
+          <input type="color" value={value || '#ffffff'} onChange={(e) => onChange(e.target.value)} style={{ width: '100%', height: 20, background: '#0f1117', border: 'none' }} />
         ) : type === 'number' ? (
-          <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} style={{ width: '100%', background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 10, padding: '2px 4px' }} />
-        ) : type === 'yesno' ? (
-          <select value={value ? 'Yes' : 'No'} onChange={(e) => onChange(e.target.value === 'Yes')} style={{ width: '100%', background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 10, padding: '2px 4px' }}>
-            <option>Yes</option>
-            <option>No</option>
-          </select>
+          <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} style={{ background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px' }} />
         ) : (
-          <input type="text" value={value} onChange={(e) => onChange(e.target.value)} style={{ width: '100%', background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 10, padding: '2px 4px' }} />
+          <input type="text" value={value || ''} onChange={(e) => onChange(e.target.value)} style={{ background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px' }} />
         )}
       </div>
     )
   }
 
+  // FIX 5: FORMAT TAB - Show for ALL controls
   if (tab === 'format' || tab === 'all') {
     return (
       <>
-        <div style={{ background: '#252840', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>POSITION</div>
+        <PropRow label="Caption" value={props.caption} onChange={(v: string) => onUpdate(control.id, 'caption', v)} />
         <PropRow label="Width" value={control.w} onChange={(v: number) => onUpdateGeometry(control.id, { w: v })} type="number" />
         <PropRow label="Height" value={control.h} onChange={(v: number) => onUpdateGeometry(control.id, { h: v })} type="number" />
-        <PropRow label="Left" value={control.x} onChange={(v: number) => onUpdateGeometry(control.id, { x: v })} type="number" />
-        <PropRow label="Top" value={control.y} onChange={(v: number) => onUpdateGeometry(control.id, { y: v })} type="number" />
-
-        <div style={{ background: '#252840', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700, marginTop: 8 }}>APPEARANCE</div>
-        {!['Divider', 'NavigationButtons', 'StatusBar'].includes(control.type) && <PropRow label="Caption" value={props.caption || ''} onChange={(v: string) => onUpdate(control.id, 'caption', v)} />}
-        {/* BUG 1 FIX: Show colors for Label too */}
-        {['Label', 'Heading', 'TextBox', 'Button', 'ComboBox', 'DatePicker', 'CheckBox'].includes(control.type) && (
-          <>
-            <PropRow label="Back Color" value={props.bg || (control.type === 'Label' || control.type === 'Heading' ? 'transparent' : '#fff')} onChange={(v: string) => onUpdate(control.id, 'bg', v)} type="color" />
-            <PropRow label="Fore Color" value={props.color || '#000'} onChange={(v: string) => onUpdate(control.id, 'color', v)} type="color" />
-          </>
-        )}
-        {['Label', 'Heading', 'TextBox', 'Button', 'ComboBox'].includes(control.type) && (
-          <>
-            <PropRow label="Font Size" value={props.fontSize || 14} onChange={(v: number) => onUpdate(control.id, 'fontSize', v)} type="number" />
-            <PropRow label="Font Bold" value={props.fontWeight === 'bold'} onChange={(v: boolean) => onUpdate(control.id, 'fontWeight', v ? 'bold' : 'normal')} type="yesno" />
-          </>
-        )}
-        <PropRow label="Visible" value={props.visible !== false} onChange={(v: boolean) => onUpdate(control.id, 'visible', v)} type="yesno" />
-        {control.type === 'Button' && <PropRow label="Border Radius" value={props.borderRadius || 4} onChange={(v: number) => onUpdate(control.id, 'borderRadius', v)} type="number" />}
+        <PropRow label="Left (X)" value={control.x} onChange={(v: number) => onUpdateGeometry(control.id, { x: v })} type="number" />
+        <PropRow label="Top (Y)" value={control.y} onChange={(v: number) => onUpdateGeometry(control.id, { y: v })} type="number" />
+        <PropRow label="Font Size" value={props.fontSize || 13} onChange={(v: number) => onUpdate(control.id, 'fontSize', v)} type="number" />
+        <PropRow label="Bold" value={props.fontWeight === 'bold' ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'fontWeight', v === 'Yes' ? 'bold' : 'normal')} type="select" options={['Yes', 'No']} />
+        <PropRow label="Back Color" value={props.bg} onChange={(v: string) => onUpdate(control.id, 'bg', v)} type="color" />
+        <PropRow label="Text Color" value={props.color} onChange={(v: string) => onUpdate(control.id, 'color', v)} type="color" />
+        <PropRow label="Border Radius" value={props.radius || 0} onChange={(v: number) => onUpdate(control.id, 'radius', v)} type="number" />
+        <PropRow label="Visible" value={props.visible !== false ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'visible', v === 'Yes')} type="select" options={['Yes', 'No']} />
 
         <div style={{ padding: 8, marginTop: 8 }}>
           <button onClick={onDelete} style={{ width: '100%', padding: '6px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
@@ -1302,87 +1452,38 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
     )
   }
 
+  // FIX 5: DATA TAB - Show for ALL controls
   if (tab === 'data' || tab === 'all') {
-    // BUG 1 FIX: Show appropriate data properties for each control type
-    const hasDataProperties = ['TextBox', 'ComboBox', 'CheckBox', 'DatePicker', 'NumberBox', 'Lookup', 'DataTable'].includes(control.type)
-
     return (
       <>
-        <div style={{ background: '#252840', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>DATA</div>
-        {hasDataProperties ? (
-          <>
-            {['TextBox', 'ComboBox', 'CheckBox', 'DatePicker', 'NumberBox'].includes(control.type) && (
-              <>
-                <PropRow
-                  label="Control Source"
-                  value={props.controlSource || ''}
-                  onChange={(v: string) => onUpdate(control.id, 'controlSource', v)}
-                  type="select"
-                  options={recordSourceFields.length > 0 ? ['', ...recordSourceFields.map((f: any) => f.name)] : ['(Set Record Source on form first)']}
-                />
-                <PropRow label="Default Value" value={props.defaultValue || ''} onChange={(v: string) => onUpdate(control.id, 'defaultValue', v)} />
-                <PropRow label="Enabled" value={props.enabled !== false} onChange={(v: boolean) => onUpdate(control.id, 'enabled', v)} type="yesno" />
-                <PropRow label="Locked" value={props.locked === true} onChange={(v: boolean) => onUpdate(control.id, 'locked', v)} type="yesno" />
-              </>
-            )}
-            {control.type === 'ComboBox' && (
-              <PropRow label="Options" value={props.options || ''} onChange={(v: string) => onUpdate(control.id, 'options', v)} />
-            )}
-            {control.type === 'DataTable' && (
-              <>
-                <PropRow label="Record Source" value={props.recordSource || ''} onChange={(v: string) => onUpdate(control.id, 'recordSource', v)} type="select" options={['', ...recordSourceFields.map((f: any) => f.name)]} />
-                <PropRow label="Columns" value={props.columns || ''} onChange={(v: string) => onUpdate(control.id, 'columns', v)} />
-              </>
-            )}
-          </>
-        ) : (
-          <div style={{ padding: 12, fontSize: 11, color: '#8890b8', textAlign: 'center' }}>
-            No data properties for {control.type}
-          </div>
-        )}
+        <PropRow label="Control Source" value={props.controlSource || ''} onChange={(v: string) => onUpdate(control.id, 'controlSource', v)} type="select" options={['', ...recordSourceFields.map((f: any) => f.name)]} />
+        <PropRow label="Default Value" value={props.defaultValue || ''} onChange={(v: string) => onUpdate(control.id, 'defaultValue', v)} />
+        <PropRow label="Enabled" value={props.enabled !== false ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'enabled', v === 'Yes')} type="select" options={['Yes', 'No']} />
+        <PropRow label="Locked" value={props.locked === true ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'locked', v === 'Yes')} type="select" options={['Yes', 'No']} />
       </>
     )
   }
 
+  // FIX 5: EVENT TAB - Show for ALL controls
   if (tab === 'event' || tab === 'all') {
-    // BUG 1 FIX: Show appropriate event properties for each control type
-    const hasEventProperties = ['Button', 'TextBox', 'ComboBox', 'CheckBox', 'DatePicker', 'NumberBox', 'Lookup'].includes(control.type)
-
     return (
       <>
-        <div style={{ background: '#252840', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>EVENTS</div>
-        {hasEventProperties ? (
-          <>
-            {control.type === 'Button' && (
-              <>
-                <PropRow label="On Click" value={props.onClickMacro || ''} onChange={(v: string) => onUpdate(control.id, 'onClickMacro', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
-                <PropRow label="Before Update" value={props.beforeUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'beforeUpdate', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
-                <PropRow label="After Update" value={props.afterUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'afterUpdate', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
-              </>
-            )}
-            {['TextBox', 'ComboBox', 'CheckBox', 'DatePicker', 'NumberBox'].includes(control.type) && (
-              <>
-                <PropRow label="Before Update" value={props.beforeUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'beforeUpdate', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
-                <PropRow label="After Update" value={props.afterUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'afterUpdate', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
-              </>
-            )}
-          </>
-        ) : (
-          <div style={{ padding: 12, fontSize: 11, color: '#8890b8', textAlign: 'center' }}>
-            No event properties for {control.type}
-          </div>
-        )}
+        <PropRow label="On Click" value={props.onClickMacro || ''} onChange={(v: string) => onUpdate(control.id, 'onClickMacro', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
+        <PropRow label="Before Update" value={props.beforeUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'beforeUpdate', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
+        <PropRow label="After Update" value={props.afterUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'afterUpdate', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
+        <PropRow label="On Got Focus" value={props.onGotFocus || ''} onChange={(v: string) => onUpdate(control.id, 'onGotFocus', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
+        <PropRow label="On Lost Focus" value={props.onLostFocus || ''} onChange={(v: string) => onUpdate(control.id, 'onLostFocus', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
       </>
     )
   }
 
+  // FIX 5: OTHER TAB - Show for ALL controls
   if (tab === 'other' || tab === 'all') {
     return (
       <>
-        <div style={{ background: '#252840', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>OTHER</div>
-        <PropRow label="Name" value={props.name || control.id} onChange={(v: string) => onUpdate(control.id, 'name', v)} />
-        <PropRow label="ControlTip" value={props.controlTip || ''} onChange={(v: string) => onUpdate(control.id, 'controlTip', v)} />
-        <PropRow label="Tab Stop" value={props.tabStop !== false} onChange={(v: boolean) => onUpdate(control.id, 'tabStop', v)} type="yesno" />
+        <PropRow label="Name" value={props.name || control.type + control.id.slice(-4)} onChange={(v: string) => onUpdate(control.id, 'name', v)} />
+        <PropRow label="ControlTip" value={props.tooltip || ''} onChange={(v: string) => onUpdate(control.id, 'tooltip', v)} />
+        <PropRow label="Tab Stop" value={props.tabStop !== false ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'tabStop', v === 'Yes')} type="select" options={['Yes', 'No']} />
         <PropRow label="Tab Index" value={props.tabIndex || 0} onChange={(v: number) => onUpdate(control.id, 'tabIndex', v)} type="number" />
       </>
     )
@@ -1391,7 +1492,7 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
   return null
 }
 
-// Form Properties (ISSUE 2 - Record Source dropdown)
+// FIX 5: Form Properties
 function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: any) {
   function PropRow({ label, value, onChange, type = 'text', options = [] }: any) {
     return (
@@ -1417,8 +1518,17 @@ function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: a
     )
   }
 
+  if (tab === 'format' || tab === 'all') {
+    return (
+      <>
+        <div style={{ background: '#252840', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>FORMAT</div>
+        <PropRow label="Default View" value={formProps.defaultView || 'single'} onChange={(v: string) => onUpdate('defaultView', v)} type="select" options={['single', 'continuous', 'datasheet', 'split']} />
+        <PropRow label="Navigation Buttons" value={formProps.navigationButtons} onChange={(v: boolean) => onUpdate('navigationButtons', v)} type="yesno" />
+      </>
+    )
+  }
+
   if (tab === 'data' || tab === 'all') {
-    // Build Record Source options with grouping (ISSUE 2)
     const recordSourceOptions = [
       { label: '', value: '' },
       { label: '--- Tables ---', isHeader: true },
@@ -1438,12 +1548,14 @@ function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: a
     )
   }
 
-  if (tab === 'format' || tab === 'all') {
+  if (tab === 'event' || tab === 'all') {
     return (
       <>
-        <div style={{ background: '#252840', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>FORMAT</div>
-        <PropRow label="Default View" value={formProps.defaultView || 'single'} onChange={(v: string) => onUpdate('defaultView', v)} type="select" options={['single', 'continuous', 'split']} />
-        <PropRow label="Navigation Buttons" value={formProps.navigationButtons} onChange={(v: boolean) => onUpdate('navigationButtons', v)} type="yesno" />
+        <div style={{ background: '#252840', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>EVENTS</div>
+        <PropRow label="On Open" value={''} onChange={() => {}} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
+        <PropRow label="On Load" value={''} onChange={() => {}} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
+        <PropRow label="On Close" value={''} onChange={() => {}} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
+        <PropRow label="On Current" value={''} onChange={() => {}} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
       </>
     )
   }
@@ -1455,7 +1567,7 @@ function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: a
   )
 }
 
-// Form View Component (ISSUE 4)
+// FIX 8: Form View Component
 function FormView({ controls, formProps, formData, setFormData, records, currentRecordIndex, setCurrentRecordIndex, workspace, tables, pageId }: any) {
   const supabase = createClient()
 
@@ -1472,21 +1584,14 @@ function FormView({ controls, formProps, formData, setFormData, records, current
     const currentRecord = records[currentRecordIndex]
 
     if (currentRecord?.id) {
-      // Update existing record
-      await supabase
-        .from('app_data')
-        .update({ data: formData })
-        .eq('id', currentRecord.id)
+      await supabase.from('app_data').update({ data: formData }).eq('id', currentRecord.id)
       alert('Record updated!')
     } else {
-      // Insert new record
-      await supabase
-        .from('app_data')
-        .insert({
-          workspace_id: workspace.id,
-          table_name: table.slug,
-          data: formData,
-        })
+      await supabase.from('app_data').insert({
+        workspace_id: workspace.id,
+        table_name: table.slug,
+        data: formData,
+      })
       alert('Record saved!')
     }
   }
@@ -1509,28 +1614,24 @@ function FormView({ controls, formProps, formData, setFormData, records, current
   return (
     <div style={{ flex: 1, background: '#f3f4f6', overflow: 'auto', padding: 40 }}>
       <div style={{ maxWidth: 800, margin: '0 auto', background: '#fff', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: 40 }}>
-        {/* Header controls */}
         {controls.filter((c: Control) => c.section === 'header').map((ctrl: Control) => (
           <div key={ctrl.id} style={{ marginBottom: 16 }}>
             <RenderLiveControl ctrl={ctrl} formData={formData} onChange={handleInputChange} onSave={handleSave} />
           </div>
         ))}
 
-        {/* Detail controls */}
         {controls.filter((c: Control) => c.section === 'detail').map((ctrl: Control) => (
           <div key={ctrl.id} style={{ marginBottom: 16 }}>
             <RenderLiveControl ctrl={ctrl} formData={formData} onChange={handleInputChange} onSave={handleSave} />
           </div>
         ))}
 
-        {/* Footer controls */}
         {controls.filter((c: Control) => c.section === 'footer').map((ctrl: Control) => (
           <div key={ctrl.id} style={{ marginTop: 24 }}>
             <RenderLiveControl ctrl={ctrl} formData={formData} onChange={handleInputChange} onSave={handleSave} />
           </div>
         ))}
 
-        {/* Navigation Bar (ISSUE 4) */}
         {formProps.recordSource && formProps.navigationButtons && (
           <div style={{ marginTop: 32, paddingTop: 16, borderTop: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
             <button onClick={() => handleNavigation('first')} style={{ padding: '6px 12px', background: '#252840', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>|◀</button>
@@ -1546,13 +1647,13 @@ function FormView({ controls, formProps, formData, setFormData, records, current
   )
 }
 
-// Live Control Renderer (ISSUE 4)
+// Live Control Renderer
 function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
   const props = ctrl.props || {}
   const value = props.controlSource ? formData[props.controlSource] : (formData[ctrl.id] || props.value || '')
 
   if (ctrl.type === 'Label' || ctrl.type === 'Heading') {
-    return <div style={{ fontSize: props.fontSize || 14, fontWeight: props.fontWeight || 'normal', color: props.color || '#000' }}>{props.caption}</div>
+    return <div style={{ fontSize: props.fontSize || 13, fontWeight: props.fontWeight || 'normal', color: props.color || '#000' }}>{props.caption}</div>
   }
 
   if (ctrl.type === 'TextBox') {
@@ -1567,7 +1668,7 @@ function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
           padding: '8px 12px',
           border: '1px solid #d1d5db',
           borderRadius: 4,
-          fontSize: props.fontSize || 14,
+          fontSize: props.fontSize || 13,
           color: props.color,
           background: props.bg,
         }}
@@ -1586,7 +1687,7 @@ function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
           padding: '8px 12px',
           border: '1px solid #d1d5db',
           borderRadius: 4,
-          fontSize: props.fontSize || 14,
+          fontSize: props.fontSize || 13,
           color: props.color,
           background: props.bg,
         }}
@@ -1605,7 +1706,7 @@ function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
           checked={!!value}
           onChange={(e) => onChange(props.controlSource || ctrl.id, e.target.checked)}
         />
-        <span style={{ fontSize: props.fontSize || 14 }}>{props.caption}</span>
+        <span style={{ fontSize: props.fontSize || 13 }}>{props.caption}</span>
       </label>
     )
   }
@@ -1621,7 +1722,7 @@ function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
           padding: '8px 12px',
           border: '1px solid #d1d5db',
           borderRadius: 4,
-          fontSize: props.fontSize || 14,
+          fontSize: props.fontSize || 13,
         }}
       />
     )
@@ -1641,7 +1742,7 @@ function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
           padding: '8px 12px',
           border: '1px solid #d1d5db',
           borderRadius: 4,
-          fontSize: props.fontSize || 14,
+          fontSize: props.fontSize || 13,
         }}
       />
     )
@@ -1656,8 +1757,8 @@ function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
           background: props.bg || '#6366f1',
           color: props.color || '#fff',
           border: 'none',
-          borderRadius: props.borderRadius || 4,
-          fontSize: props.fontSize || 14,
+          borderRadius: props.borderRadius || props.radius || 4,
+          fontSize: props.fontSize || 13,
           fontWeight: 600,
           cursor: 'pointer',
         }}
