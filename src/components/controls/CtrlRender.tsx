@@ -44,7 +44,15 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
 
   if (ctrl.type === 'Label') {
     return (
-      <div style={{ ...base, display: 'flex', alignItems: 'center', background: 'transparent' }}>
+      <div style={{
+        ...base,
+        display: 'flex',
+        alignItems: 'center',
+        background: ctrl.bg === 'transparent' || !ctrl.bg ? 'transparent' : ctrl.bg,
+        color: ctrl.color || '#374151',
+        fontSize: ctrl.fontSize || 13,
+        fontWeight: ctrl.bold ? 700 : 400
+      }}>
         {ctrl.caption || 'Label'}
       </div>
     )
@@ -52,7 +60,16 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
 
   if (ctrl.type === 'Heading') {
     return (
-      <div style={{ ...base, display: 'flex', alignItems: 'center', fontWeight: 800, background: 'transparent', letterSpacing: '-0.02em' }}>
+      <div style={{
+        ...base,
+        display: 'flex',
+        alignItems: 'center',
+        fontWeight: 800,
+        background: 'transparent',
+        letterSpacing: '-0.02em',
+        color: ctrl.color || '#0f172a',
+        fontSize: ctrl.fontSize || 20
+      }}>
         {ctrl.caption || 'Heading'}
       </div>
     )
@@ -66,12 +83,33 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
           type="text"
           placeholder={ctrl.placeholder}
           defaultValue={displayValue}
-          style={{ ...base, background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #6366f1', padding: '0 12px', outline: 'none' }}
+          style={{
+            ...base,
+            background: ctrl.bg || '#ffffff',
+            color: ctrl.color || '#1e293b',
+            borderRadius: ctrl.radius !== undefined ? ctrl.radius : 8,
+            fontSize: ctrl.fontSize || 14,
+            border: '1px solid #e2e8f0',
+            borderLeft: '3px solid #6366f1',
+            padding: '0 12px',
+            outline: 'none'
+          }}
         />
       )
     }
     return (
-      <div style={{ ...base, background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #6366f1', display: 'flex', alignItems: 'center', padding: '0 12px' }}>
+      <div style={{
+        ...base,
+        background: ctrl.bg || '#ffffff',
+        color: ctrl.color || '#1e293b',
+        borderRadius: ctrl.radius !== undefined ? ctrl.radius : 8,
+        fontSize: ctrl.fontSize || 14,
+        border: '1px solid #e2e8f0',
+        borderLeft: '3px solid #6366f1',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 12px'
+      }}>
         <span style={{ color: '#9ca3af', fontSize: 11 }}>{ctrl.placeholder || 'Type here...'}</span>
       </div>
     )
@@ -91,10 +129,13 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         style={{
           ...base,
           background: ctrl.bg || '#6366f1',
+          color: ctrl.color || '#ffffff',
+          borderRadius: ctrl.radius !== undefined ? ctrl.radius : 8,
+          fontSize: ctrl.fontSize || 14,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontWeight: 700,
+          fontWeight: ctrl.bold ? 700 : 400,
           boxShadow: `0 4px 14px ${ctrl.bg || '#6366f1'}55`,
           cursor: isPreview ? 'pointer' : 'default',
           border: 'none',
@@ -117,7 +158,13 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
       return (
         <select
           defaultValue={displayValue}
-          style={{ ...base, background: '#fff', border: '1px solid #e2e8f0', padding: '0 12px' }}
+          style={{
+            ...base,
+            background: ctrl.bg || '#ffffff',
+            color: ctrl.color || '#374151',
+            border: '1px solid #e2e8f0',
+            padding: '0 12px'
+          }}
         >
           <option value="">{ctrl.placeholder || 'Select...'}</option>
           {options.map((opt, idx) => (
@@ -128,7 +175,16 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
     }
 
     return (
-      <div style={{ ...base, background: '#fff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', padding: '0 12px', justifyContent: 'space-between' }}>
+      <div style={{
+        ...base,
+        background: ctrl.bg || '#ffffff',
+        color: ctrl.color || '#374151',
+        border: '1px solid #e2e8f0',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 12px',
+        justifyContent: 'space-between'
+      }}>
         <span style={{ color: '#9ca3af', fontSize: 11 }}>{ctrl.placeholder || 'Select...'}</span>
         <div style={{ background: '#f3f4f6', padding: '2px 6px', marginRight: -12, height: '100%', display: 'flex', alignItems: 'center' }}>
           <span style={{ color: '#6b7280', fontSize: 10 }}>▾</span>
@@ -144,7 +200,10 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         <div style={{ width: 16, height: 16, border: '1.5px solid #6366f1', borderRadius: 3, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {isChecked && <span style={{ color: '#6366f1', fontSize: 14, fontWeight: 900 }}>✓</span>}
         </div>
-        <span style={{ color: ctrl.color || '#1f2937' }}>{ctrl.caption || 'CheckBox'}</span>
+        <span style={{
+          color: ctrl.color || '#374151',
+          fontSize: ctrl.fontSize || 13
+        }}>{ctrl.caption || 'CheckBox'}</span>
       </div>
     )
   }
@@ -152,10 +211,19 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
   if (ctrl.type === 'DatePicker') {
     const displayValue = boundValue ? new Date(boundValue).toLocaleDateString() : ''
     return (
-      <div style={{ ...base, background: '#fff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', padding: '0 12px', justifyContent: 'space-between' }}>
+      <div style={{
+        ...base,
+        background: ctrl.bg || '#ffffff',
+        color: ctrl.color || '#374151',
+        border: '1px solid #e2e8f0',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 12px',
+        justifyContent: 'space-between'
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 14 }}>📅</span>
-          <span style={{ color: displayValue ? ctrl.color : '#9ca3af', fontSize: 11 }}>{displayValue || 'DD/MM/YYYY'}</span>
+          <span style={{ color: displayValue ? (ctrl.color || '#374151') : '#9ca3af', fontSize: 11 }}>{displayValue || 'DD/MM/YYYY'}</span>
         </div>
         <div style={{ width: 20, height: 20, background: '#f3f4f6', borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>▾</div>
       </div>
@@ -165,8 +233,17 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
   if (ctrl.type === 'NumberBox') {
     const displayValue = boundValue !== null ? String(boundValue) : '0'
     return (
-      <div style={{ ...base, background: '#fff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px' }}>
-        <span style={{ color: ctrl.color || '#1f2937', fontSize: 11, textAlign: 'right', flex: 1 }}>{displayValue}</span>
+      <div style={{
+        ...base,
+        background: ctrl.bg || '#ffffff',
+        color: ctrl.color || '#374151',
+        border: '1px solid #e2e8f0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 12px'
+      }}>
+        <span style={{ color: ctrl.color || '#374151', fontSize: 11, textAlign: 'right', flex: 1 }}>{displayValue}</span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 1, marginLeft: 4 }}>
           <div style={{ width: 14, height: 10, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, borderRadius: 2 }}>▲</div>
           <div style={{ width: 14, height: 10, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, borderRadius: 2 }}>▼</div>
@@ -278,8 +355,17 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
   if (ctrl.type === 'Badge') {
     return (
       <div style={{ ...base, background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px' }}>
-        <div style={{ background: ctrl.bg || '#6366f1', color: '#fff', padding: '4px 12px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
-          <div style={{ width: 6, height: 6, background: '#fff', borderRadius: '50%' }} />
+        <div style={{
+          background: ctrl.bg || '#d1fae5',
+          color: ctrl.color || '#065f46',
+          padding: '4px 12px',
+          borderRadius: 12,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          fontSize: 11
+        }}>
+          <div style={{ width: 6, height: 6, background: ctrl.color || '#065f46', borderRadius: '50%' }} />
           <span>{ctrl.caption || 'Badge'}</span>
         </div>
       </div>
@@ -288,8 +374,18 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
 
   if (ctrl.type === 'Card') {
     return (
-      <div style={{ ...base, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ padding: '8px 12px', fontSize: 9, textTransform: 'uppercase', color: '#9ca3af', letterSpacing: '0.05em', fontWeight: 600 }}>
+      <div style={{
+        ...base,
+        background: ctrl.bg || '#ffffff',
+        color: ctrl.color || '#0f172a',
+        border: '1px solid #e2e8f0',
+        borderRadius: 8,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}>
+        <div style={{ padding: '8px 12px', fontSize: 9, textTransform: 'uppercase', color: ctrl.color || '#0f172a', letterSpacing: '0.05em', fontWeight: 600 }}>
           {ctrl.caption || 'Card Title'}
         </div>
         <div style={{ height: 1, background: '#e2e8f0' }} />

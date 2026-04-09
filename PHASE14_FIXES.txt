@@ -1,0 +1,219 @@
+NexBase - Phase 14 - Fix Copy Paste, Colors, Auto-save, Table Designer
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+Fix these specific issues:
+
+=== FIX 1 - AUTO-SAVE DEBOUNCE TOO SHORT ===
+
+The auto-save fires every 1 second which interrupts typing.
+Increase debounce to 3 seconds so user can type without interruption.
+
+Find the debounce/setTimeout for auto-save and change:
+setTimeout(..., 1000) → setTimeout(..., 3000)
+
+Also: auto-save must NOT trigger while user is actively typing in:
+- Property sheet inputs
+- Caption inputs
+- Any text input
+
+Only auto-save when:
+- Control is MOVED (mouseup after drag)
+- Control is RESIZED (mouseup after resize)
+- Control is ADDED (new control drawn)
+- Control is DELETED
+- Save Form button clicked (immediate save)
+
+Do NOT auto-save on every keystroke in property inputs.
+Property changes should only save when:
+- Input loses focus (onBlur)
+- User presses Enter
+- Save Form button clicked
+
+=== FIX 2 - COPY PASTE CONTROLS ===
+
+Add copy/paste for controls in the form designer.
+
+Add these keyboard shortcuts:
+
+Ctrl+C: Copy selected control
+- Store a deep copy of the selected control in a clipboardControl variable (useState)
+- Show brief "Copied!" indicator
+
+Ctrl+V: Paste copied control
+- Create new control from clipboardControl
+- Give it a new UUID: crypto.randomUUID()
+- Offset position by +20px x and +20px y from original
+- Add to controls array
+- Select the new control
+
+Ctrl+D: Duplicate (copy + paste in one step)
+- Same as Ctrl+C then Ctrl+V immediately
+
+Also add a right-click context menu on canvas controls:
+When user right-clicks a control show a small popup menu:
+- Copy
+- Paste (if clipboard has content)
+- Duplicate  
+- Delete
+- ─────
+- Bring to Front (increase z-index/display_order)
+- Send to Back (decrease z-index/display_order)
+
+Context menu is a div positioned at mouse coordinates.
+Clicking outside or pressing Escape closes it.
+
+=== FIX 3 - COLORS NOT APPLYING TO CONTROLS ===
+
+When user changes Back Color or Text Color in property sheet,
+the change must be visible immediately on the canvas.
+
+The issue: color picker changes props.bg and props.color but
+the control renderer is not reading these values.
+
+Fix the CtrlRender or control rendering function:
+Every control must read its colors from props:
+
+For ALL controls:
+- Background color: read from ctrl.props.bg (not hardcoded)
+- Text color: read from ctrl.props.color (not hardcoded)
+- Border radius: read from ctrl.props.radius (not hardcoded)
+- Font size: read from ctrl.props.fontSize (not hardcoded)
+- Bold: read from ctrl.props.bold (not hardcoded)
+
+For TextBox specifically:
+background: ctrl.props.bg || '#ffffff'
+color: ctrl.props.color || '#1e293b'
+border-radius: ctrl.props.radius || 8
+font-size: ctrl.props.fontSize || 14
+
+For Label specifically:
+color: ctrl.props.color || '#374151'
+font-size: ctrl.props.fontSize || 13
+font-weight: ctrl.props.bold ? 700 : 400
+background: ctrl.props.bg === 'transparent' ? 'transparent' : (ctrl.props.bg || 'transparent')
+
+For Heading:
+color: ctrl.props.color || '#0f172a'
+font-size: ctrl.props.fontSize || 20
+font-weight: 800
+
+For ComboBox:
+background: ctrl.props.bg || '#ffffff'
+color: ctrl.props.color || '#374151'
+
+For CheckBox:
+color: ctrl.props.color || '#374151'
+font-size: ctrl.props.fontSize || 13
+
+For DatePicker:
+background: ctrl.props.bg || '#ffffff'
+color: ctrl.props.color || '#374151'
+
+For NumberBox:
+background: ctrl.props.bg || '#ffffff'
+color: ctrl.props.color || '#374151'
+
+For Badge:
+background: ctrl.props.bg || '#d1fae5'
+color: ctrl.props.color || '#065f46'
+
+For Card:
+background: ctrl.props.bg || '#ffffff'
+color: ctrl.props.color || '#0f172a'
+
+Make sure property sheet color inputs:
+- type="color" for color picker
+- value={ctrl.props.bg || '#ffffff'} for back color
+- value={ctrl.props.color || '#1e293b'} for text color
+- onChange immediately updates ctrl.props in controls state
+
+=== FIX 4 - TABLE DESIGNER NOT OPENING ===
+
+When clicking a table in left nav pane it shows "table - test" blank screen.
+The table designer is not loading properly.
+
+Find where table tabs are opened (in the tab manager or studio page).
+When a table is clicked in nav pane:
+
+1. Set activeTab to the table
+2. Load the table definition from Supabase:
+   SELECT * FROM workspace_tables WHERE id = tableId
+3. Parse the fields JSONB array
+4. Show the table designer with those fields loaded in the grid
+
+The table designer must show:
+- Field grid with all saved fields
+- Each field row: Name | Data Type | Description
+- Field properties panel at bottom
+- Save Table button
+- + Add Field button
+
+Make sure when clicking "test" table in nav pane it opens 
+the actual table designer with the test table's fields.
+
+=== FIX 5 - DUPLICATE TAB PREVENTION ===
+
+In image 4: two "test" tabs are open at the same time.
+When clicking a form/table that is already open in a tab,
+just switch to that existing tab instead of opening a new one.
+
+Check: if tabs array already has a tab with this object id,
+just setActiveTab to that existing tab index.
+Do NOT create duplicate tabs.
+
+=== FIX 6 - PROPERTY SHEET CAPTION EDITING ===
+
+When user types in the Caption field in property sheet:
+- Update ctrl.props.caption immediately in controls state
+- This updates the control on canvas in real time
+- Do NOT auto-save to Supabase on every keystroke
+- Only save when user clicks Save Form or control loses focus
+
+Same for all other text inputs in property sheet:
+- Update local state immediately (instant preview)
+- Save to Supabase only on blur or Save button
+
+=== FIX 7 - FORM VIEW COLORS ===
+
+In Form View (preview mode) controls must also show 
+their correct colors from props.
+
+The Form View renders controls as interactive elements.
+Make sure it also reads props.bg, props.color, props.fontSize etc.
+
+TextBox in form view:
+<input 
+  style={{
+    background: ctrl.props.bg || '#fff',
+    color: ctrl.props.color || '#1e293b',
+    borderRadius: ctrl.props.radius || 8,
+    fontSize: ctrl.props.fontSize || 14,
+    border: '1px solid #e2e8f0',
+    padding: '8px 12px',
+    width: '100%',
+    height: '100%'
+  }}
+/>
+
+Button in form view:
+<button
+  style={{
+    background: ctrl.props.bg || '#4f46e5',
+    color: ctrl.props.color || '#ffffff',
+    borderRadius: ctrl.props.radius || 8,
+    fontSize: ctrl.props.fontSize || 14,
+    fontWeight: ctrl.props.bold ? 700 : 400,
+    width: '100%',
+    height: '100%',
+    border: 'none',
+    cursor: 'pointer'
+  }}
+/>
+
+=== AFTER ALL DONE ===
+
+npm run build
+git add -A
+git commit -m "Phase 14 Fix copy paste, colors, auto-save timing, table designer"
+git push origin main

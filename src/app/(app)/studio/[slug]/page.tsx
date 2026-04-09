@@ -718,7 +718,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     }
   }
 
-  // FIX 1: Auto-save with debounce
+  // FIX 1: Auto-save with debounce (3 seconds to avoid interrupting typing)
   function triggerAutoSave() {
     setSaveStatus('unsaved')
     if (saveTimeout.current) {
@@ -726,7 +726,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     }
     saveTimeout.current = setTimeout(() => {
       saveAllControls()
-    }, 1000)
+    }, 3000)
   }
 
   async function saveFormProps(props: any) {
@@ -865,7 +865,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   function updateControlProp(controlId: string, propName: string, value: any) {
     const updated = controls.map(c => c.id === controlId ? { ...c, props: { ...c.props, [propName]: value } } : c)
     addControlToHistory(updated)
-    triggerAutoSave()
+    // Don't auto-save on property changes - only save on blur or manual save
   }
 
   function updateControlGeometry(controlId: string, updates: Partial<Control>) {
