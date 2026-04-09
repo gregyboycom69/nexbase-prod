@@ -371,7 +371,33 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   const [ghostRect, setGhostRect] = useState<any>(null)
   const [currentSection, setCurrentSection] = useState<'header' | 'detail' | 'footer'>('detail')
 
+  // BUG 1 FIX: Save controls before switching to new form
+  const previousPageId = useRef<string | null>(null)
+
   useEffect(() => {
+    // If pageId changed and we have a previous page, save those controls first
+    if (previousPageId.current && previousPageId.current !== pageId && controls.length > 0) {
+      console.log('🔄 Switching forms - saving controls for:', previousPageId.current)
+      // Save controls for the PREVIOUS page
+      controls.forEach(async (control) => {
+        await supabase.from('controls').upsert({
+          id: control.id,
+          page_id: previousPageId.current,
+          type: control.type,
+          x: control.x,
+          y: control.y,
+          w: control.w,
+          h: control.h,
+          section: control.section,
+          props: control.props,
+        })
+      })
+    }
+
+    // Update the previous page id
+    previousPageId.current = pageId
+
+    // Load new form data
     loadFormData()
   }, [pageId])
 
@@ -419,6 +445,22 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
         defaultView: page.default_view || 'single',
         formType: page.form_type || 'regular',
       })
+
+      // BUG 2 & 3 FIX: Load table fields if record source is already set
+      if (page.record_source && workspace) {
+        console.log('🔍 Loading existing record source fields:', page.record_source)
+        const { data: tableData } = await supabase
+          .from('workspace_tables')
+          .select('*')
+          .eq('workspace_id', workspace.id)
+          .eq('name', page.record_source)
+          .single()
+
+        if (tableData && tableData.fields) {
+          console.log('✅ Loaded fields:', tableData.fields)
+          setRecordSourceFields(tableData.fields)
+        }
+      }
     }
 
     const { data: controlsData } = await supabase.from('controls').select('*').eq('page_id', pageId).order('created_at')
@@ -467,8 +509,38 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     setTimeout(() => setSaveStatus('saved'), 500)
   }
 
+  // BUG 1 FIX: Save all controls before switching forms
+  async function saveAllControls() {
+    console.log('💾 Saving all controls before switch...', controls.length)
+    setSaveStatus('saving')
+
+    for (const control of controls) {
+      await supabase.from('controls').upsert({
+        id: control.id,
+        page_id: pageId,
+        type: control.type,
+        x: control.x,
+        y: control.y,
+        w: control.w,
+        h: control.h,
+        section: control.section,
+        props: control.props,
+      })
+    }
+
+    console.log('✅ All controls saved')
+    setSaveStatus('saved')
+  }
+
   async function saveFormProps(props: any) {
     console.log('💾 Saving form props:', props)
+
+    // BUG 2 FIX: Fetch workspace_tables from Supabase if not already loaded
+    if (!workspace) {
+      console.error('❌ Workspace not loaded')
+      return
+    }
+
     const { error } = await supabase.from('pages').update({
       record_source: props.recordSource,
       allow_edits: props.allowEdits,
@@ -483,12 +555,27 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
       console.error('❌ Error saving form props:', error)
     } else {
       console.log('✅ Form props saved successfully')
-      // BUG 2 FIX: After saving record source, fetch table fields
+
+      // BUG 2 & 3 FIX: After saving record source, fetch table and its fields from Supabase
       if (props.recordSource) {
-        const table = tables.find((t: any) => t.name === props.recordSource)
-        if (table && table.fields) {
-          console.log('📋 Loading fields from table:', table.name, table.fields)
-          setRecordSourceFields(table.fields)
+        console.log('🔍 Fetching table fields for:', props.recordSource)
+
+        // Fetch the table from workspace_tables
+        const { data: tableData, error: tableError } = await supabase
+          .from('workspace_tables')
+          .select('*')
+          .eq('workspace_id', workspace.id)
+          .eq('name', props.recordSource)
+          .single()
+
+        if (tableError) {
+          console.error('❌ Error fetching table:', tableError)
+        } else if (tableData && tableData.fields) {
+          console.log('✅ Loaded fields from Supabase:', tableData.fields)
+          setRecordSourceFields(tableData.fields)
+        } else {
+          console.warn('⚠️ Table has no fields:', props.recordSource)
+          setRecordSourceFields([])
         }
       } else {
         setRecordSourceFields([])
@@ -497,7 +584,11 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   }
 
   function handleCanvasMouseDown(e: React.MouseEvent, section: 'header' | 'detail' | 'footer') {
-    if (activeTool === 'Select') return
+    // BUG 3 FIX: Clicking canvas background deselects control to show form properties
+    if (activeTool === 'Select') {
+      setSelectedControlId(null)
+      return
+    }
 
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left
