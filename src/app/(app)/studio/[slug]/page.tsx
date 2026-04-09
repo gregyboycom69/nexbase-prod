@@ -868,6 +868,28 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     // Don't auto-save on property changes - only save on blur or manual save
   }
 
+  // Save single control to Supabase (called on blur)
+  async function saveSingleControl(controlId: string) {
+    const control = controls.find(c => c.id === controlId)
+    if (!control || !pageId) return
+
+    const index = controls.findIndex(c => c.id === controlId)
+
+    await supabase.from('controls').upsert({
+      id: control.id,
+      page_id: pageId,
+      type: control.type,
+      x: Math.round(control.x),
+      y: Math.round(control.y),
+      w: Math.round(control.w),
+      h: Math.round(control.h),
+      section: control.section || 'detail',
+      props: control.props || {},
+      macro_steps: control.props?.steps || [],
+      display_order: index,
+    }, { onConflict: 'id' })
+  }
+
   function updateControlGeometry(controlId: string, updates: Partial<Control>) {
     const updated = controls.map(c => c.id === controlId ? {
       ...c,
@@ -1255,6 +1277,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
               saveFormProps(updated)
             }}
             onDelete={deleteControl}
+            onSaveSingleControl={saveSingleControl}
           />
 
           {/* FIX 4: Context Menu */}
@@ -1429,7 +1452,7 @@ function ControlWrapper({ control, selected, onSelect, onUpdate, onContextMenu }
 }
 
 // FIX 5: Completely rebuilt Property Sheet Component
-function PropertySheet({ selectedControl, formProps, propertyTab, setPropertyTab, tables, queries, macros, recordSourceFields, onUpdateControlProp, onUpdateControlGeometry, onUpdateFormProp, onDelete }: any) {
+function PropertySheet({ selectedControl, formProps, propertyTab, setPropertyTab, tables, queries, macros, recordSourceFields, onUpdateControlProp, onUpdateControlGeometry, onUpdateFormProp, onDelete, onSaveSingleControl }: any) {
   const tabs = ['format', 'data', 'event', 'other', 'all'] as const
 
   return (
@@ -1461,6 +1484,7 @@ function PropertySheet({ selectedControl, formProps, propertyTab, setPropertyTab
             onUpdate={onUpdateControlProp}
             onUpdateGeometry={onUpdateControlGeometry}
             onDelete={onDelete}
+            onSave={() => onSaveSingleControl(selectedControl.id)}
           />
         ) : (
           <FormProperties
@@ -1478,24 +1502,24 @@ function PropertySheet({ selectedControl, formProps, propertyTab, setPropertyTab
 }
 
 // FIX 5: Completely rebuilt Control Properties (shows ALL properties for ALL controls)
-function ControlProperties({ control, tab, tables, queries, macros, recordSourceFields, onUpdate, onUpdateGeometry, onDelete }: any) {
+function ControlProperties({ control, tab, tables, queries, macros, recordSourceFields, onUpdate, onUpdateGeometry, onDelete, onSave }: any) {
   const props = control.props || {}
 
-  // FIX 5: Property Row Component
-  function PropRow({ label, value, onChange, type = 'text', options = [] }: any) {
+  // FIX 5: Property Row Component (with onBlur to save on focus loss)
+  function PropRow({ label, value, onChange, type = 'text', options = [], onBlur }: any) {
     return (
       <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: '1px solid #252840', minHeight: 24, alignItems: 'center', padding: '0 8px' }}>
         <span style={{ fontSize: 11, color: '#8890b8', fontFamily: "'JetBrains Mono', monospace" }}>{label}</span>
         {type === 'select' ? (
-          <select value={value} onChange={(e) => onChange(e.target.value)} style={{ background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px', cursor: 'pointer' }}>
+          <select value={value} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px', cursor: 'pointer' }}>
             {options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
           </select>
         ) : type === 'color' ? (
-          <input type="color" value={value || '#ffffff'} onChange={(e) => onChange(e.target.value)} style={{ width: '100%', height: 20, background: '#0f1117', border: 'none' }} />
+          <input type="color" value={value || '#ffffff'} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ width: '100%', height: 20, background: '#0f1117', border: 'none' }} />
         ) : type === 'number' ? (
-          <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} style={{ background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px' }} />
+          <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} onBlur={onBlur} style={{ background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px' }} />
         ) : (
-          <input type="text" value={value || ''} onChange={(e) => onChange(e.target.value)} style={{ background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px' }} />
+          <input type="text" value={value || ''} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px' }} />
         )}
       </div>
     )
@@ -1505,17 +1529,17 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
   if (tab === 'format' || tab === 'all') {
     return (
       <>
-        <PropRow label="Caption" value={props.caption} onChange={(v: string) => onUpdate(control.id, 'caption', v)} />
-        <PropRow label="Width" value={control.w} onChange={(v: number) => onUpdateGeometry(control.id, { w: v })} type="number" />
-        <PropRow label="Height" value={control.h} onChange={(v: number) => onUpdateGeometry(control.id, { h: v })} type="number" />
-        <PropRow label="Left (X)" value={control.x} onChange={(v: number) => onUpdateGeometry(control.id, { x: v })} type="number" />
-        <PropRow label="Top (Y)" value={control.y} onChange={(v: number) => onUpdateGeometry(control.id, { y: v })} type="number" />
-        <PropRow label="Font Size" value={props.fontSize || 13} onChange={(v: number) => onUpdate(control.id, 'fontSize', v)} type="number" />
-        <PropRow label="Bold" value={props.fontWeight === 'bold' ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'fontWeight', v === 'Yes' ? 'bold' : 'normal')} type="select" options={['Yes', 'No']} />
-        <PropRow label="Back Color" value={props.bg} onChange={(v: string) => onUpdate(control.id, 'bg', v)} type="color" />
-        <PropRow label="Text Color" value={props.color} onChange={(v: string) => onUpdate(control.id, 'color', v)} type="color" />
-        <PropRow label="Border Radius" value={props.radius || 0} onChange={(v: number) => onUpdate(control.id, 'radius', v)} type="number" />
-        <PropRow label="Visible" value={props.visible !== false ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'visible', v === 'Yes')} type="select" options={['Yes', 'No']} />
+        <PropRow label="Caption" value={props.caption} onChange={(v: string) => onUpdate(control.id, 'caption', v)} onBlur={onSave} />
+        <PropRow label="Width" value={control.w} onChange={(v: number) => onUpdateGeometry(control.id, { w: v })} type="number" onBlur={onSave} />
+        <PropRow label="Height" value={control.h} onChange={(v: number) => onUpdateGeometry(control.id, { h: v })} type="number" onBlur={onSave} />
+        <PropRow label="Left (X)" value={control.x} onChange={(v: number) => onUpdateGeometry(control.id, { x: v })} type="number" onBlur={onSave} />
+        <PropRow label="Top (Y)" value={control.y} onChange={(v: number) => onUpdateGeometry(control.id, { y: v })} type="number" onBlur={onSave} />
+        <PropRow label="Font Size" value={props.fontSize || 13} onChange={(v: number) => onUpdate(control.id, 'fontSize', v)} type="number" onBlur={onSave} />
+        <PropRow label="Bold" value={props.fontWeight === 'bold' ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'fontWeight', v === 'Yes' ? 'bold' : 'normal')} type="select" options={['Yes', 'No']} onBlur={onSave} />
+        <PropRow label="Back Color" value={props.bg} onChange={(v: string) => onUpdate(control.id, 'bg', v)} type="color" onBlur={onSave} />
+        <PropRow label="Text Color" value={props.color} onChange={(v: string) => onUpdate(control.id, 'color', v)} type="color" onBlur={onSave} />
+        <PropRow label="Border Radius" value={props.radius || 0} onChange={(v: number) => onUpdate(control.id, 'radius', v)} type="number" onBlur={onSave} />
+        <PropRow label="Visible" value={props.visible !== false ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'visible', v === 'Yes')} type="select" options={['Yes', 'No']} onBlur={onSave} />
 
         <div style={{ padding: 8, marginTop: 8 }}>
           <button onClick={onDelete} style={{ width: '100%', padding: '6px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
@@ -1530,10 +1554,10 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
   if (tab === 'data' || tab === 'all') {
     return (
       <>
-        <PropRow label="Control Source" value={props.controlSource || ''} onChange={(v: string) => onUpdate(control.id, 'controlSource', v)} type="select" options={['', ...recordSourceFields.map((f: any) => f.name)]} />
-        <PropRow label="Default Value" value={props.defaultValue || ''} onChange={(v: string) => onUpdate(control.id, 'defaultValue', v)} />
-        <PropRow label="Enabled" value={props.enabled !== false ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'enabled', v === 'Yes')} type="select" options={['Yes', 'No']} />
-        <PropRow label="Locked" value={props.locked === true ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'locked', v === 'Yes')} type="select" options={['Yes', 'No']} />
+        <PropRow label="Control Source" value={props.controlSource || ''} onChange={(v: string) => onUpdate(control.id, 'controlSource', v)} type="select" options={['', ...recordSourceFields.map((f: any) => f.name)]} onBlur={onSave} />
+        <PropRow label="Default Value" value={props.defaultValue || ''} onChange={(v: string) => onUpdate(control.id, 'defaultValue', v)} onBlur={onSave} />
+        <PropRow label="Enabled" value={props.enabled !== false ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'enabled', v === 'Yes')} type="select" options={['Yes', 'No']} onBlur={onSave} />
+        <PropRow label="Locked" value={props.locked === true ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'locked', v === 'Yes')} type="select" options={['Yes', 'No']} onBlur={onSave} />
       </>
     )
   }
@@ -1542,11 +1566,11 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
   if (tab === 'event' || tab === 'all') {
     return (
       <>
-        <PropRow label="On Click" value={props.onClickMacro || ''} onChange={(v: string) => onUpdate(control.id, 'onClickMacro', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
-        <PropRow label="Before Update" value={props.beforeUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'beforeUpdate', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
-        <PropRow label="After Update" value={props.afterUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'afterUpdate', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
-        <PropRow label="On Got Focus" value={props.onGotFocus || ''} onChange={(v: string) => onUpdate(control.id, 'onGotFocus', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
-        <PropRow label="On Lost Focus" value={props.onLostFocus || ''} onChange={(v: string) => onUpdate(control.id, 'onLostFocus', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
+        <PropRow label="On Click" value={props.onClickMacro || ''} onChange={(v: string) => onUpdate(control.id, 'onClickMacro', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} onBlur={onSave} />
+        <PropRow label="Before Update" value={props.beforeUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'beforeUpdate', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} onBlur={onSave} />
+        <PropRow label="After Update" value={props.afterUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'afterUpdate', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} onBlur={onSave} />
+        <PropRow label="On Got Focus" value={props.onGotFocus || ''} onChange={(v: string) => onUpdate(control.id, 'onGotFocus', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} onBlur={onSave} />
+        <PropRow label="On Lost Focus" value={props.onLostFocus || ''} onChange={(v: string) => onUpdate(control.id, 'onLostFocus', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} onBlur={onSave} />
       </>
     )
   }
@@ -1555,7 +1579,7 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
   if (tab === 'other' || tab === 'all') {
     return (
       <>
-        <PropRow label="Name" value={props.name || control.type + control.id.slice(-4)} onChange={(v: string) => onUpdate(control.id, 'name', v)} />
+        <PropRow label="Name" value={props.name || control.type + control.id.slice(-4)} onChange={(v: string) => onUpdate(control.id, 'name', v)} onBlur={onSave} />
         <PropRow label="ControlTip" value={props.tooltip || ''} onChange={(v: string) => onUpdate(control.id, 'tooltip', v)} />
         <PropRow label="Tab Stop" value={props.tabStop !== false ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'tabStop', v === 'Yes')} type="select" options={['Yes', 'No']} />
         <PropRow label="Tab Index" value={props.tabIndex || 0} onChange={(v: number) => onUpdate(control.id, 'tabIndex', v)} type="number" />
@@ -1685,38 +1709,54 @@ function FormView({ controls, formProps, formData, setFormData, records, current
     }
   }
 
+  // Calculate canvas dimensions from controls
+  const canvasWidth = controls.length > 0
+    ? Math.max(...controls.map((c: Control) => c.x + c.w), 600) + 40
+    : 600
+  const canvasHeight = controls.length > 0
+    ? Math.max(...controls.map((c: Control) => c.y + c.h), 500) + 40
+    : 500
+
   return (
     <div style={{ flex: 1, background: '#f3f4f6', overflow: 'auto', padding: 40 }}>
-      <div style={{ maxWidth: 800, margin: '0 auto', background: '#fff', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: 40 }}>
-        {controls.filter((c: Control) => c.section === 'header').map((ctrl: Control) => (
-          <div key={ctrl.id} style={{ marginBottom: 16 }}>
+      {/* Form canvas with exact same positioning as design view */}
+      <div style={{
+        width: canvasWidth,
+        height: canvasHeight,
+        margin: '0 auto',
+        background: '#fff',
+        borderRadius: 8,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        position: 'relative'
+      }}>
+        {/* Render all controls at exact same x, y, w, h as design view */}
+        {controls.map((ctrl: Control) => (
+          <div
+            key={ctrl.id}
+            style={{
+              position: 'absolute',
+              left: ctrl.x,
+              top: ctrl.y,
+              width: ctrl.w,
+              height: ctrl.h,
+            }}
+          >
             <RenderLiveControl ctrl={ctrl} formData={formData} onChange={handleInputChange} onSave={handleSave} />
           </div>
         ))}
-
-        {controls.filter((c: Control) => c.section === 'detail').map((ctrl: Control) => (
-          <div key={ctrl.id} style={{ marginBottom: 16 }}>
-            <RenderLiveControl ctrl={ctrl} formData={formData} onChange={handleInputChange} onSave={handleSave} />
-          </div>
-        ))}
-
-        {controls.filter((c: Control) => c.section === 'footer').map((ctrl: Control) => (
-          <div key={ctrl.id} style={{ marginTop: 24 }}>
-            <RenderLiveControl ctrl={ctrl} formData={formData} onChange={handleInputChange} onSave={handleSave} />
-          </div>
-        ))}
-
-        {formProps.recordSource && formProps.navigationButtons && (
-          <div style={{ marginTop: 32, paddingTop: 16, borderTop: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-            <button onClick={() => handleNavigation('first')} style={{ padding: '6px 12px', background: '#252840', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>|◀</button>
-            <button onClick={() => handleNavigation('prev')} style={{ padding: '6px 12px', background: '#252840', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>◀</button>
-            <span style={{ fontSize: 12, color: '#6b7280' }}>Record {currentRecordIndex + 1} of {records.length}</span>
-            <button onClick={() => handleNavigation('next')} style={{ padding: '6px 12px', background: '#252840', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>▶</button>
-            <button onClick={() => handleNavigation('last')} style={{ padding: '6px 12px', background: '#252840', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>▶|</button>
-            <button onClick={() => handleNavigation('new')} style={{ padding: '6px 12px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', marginLeft: 8 }}>+ New</button>
-          </div>
-        )}
       </div>
+
+      {/* Navigation buttons below the form */}
+      {formProps.recordSource && formProps.navigationButtons && (
+        <div style={{ maxWidth: canvasWidth, margin: '20px auto 0', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', background: '#fff', padding: '12px 20px', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+          <button onClick={() => handleNavigation('first')} style={{ padding: '6px 12px', background: '#252840', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>|◀</button>
+          <button onClick={() => handleNavigation('prev')} style={{ padding: '6px 12px', background: '#252840', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>◀</button>
+          <span style={{ fontSize: 12, color: '#6b7280' }}>Record {currentRecordIndex + 1} of {records.length}</span>
+          <button onClick={() => handleNavigation('next')} style={{ padding: '6px 12px', background: '#252840', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>▶</button>
+          <button onClick={() => handleNavigation('last')} style={{ padding: '6px 12px', background: '#252840', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>▶|</button>
+          <button onClick={() => handleNavigation('new')} style={{ padding: '6px 12px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', marginLeft: 8 }}>+ New</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -1726,8 +1766,37 @@ function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
   const props = ctrl.props || {}
   const value = props.controlSource ? formData[props.controlSource] : (formData[ctrl.id] || props.value || '')
 
-  if (ctrl.type === 'Label' || ctrl.type === 'Heading') {
-    return <div style={{ fontSize: props.fontSize || 13, fontWeight: props.fontWeight || 'normal', color: props.color || '#000' }}>{props.caption}</div>
+  if (ctrl.type === 'Label') {
+    return (
+      <div style={{
+        fontSize: props.fontSize || 13,
+        fontWeight: props.bold ? 700 : 400,
+        color: props.color || '#374151',
+        background: props.bg === 'transparent' || !props.bg ? 'transparent' : props.bg,
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center'
+      }}>
+        {props.caption || 'Label'}
+      </div>
+    )
+  }
+
+  if (ctrl.type === 'Heading') {
+    return (
+      <div style={{
+        fontSize: props.fontSize || 20,
+        fontWeight: 800,
+        color: props.color || '#0f172a',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center'
+      }}>
+        {props.caption || 'Heading'}
+      </div>
+    )
   }
 
   if (ctrl.type === 'TextBox') {
@@ -1739,12 +1808,15 @@ function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
         placeholder={props.placeholder}
         style={{
           width: '100%',
-          padding: '8px 12px',
-          border: '1px solid #d1d5db',
-          borderRadius: 4,
-          fontSize: props.fontSize || 13,
-          color: props.color,
-          background: props.bg,
+          height: '100%',
+          padding: '0 12px',
+          border: '1px solid #e2e8f0',
+          borderRadius: props.radius !== undefined ? props.radius : 8,
+          fontSize: props.fontSize || 14,
+          color: props.color || '#1e293b',
+          background: props.bg || '#ffffff',
+          outline: 'none',
+          boxSizing: 'border-box'
         }}
       />
     )
@@ -1758,15 +1830,18 @@ function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
         onChange={(e) => onChange(props.controlSource || ctrl.id, e.target.value)}
         style={{
           width: '100%',
-          padding: '8px 12px',
-          border: '1px solid #d1d5db',
+          height: '100%',
+          padding: '0 12px',
+          border: '1px solid #e2e8f0',
           borderRadius: 4,
           fontSize: props.fontSize || 13,
-          color: props.color,
-          background: props.bg,
+          color: props.color || '#374151',
+          background: props.bg || '#ffffff',
+          cursor: 'pointer',
+          boxSizing: 'border-box'
         }}
       >
-        <option value="">{props.placeholder}</option>
+        <option value="">{props.placeholder || 'Select...'}</option>
         {options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
       </select>
     )
@@ -1774,13 +1849,22 @@ function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
 
   if (ctrl.type === 'CheckBox') {
     return (
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+      <label style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        cursor: 'pointer',
+        width: '100%',
+        height: '100%',
+        fontSize: props.fontSize || 13,
+        color: props.color || '#374151'
+      }}>
         <input
           type="checkbox"
           checked={!!value}
           onChange={(e) => onChange(props.controlSource || ctrl.id, e.target.checked)}
         />
-        <span style={{ fontSize: props.fontSize || 13 }}>{props.caption}</span>
+        <span>{props.caption || 'CheckBox'}</span>
       </label>
     )
   }
@@ -1793,10 +1877,14 @@ function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
         onChange={(e) => onChange(props.controlSource || ctrl.id, e.target.value)}
         style={{
           width: '100%',
-          padding: '8px 12px',
-          border: '1px solid #d1d5db',
+          height: '100%',
+          padding: '0 12px',
+          border: '1px solid #e2e8f0',
           borderRadius: 4,
           fontSize: props.fontSize || 13,
+          color: props.color || '#374151',
+          background: props.bg || '#ffffff',
+          boxSizing: 'border-box'
         }}
       />
     )
@@ -1813,10 +1901,14 @@ function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
         step={props.step}
         style={{
           width: '100%',
-          padding: '8px 12px',
-          border: '1px solid #d1d5db',
+          height: '100%',
+          padding: '0 12px',
+          border: '1px solid #e2e8f0',
           borderRadius: 4,
           fontSize: props.fontSize || 13,
+          color: props.color || '#374151',
+          background: props.bg || '#ffffff',
+          boxSizing: 'border-box'
         }}
       />
     )
@@ -1827,13 +1919,14 @@ function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
       <button
         onClick={props.caption?.toLowerCase() === 'save' ? onSave : undefined}
         style={{
-          padding: '8px 16px',
-          background: props.bg || '#6366f1',
-          color: props.color || '#fff',
+          width: '100%',
+          height: '100%',
+          background: props.bg || '#4f46e5',
+          color: props.color || '#ffffff',
           border: 'none',
-          borderRadius: props.borderRadius || props.radius || 4,
-          fontSize: props.fontSize || 13,
-          fontWeight: 600,
+          borderRadius: props.radius !== undefined ? props.radius : 8,
+          fontSize: props.fontSize || 14,
+          fontWeight: props.bold ? 700 : 400,
           cursor: 'pointer',
         }}
       >
