@@ -1,0 +1,525 @@
+NexBase - Phase 11 - Form Designer (MS Access Style)
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+Tables are working. Now build the Form Designer exactly like MS Access Form Design View.
+
+=== OVERVIEW ===
+
+The form designer at /studio/[slug] must work like MS Access:
+- Left: Toolbox with all control types
+- Center: Canvas with 3 sections (Form Header, Detail, Form Footer)
+- Right: Property Sheet (Format/Data/Event/Other/All tabs)
+- Top: Toolbar with View toggle, Save, Field List, etc
+
+=== LAYOUT ===
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ TOOLBAR: [←] [ggg] [All|Tables|Queries|Forms|Macros] [Save][Preview]│
+├─────────────┬──────────────────────────────────┬────────────────────┤
+│             │  [Design][Form View][Datasheet]   │                    │
+│  TOOLBOX    │  [Field List] [Save] [Publish]    │  PROPERTY SHEET    │
+│  (72px)     │                                   │  (240px)           │
+│             │  ┌─────────────────────────────┐  │                    │
+│  BASIC      │  │ ▼ Form Header               │  │  Property Sheet    │
+│  [Select]   │  │                             │  │  Selection: Form   │
+│  [Label]    │  ├─────────────────────────────┤  │                    │
+│  [Heading]  │  │ ▼ Detail                    │  │  Format Data       │
+│  [TextBox]  │  │                             │  │  Event  Other  All │
+│  [Button]   │  │  [controls placed here]     │  │                    │
+│             │  │                             │  │  [property rows]   │
+│  INPUTS     │  ├─────────────────────────────┤  │                    │
+│  [Combo]    │  │ ▼ Form Footer               │  │                    │
+│  [Check]    │  │                             │  │                    │
+│  [Date]     │  └─────────────────────────────┘  │                    │
+│  [Number]   │                                   │                    │
+│  [Lookup]   │                                   │                    │
+│             │                                   │                    │
+│  DATA       │                                   │                    │
+│  [Table]    │                                   │                    │
+│  [Chart]    │                                   │                    │
+│  [Subform]  │                                   │                    │
+│             │                                   │                    │
+│  LAYOUT     │                                   │                    │
+│  [Card]     │                                   │                    │
+│  [Tabs]     │                                   │                    │
+│  [Modal]    │                                   │                    │
+│  [Divider]  │                                   │                    │
+│  [Progress] │                                   │                    │
+│  [NavBtns]  │                                   │                    │
+│  [Badge]    │                                   │                    │
+│  [Image]    │                                   │                    │
+└─────────────┴──────────────────────────────────┴────────────────────┘
+
+=== TOP TOOLBAR ===
+
+Left:
+- Back arrow → goes to /workspace/[slug]
+- Workspace name
+
+Center tabs:
+- All | Tables | Queries | Forms | Macros
+
+Right controls:
+- View buttons: [Design View] [Form View] [Datasheet] 
+- Field List toggle button
+- Save button (Ctrl+S)
+- Published/Draft status indicator
+- Publish button
+
+=== FORM SECTIONS (Canvas) ===
+
+The canvas has 3 sections separated by draggable gray bars:
+
+FORM HEADER section:
+- Gray bar with "▼ Form Header" label
+- Blue-tinted background (#f0f4ff)
+- Default height: 60px
+- For logos, titles, banners
+
+DETAIL section:
+- Gray bar with "▼ Detail" label  
+- White background with dot grid
+- Default height: 400px
+- Most controls go here
+
+FORM FOOTER section:
+- Gray bar with "▼ Form Footer" label
+- Blue-tinted background (#f0f4ff)
+- Default height: 60px
+- For navigation buttons, save buttons
+
+Dragging the gray bars resizes sections.
+
+Controls are placed by absolute position within their section.
+Each control stores which section it belongs to (header/detail/footer).
+
+=== TOOLBOX (Left 72px) ===
+
+Dark background #1e2035.
+Controls grouped with small section headers.
+
+BASIC group:
+- Select (↖ arrow icon)
+- Label (Aa)
+- Heading (H)
+- TextBox (⬜)
+- Button (⬡)
+
+INPUTS group:
+- ComboBox (▾)
+- CheckBox (☑)
+- DatePicker (📅)
+- NumberBox (#)
+- Lookup (🔍)
+
+DATA group:
+- DataTable (⊞)
+- Chart (📊)
+- Subform (▭▭)
+
+LAYOUT group:
+- Card (▭)
+- TabPanel (⬜⬜)
+- Modal (💬)
+- Divider (—)
+- ProgressBar (▬)
+- NavigationButtons (◀▶)
+- Badge (◉)
+- Image (🖼)
+- StatusBar (▬)
+
+Click a tool then draw on canvas to place control.
+Active tool highlighted with indigo border.
+Cursor changes to crosshair when non-select tool active.
+
+=== DRAG AND DRAW ===
+
+Same working drag-draw from the previous canvas:
+
+1. Click tool in toolbox → sets activeTool
+2. Mouse down on canvas → start drawing ghost rect
+3. Mouse move → update ghost rect (dashed indigo border)
+4. Mouse up → create control at that position and size
+
+Use useRef for isDrawing, drawStart.
+Use window.addEventListener for mousemove and mouseup.
+Ghost rect shows while drawing.
+Control created on mouseup if size > 10px.
+
+For moving: mousedown on control body → drag to new position.
+For resizing: 8 handles on selected control → drag to resize.
+
+Controls store x, y, w, h and section (header/detail/footer).
+x and y are relative to their section top.
+
+=== CONTROL RENDERING IN DESIGN VIEW ===
+
+Each control type renders visually like the real thing:
+
+Label: transparent bg, just text. Not a box.
+Heading: large bold text, transparent bg.
+
+TextBox: 
+- White bg, thin gray border
+- Thin indigo left accent line (3px left border)
+- Placeholder text in gray: "Type here..." or fieldKey name
+- If controlSource set: show field name in italics as placeholder
+
+Button:
+- Colored bg (props.bg default #4f46e5)
+- White text, rounded corners
+- Caption centered
+- Subtle shadow
+
+ComboBox:
+- White bg, gray border
+- Placeholder text left
+- ▾ dropdown arrow on right in gray box
+
+CheckBox:
+- Small square (18x18) with border
+- Label text to the right
+- Square shows checkmark if checked
+
+DatePicker:
+- White bg, border
+- 📅 icon on left (14px)
+- "DD/MM/YYYY" gray placeholder text
+- Small calendar button on right
+
+NumberBox:
+- White bg, border
+- "0" right-aligned
+- ▲ ▼ spinner arrows stacked on right (each 50% height)
+
+DataTable:
+- Indigo header row with column names
+- 3 alternating gray/white sample rows
+- Thin borders between cells
+- Small "Table" label top-left
+
+Chart:
+- 5 bars of different heights in indigo shades
+- X axis line at bottom
+- Chart title at top from props.caption
+
+Modal:
+- Indigo title bar with X button
+- White content area
+- "Modal content" gray text
+- Footer with OK + Cancel buttons
+- Slight shadow effect
+
+TabPanel:
+- Tab buttons row at top (Tab 1 active in indigo)
+- White content area below
+- "Tab content" gray text
+
+Badge:
+- Pill shape, colored bg
+- Small dot + text centered
+
+Card:
+- White bg, rounded corners, subtle shadow
+- Title text top-left in small caps
+- Divider line below title
+
+ProgressBar:
+- Full width gray track
+- Indigo filled portion (65% default)
+- "65%" text on right
+
+NavigationButtons:
+- Row: |◀ ◀ [1] ▶ ▶| ✚
+- Gray bg, borders between buttons
+
+StatusBar:
+- Gray bg full width
+- "Ready" + green dot left
+- "Record 1 of 5" center
+
+Divider:
+- Horizontal line, full width
+
+Image:
+- Gray bg, dashed border
+- 🖼 icon centered
+- "Image" text below
+
+Subform:
+- Dashed border
+- "Subform" label top
+- Mini grid inside (3 cols, 3 rows)
+
+=== PROPERTY SHEET (Right 240px) ===
+
+Dark theme:
+Background: #1a1d2e
+Header "Property Sheet": #252840 bg, #e2e8f0 text, 13px bold
+"Selection type: [type]": #252840 bg, #8890b8 text, 11px
+Control name input: #0f1117 bg, #c8d0f0 text, full width, 11px
+
+5 Tab buttons: Format | Data | Event | Other | All
+Active tab: #6366f1 bg, white text
+Inactive: #252840 bg, #7480a8 text
+
+Property rows:
+display: grid
+grid-template-columns: 130px 1fr
+border-bottom: 1px solid #252840
+padding: 3px 8px
+height: 24px
+
+Property label: #8890b8, 11px, font: JetBrains Mono
+Property value: #0f1117 bg, #c8d0f0 text, 11px, no visible border
+
+Inputs: 
+- text/number: background #0f1117, color #c8d0f0, border none, 11px, width 100%
+- select/dropdown: same colors, cursor pointer
+- color: small 16x16 swatch + hex text input
+
+Section headers inside tab (e.g. "Position", "Appearance"):
+background: #252840, color: #6366f1, 9px, uppercase, padding 3px 8px
+
+WHEN NOTHING SELECTED (Form properties):
+Title: "Property Sheet"
+Selection type: Form
+
+FORMAT tab:
+Caption | Default View (Single Form/Continuous/Datasheet) | 
+Navigation Buttons (Yes/No) | Scroll Bars | Border Style | Auto Center
+
+DATA tab:
+Record Source: SELECT from workspace_tables + workspace_queries
+Filter | Order By | Allow Edits | Allow Additions | Allow Deletions
+
+EVENT tab:
+On Open | On Load | On Close | On Current | Before Insert | 
+After Insert | Before Update | After Update | Before Delete | On Error
+Each is a select showing workspace_macros names + "(none)"
+
+OTHER tab:
+Name | Moveable | Pop Up | Modal | Cycle
+
+WHEN TEXTBOX SELECTED:
+FORMAT tab:
+Width | Height | Left | Top | Back Color | Fore Color |
+Font Name | Font Size | Font Weight | Font Italic | Text Align | Visible
+
+DATA tab:
+Control Source: SELECT of fields from form's Record Source table
+If form has no Record Source: show "(Set Record Source on form first)"
+Default Value | Validation Rule | Validation Text | Enabled | Locked
+
+EVENT tab:
+Before Update | After Update | On Change | On Enter | On Exit |
+On Got Focus | On Lost Focus | On Click
+Each: select of workspace_macros + "(none)"
+
+OTHER tab:
+Name | Status Bar Text | Tab Stop | Tab Index | ControlTip Text
+
+WHEN BUTTON SELECTED:
+FORMAT tab: Caption | Width | Height | Back Color | Fore Color | Font Size | Visible
+
+DATA tab: Default (Yes/No) | Cancel (Yes/No)
+
+EVENT tab: 
+On Click: SELECT of workspace_macros names + "(none)" ← MOST IMPORTANT
+On Double Click | On Got Focus | On Lost Focus
+
+OTHER tab: Name | Status Bar Text | Tab Stop | Tab Index | ControlTip Text
+
+WHEN COMBOBOX SELECTED:
+FORMAT tab: Width | Height | Back Color | Fore Color | Font Size | Visible
+
+DATA tab:
+Control Source: SELECT of fields from Record Source
+Row Source Type: Table/Query | Value List
+Row Source: if Table/Query show table select, if Value List show text input
+Default Value | Enabled | Locked
+
+EVENT tab: Before Update | After Update | On Change | On Got Focus | On Lost Focus
+
+OTHER tab: Name | Auto Expand (Yes/No) | Tab Stop | Tab Index | ControlTip Text
+
+WHEN CHECKBOX SELECTED:
+FORMAT tab: Caption | Width | Height | Back Color | Fore Color | Visible
+
+DATA tab:
+Control Source: SELECT of Yes/No fields from Record Source
+Default Value (Yes/No) | Enabled | Locked
+
+EVENT tab: Before Update | After Update | On Click | On Got Focus | On Lost Focus
+
+OTHER tab: Name | Tab Stop | Tab Index | ControlTip Text
+
+WHEN DATEPICKER SELECTED:
+FORMAT tab: Width | Height | Back Color | Fore Color | Date Format | Show Calendar Button | Visible
+
+DATA tab:
+Control Source: SELECT of Date fields from Record Source
+Default Value | Min Date | Max Date | Enabled | Locked
+
+EVENT tab: Before Update | After Update | On Change | On Got Focus | On Lost Focus
+
+OTHER tab: Name | Tab Stop | Tab Index | ControlTip Text
+
+WHEN NUMBERBOX SELECTED:
+FORMAT tab: Width | Height | Back Color | Fore Color | Decimal Places | Show Spinner | Visible
+
+DATA tab:
+Control Source: SELECT of Number/Currency fields from Record Source
+Min Value | Max Value | Step | Default Value | Enabled | Locked
+
+EVENT tab: Before Update | After Update | On Change | On Got Focus | On Lost Focus
+
+OTHER tab: Name | Tab Stop | Tab Index | ControlTip Text
+
+WHEN DATATABLE SELECTED:
+FORMAT tab: Width | Height | Row Height | Grid Lines | Visible
+
+DATA tab:
+Record Source: SELECT of workspace_tables + workspace_queries
+Columns (comma separated field names, blank = all) |
+Allow Edits | Allow Additions | Allow Deletions |
+Filter | Order By
+
+EVENT tab: On Current | Before Insert | After Insert | Before Update | After Update | Before Delete
+
+OTHER tab: Name | Show Search | Show Export | Records Per Page
+
+WHEN SUBFORM SELECTED:
+FORMAT tab: Width | Height | Border Style | Visible
+
+DATA tab:
+Source Object: SELECT of all forms/pages in this workspace
+Link Master Fields: SELECT of fields from PARENT form Record Source
+Link Child Fields: SELECT of fields from SUBFORM form Record Source
+Enabled (Yes/No)
+
+OTHER tab: Name | Tag
+
+=== FIELD LIST PANEL ===
+
+"Field List" button in toolbar toggles a floating panel.
+
+Panel position: floating, top-right of canvas area.
+Can be dragged to move.
+Width: 180px.
+
+Content:
+If form has Record Source:
+  Title: "Field List"
+  Subtitle: "[table name]"
+  List of fields with type icons:
+  📝 name (Short Text)
+  💰 revenue (Currency)
+  📅 created_at (Date/Time)
+  etc.
+  
+  Drag a field onto canvas:
+  Creates Label + TextBox pair:
+  Label: caption from field.caption or field.name
+  TextBox: controlSource = field.name, placeholder = field.name
+  Both placed at drop location
+
+If no Record Source:
+  Shows: "Set Record Source in the Data tab first"
+  Blue info icon
+
+=== FORM VIEW (Preview) ===
+
+Design/Form View/Datasheet toggle buttons in toolbar.
+
+When Form View clicked:
+- Hide toolbox
+- Hide property sheet
+- Show form taking full width
+- Controls become interactive:
+  TextBox → real <input>
+  ComboBox → real <select>
+  CheckBox → clickable
+  DatePicker → <input type="date">
+  NumberBox → <input type="number">
+  Button → clickable, runs macro steps
+
+If form has Record Source:
+- Load records from app_data WHERE workspace_id AND table_name = recordSource
+- Show first record data in bound controls (controlSource fields)
+- Show navigation bar at bottom:
+  |◀ ◀ Record [1] of [5] ▶ ▶| + New | 🔍 Search
+
+Navigation:
+- First/Prev/Next/Last buttons move through records
+- Bound controls update to show current record values
+- + New clears form for new record entry
+
+When Save macro runs (button with save action):
+Collect all bound control values by fieldKey/controlSource.
+INSERT or UPDATE record in app_data.
+
+Design button switches back to design view.
+
+=== PAGES/FORMS LIST ===
+
+In the navigation pane (left panel on workspace page) forms are listed.
+In the studio, show a small form selector at top of left area.
+
+When multiple forms exist in this workspace:
+Show a mini tab or dropdown to switch between forms.
+Each form can be opened independently.
+Current form name shown in toolbar.
+
+=== SAVING ===
+
+Auto-save: any control change → debounce 800ms → save to Supabase controls table.
+Show "Saving..." indicator in toolbar, then "Saved ✓".
+
+Manual save: Ctrl+S or Save button.
+
+Save each control as:
+{
+  id, page_id,
+  type, x, y, w, h,
+  section: "header" | "detail" | "footer",
+  props: { caption, color, bg, radius, fontSize, fieldKey, 
+           controlSource, placeholder, options, steps, ... all other props }
+}
+
+Save form properties back to pages table:
+record_source, allow_edits, allow_additions, allow_deletions, navigation_buttons
+
+=== SUPABASE ===
+
+On studio load:
+1. GET workspace by slug
+2. GET all pages for this workspace
+3. GET all workspace_tables
+4. GET all workspace_queries  
+5. GET all workspace_macros
+6. Load first page controls from controls table
+
+When form Record Source changes:
+GET workspace_tables entry for that table
+Store fields array in local state for Control Source dropdowns
+
+When control saved:
+UPSERT controls table
+
+=== SQL TO RUN IN SUPABASE ===
+
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS record_source TEXT;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_edits BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_additions BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS allow_deletions BOOLEAN DEFAULT true;
+ALTER TABLE pages ADD COLUMN IF NOT EXISTS navigation_buttons BOOLEAN DEFAULT true;
+ALTER TABLE controls ADD COLUMN IF NOT EXISTS section TEXT DEFAULT 'detail';
+
+=== AFTER DONE ===
+
+npm run build
+git add -A
+git commit -m "Phase 11 Form Designer MS Access style complete"
+git push origin main
