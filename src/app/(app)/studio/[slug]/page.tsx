@@ -427,6 +427,135 @@ function CreateFormDialog({ workspace, tables, onClose, onCreated }: any) {
   )
 }
 
+// Generate Form Dialog Component (Phase 15 Feature 1)
+function GenerateFormDialog({ onClose, onGenerate }: any) {
+  const [layoutStyle, setLayoutStyle] = useState<'single' | 'two-column' | 'card' | 'compact'>('two-column')
+  const [theme, setTheme] = useState<'clean' | 'dark' | 'colorful' | 'minimal'>('clean')
+  const [includeSaveButton, setIncludeSaveButton] = useState(true)
+  const [includeClearButton, setIncludeClearButton] = useState(true)
+  const [includeDeleteButton, setIncludeDeleteButton] = useState(false)
+  const [includeNavBar, setIncludeNavBar] = useState(true)
+  const [includeFormTitle, setIncludeFormTitle] = useState(true)
+  const [includeSectionDividers, setIncludeSectionDividers] = useState(true)
+
+  function handleGenerate() {
+    onGenerate({
+      layoutStyle,
+      theme,
+      includeSaveButton,
+      includeClearButton,
+      includeDeleteButton,
+      includeNavBar,
+      includeFormTitle,
+      includeSectionDividers
+    })
+    onClose()
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
+      <div style={{ background: '#1a1d2e', borderRadius: 8, padding: 24, width: 560, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ margin: '0 0 20px 0', fontSize: 18, fontWeight: 700, color: '#c8d0f0' }}>Generate Form</h2>
+
+        {/* Layout Style */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontSize: 12, color: '#8890b8', marginBottom: 8, fontWeight: 600 }}>Layout Style</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {[
+              { value: 'single', label: 'Single Column', desc: 'Labels on top, mobile friendly' },
+              { value: 'two-column', label: 'Two Column', desc: 'Label left, field right (MS Access)' },
+              { value: 'card', label: 'Card Style', desc: 'Grouped in sections with cards' },
+              { value: 'compact', label: 'Compact Grid', desc: 'Dense layout for data entry' }
+            ].map(opt => (
+              <div
+                key={opt.value}
+                onClick={() => setLayoutStyle(opt.value as any)}
+                style={{
+                  padding: 12,
+                  background: layoutStyle === opt.value ? '#6366f1' : '#252840',
+                  border: `1px solid ${layoutStyle === opt.value ? '#818cf8' : '#3d4059'}`,
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#c8d0f0', marginBottom: 4 }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: '#8890b8' }}>{opt.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Theme */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontSize: 12, color: '#8890b8', marginBottom: 8, fontWeight: 600 }}>Theme</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {[
+              { value: 'clean', label: 'Clean White', color: '#ffffff' },
+              { value: 'dark', label: 'Dark Professional', color: '#1a1d2e' },
+              { value: 'colorful', label: 'Colorful', color: '#f59e0b' },
+              { value: 'minimal', label: 'Minimal', color: '#64748b' }
+            ].map(opt => (
+              <div
+                key={opt.value}
+                onClick={() => setTheme(opt.value as any)}
+                style={{
+                  padding: 12,
+                  background: theme === opt.value ? '#6366f1' : '#252840',
+                  border: `1px solid ${theme === opt.value ? '#818cf8' : '#3d4059'}`,
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}
+              >
+                <div style={{ width: 16, height: 16, background: opt.color, borderRadius: 3, border: '1px solid rgba(255,255,255,0.1)' }} />
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#c8d0f0' }}>{opt.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Include Options */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontSize: 12, color: '#8890b8', marginBottom: 8, fontWeight: 600 }}>Include</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[
+              { checked: includeSaveButton, setter: setIncludeSaveButton, label: 'Save Button' },
+              { checked: includeClearButton, setter: setIncludeClearButton, label: 'Clear/New Button' },
+              { checked: includeDeleteButton, setter: setIncludeDeleteButton, label: 'Delete Button' },
+              { checked: includeNavBar, setter: setIncludeNavBar, label: 'Navigation Bar (if bound to table)' },
+              { checked: includeFormTitle, setter: setIncludeFormTitle, label: 'Form Title (heading with table name)' },
+              { checked: includeSectionDividers, setter: setIncludeSectionDividers, label: 'Section Dividers between field groups' }
+            ].map((opt, idx) => (
+              <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#252840', borderRadius: 4, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={opt.checked}
+                  onChange={(e) => opt.setter(e.target.checked)}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 13, color: '#c8d0f0' }}>{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', paddingTop: 8, borderTop: '1px solid #252840' }}>
+          <button onClick={onClose} style={{ padding: '8px 16px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 13, cursor: 'pointer' }}>
+            Cancel
+          </button>
+          <button onClick={handleGenerate} style={{ padding: '8px 16px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 4, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            Generate Form
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Form Designer Component (with all Phase 13 fixes)
 function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, forms, onReload }: any) {
   type ViewType = 'design' | 'form' | 'datasheet'
@@ -455,6 +584,9 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   const [formData, setFormData] = useState<any>({})
   const [records, setRecords] = useState<any[]>([])
   const [currentRecordIndex, setCurrentRecordIndex] = useState(0)
+
+  // Phase 15: Generate Form Dialog state
+  const [showGenerateFormDialog, setShowGenerateFormDialog] = useState(false)
 
   const canvasRef = useRef<HTMLDivElement>(null)
   const isDrawing = useRef(false)
@@ -979,83 +1111,283 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
       alert('Please set a Record Source first')
       return
     }
+    setShowGenerateFormDialog(true)
+  }
 
+  function generateFormWithOptions(options: {
+    layoutStyle: 'single' | 'two-column' | 'card' | 'compact'
+    theme: 'clean' | 'dark' | 'colorful' | 'minimal'
+    includeSaveButton: boolean
+    includeClearButton: boolean
+    includeDeleteButton: boolean
+    includeNavBar: boolean
+    includeFormTitle: boolean
+    includeSectionDividers: boolean
+  }) {
     const table = tables.find((t: any) => t.name === formProps.recordSource)
     if (!table || !table.fields) return
 
     const newControls: Control[] = []
     let yPos = 20
 
-    table.fields.filter((f: any) => f.name !== 'id').forEach((field: any, index: number) => {
+    // Theme colors
+    const themes = {
+      clean: { bg: '#ffffff', text: '#1f2937', accent: '#6366f1', labelColor: '#374151' },
+      dark: { bg: '#1a1d2e', text: '#c8d0f0', accent: '#818cf8', labelColor: '#9ca3af' },
+      colorful: { bg: '#ffffff', text: '#1e293b', accent: '#f59e0b', labelColor: '#475569' },
+      minimal: { bg: '#fafafa', text: '#0f172a', accent: '#64748b', labelColor: '#334155' },
+    }
+    const themeColors = themes[options.theme]
+
+    // Add form title if requested
+    if (options.includeFormTitle) {
       newControls.push({
         id: generateId(),
         page_id: pageId,
-        type: 'Label',
+        type: 'Heading',
         x: 20,
         y: yPos,
-        w: 120,
-        h: 20,
-        section: 'detail',
-        props: { caption: field.caption || field.name, color: '#1f2937', fontSize: 12 },
+        w: 400,
+        h: 32,
+        section: 'header',
+        props: {
+          caption: table.caption || table.name,
+          color: themeColors.accent,
+          fontSize: 24,
+          bold: true
+        },
       })
+      yPos += 50
+    }
 
-      let controlType = 'TextBox'
-      let controlProps: any = { controlSource: field.name, color: '#1f2937', bg: '#fff', fontSize: 13 }
+    // Group fields by type for smart organization
+    const textFields = table.fields.filter((f: any) => f.name !== 'id' && ['Short Text', 'Long Text'].includes(f.type))
+    const dateNumberFields = table.fields.filter((f: any) => ['Number', 'Currency', 'Date/Time'].includes(f.type))
+    const booleanFields = table.fields.filter((f: any) => f.type === 'Yes/No')
+    const choiceFields = table.fields.filter((f: any) => f.type === 'Choice')
+    const otherFields = table.fields.filter((f: any) =>
+      f.name !== 'id' &&
+      !['Short Text', 'Long Text', 'Number', 'Currency', 'Date/Time', 'Yes/No', 'Choice'].includes(f.type)
+    )
 
-      if (['Number', 'Currency'].includes(field.type)) {
-        controlType = 'NumberBox'
-      } else if (field.type === 'Date/Time') {
-        controlType = 'DatePicker'
-      } else if (field.type === 'Yes/No') {
-        controlType = 'CheckBox'
-        controlProps.caption = field.caption || field.name
-      } else if (field.type === 'Choice') {
-        controlType = 'ComboBox'
-        controlProps.options = field.options || ''
+    const fieldGroups = [
+      { name: 'Basic Info', fields: textFields },
+      { name: 'Details', fields: dateNumberFields },
+      { name: 'Options', fields: choiceFields },
+      { name: 'Settings', fields: booleanFields },
+      { name: 'Other', fields: otherFields },
+    ].filter(g => g.fields.length > 0)
+
+    // Generate controls based on layout style
+    fieldGroups.forEach((group, groupIndex) => {
+      // Add section divider if requested and not first group
+      if (options.includeSectionDividers && groupIndex > 0) {
+        yPos += 10
+        newControls.push({
+          id: generateId(),
+          page_id: pageId,
+          type: 'SectionHeader',
+          x: 20,
+          y: yPos,
+          w: options.layoutStyle === 'single' ? 400 : 550,
+          h: 28,
+          section: 'detail',
+          props: { caption: group.name, color: themeColors.labelColor, fontSize: 14, bold: true },
+        })
+        yPos += 36
       }
 
-      const defaultSize = DEFAULT_SIZES[controlType] || { w: 200, h: 24 }
+      group.fields.forEach((field: any) => {
+        if (options.layoutStyle === 'single') {
+          // Single column: label on top, field below
+          newControls.push({
+            id: generateId(),
+            page_id: pageId,
+            type: 'Label',
+            x: 20,
+            y: yPos,
+            w: 400,
+            h: 20,
+            section: 'detail',
+            props: { caption: field.caption || field.name, color: themeColors.labelColor, fontSize: 12, bold: true },
+          })
+          yPos += 24
 
+          const controlType = getControlTypeForField(field)
+          const controlProps = getControlPropsForField(field, themeColors)
+          const defaultSize = DEFAULT_SIZES[controlType] || { w: 200, h: 24 }
+
+          newControls.push({
+            id: generateId(),
+            page_id: pageId,
+            type: controlType,
+            x: 20,
+            y: yPos,
+            w: 400,
+            h: defaultSize.h,
+            section: 'detail',
+            props: controlProps,
+          })
+          yPos += defaultSize.h + 16
+
+        } else if (options.layoutStyle === 'two-column') {
+          // Two column: label left, field right
+          newControls.push({
+            id: generateId(),
+            page_id: pageId,
+            type: 'Label',
+            x: 20,
+            y: yPos,
+            w: 150,
+            h: 20,
+            section: 'detail',
+            props: { caption: field.caption || field.name, color: themeColors.labelColor, fontSize: 12, bold: true },
+          })
+
+          const controlType = getControlTypeForField(field)
+          const controlProps = getControlPropsForField(field, themeColors)
+          const defaultSize = DEFAULT_SIZES[controlType] || { w: 200, h: 24 }
+
+          newControls.push({
+            id: generateId(),
+            page_id: pageId,
+            type: controlType,
+            x: 180,
+            y: yPos,
+            w: defaultSize.w,
+            h: defaultSize.h,
+            section: 'detail',
+            props: controlProps,
+          })
+          yPos += 36
+
+        } else if (options.layoutStyle === 'card') {
+          // Card style: each field in its own card
+          newControls.push({
+            id: generateId(),
+            page_id: pageId,
+            type: 'Card',
+            x: 20,
+            y: yPos,
+            w: 400,
+            h: 80,
+            section: 'detail',
+            props: { bg: themeColors.bg, color: themeColors.text },
+          })
+
+          newControls.push({
+            id: generateId(),
+            page_id: pageId,
+            type: 'Label',
+            x: 32,
+            y: yPos + 12,
+            w: 380,
+            h: 20,
+            section: 'detail',
+            props: { caption: field.caption || field.name, color: themeColors.labelColor, fontSize: 12, bold: true },
+          })
+
+          const controlType = getControlTypeForField(field)
+          const controlProps = getControlPropsForField(field, themeColors)
+          const defaultSize = DEFAULT_SIZES[controlType] || { w: 200, h: 24 }
+
+          newControls.push({
+            id: generateId(),
+            page_id: pageId,
+            type: controlType,
+            x: 32,
+            y: yPos + 38,
+            w: 360,
+            h: defaultSize.h,
+            section: 'detail',
+            props: controlProps,
+          })
+          yPos += 92
+
+        } else if (options.layoutStyle === 'compact') {
+          // Compact grid: tighter spacing
+          newControls.push({
+            id: generateId(),
+            page_id: pageId,
+            type: 'Label',
+            x: 20,
+            y: yPos,
+            w: 120,
+            h: 18,
+            section: 'detail',
+            props: { caption: field.caption || field.name, color: themeColors.labelColor, fontSize: 11, bold: true },
+          })
+
+          const controlType = getControlTypeForField(field)
+          const controlProps = getControlPropsForField(field, themeColors)
+          const defaultSize = DEFAULT_SIZES[controlType] || { w: 200, h: 24 }
+
+          newControls.push({
+            id: generateId(),
+            page_id: pageId,
+            type: controlType,
+            x: 150,
+            y: yPos,
+            w: Math.min(defaultSize.w, 180),
+            h: 22,
+            section: 'detail',
+            props: { ...controlProps, fontSize: 12 },
+          })
+          yPos += 28
+        }
+      })
+    })
+
+    yPos += 20
+
+    // Add action buttons
+    let buttonX = options.layoutStyle === 'single' ? 20 : 180
+    if (options.includeSaveButton) {
       newControls.push({
         id: generateId(),
         page_id: pageId,
-        type: controlType,
-        x: 150,
+        type: 'Button',
+        x: buttonX,
         y: yPos,
-        w: defaultSize.w,
-        h: defaultSize.h,
+        w: 100,
+        h: 32,
         section: 'detail',
-        props: controlProps,
+        props: { caption: 'Save', bg: themeColors.accent, color: '#fff', fontSize: 13, bold: true },
       })
+      buttonX += 110
+    }
 
-      yPos += 36
-    })
+    if (options.includeClearButton) {
+      newControls.push({
+        id: generateId(),
+        page_id: pageId,
+        type: 'Button',
+        x: buttonX,
+        y: yPos,
+        w: 100,
+        h: 32,
+        section: 'detail',
+        props: { caption: 'New', bg: '#6366f1', color: '#fff', fontSize: 13 },
+      })
+      buttonX += 110
+    }
 
-    newControls.push({
-      id: generateId(),
-      page_id: pageId,
-      type: 'Button',
-      x: 150,
-      y: yPos + 10,
-      w: 100,
-      h: 28,
-      section: 'detail',
-      props: { caption: 'Save', bg: '#10b981', color: '#fff', fontSize: 13 },
-    })
+    if (options.includeDeleteButton) {
+      newControls.push({
+        id: generateId(),
+        page_id: pageId,
+        type: 'Button',
+        x: buttonX,
+        y: yPos,
+        w: 100,
+        h: 32,
+        section: 'detail',
+        props: { caption: 'Delete', bg: '#ef4444', color: '#fff', fontSize: 13 },
+      })
+    }
 
-    newControls.push({
-      id: generateId(),
-      page_id: pageId,
-      type: 'Button',
-      x: 260,
-      y: yPos + 10,
-      w: 100,
-      h: 28,
-      section: 'detail',
-      props: { caption: 'New', bg: '#6366f1', color: '#fff', fontSize: 13 },
-    })
-
-    if (formProps.navigationButtons) {
+    // Add navigation bar if requested
+    if (options.includeNavBar) {
       newControls.push({
         id: generateId(),
         page_id: pageId,
@@ -1071,6 +1403,35 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
 
     addControlToHistory([...controls, ...newControls])
     triggerAutoSave()
+  }
+
+  function getControlTypeForField(field: any): string {
+    if (['Number', 'Currency'].includes(field.type)) return 'NumberBox'
+    if (field.type === 'Date/Time') return 'DatePicker'
+    if (field.type === 'Yes/No') return 'CheckBox'
+    if (field.type === 'Choice') return 'ComboBox'
+    if (field.type === 'Long Text') return 'TextBox'
+    return 'TextBox'
+  }
+
+  function getControlPropsForField(field: any, themeColors: any): any {
+    const baseProps = {
+      controlSource: field.name,
+      color: themeColors.text,
+      bg: themeColors.bg,
+      fontSize: 13
+    }
+
+    if (field.type === 'Yes/No') {
+      return { ...baseProps, caption: field.caption || field.name }
+    }
+    if (field.type === 'Choice') {
+      return { ...baseProps, options: field.options || '' }
+    }
+    if (field.required) {
+      return { ...baseProps, required: true }
+    }
+    return baseProps
   }
 
   const selectedControl = controls.find(c => c.id === selectedControlId)
@@ -1315,6 +1676,17 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
 
       {/* Toast Notifications */}
       <Toast toasts={toasts} removeToast={removeToast} />
+
+      {/* Phase 15: Generate Form Dialog */}
+      {showGenerateFormDialog && (
+        <GenerateFormDialog
+          onClose={() => setShowGenerateFormDialog(false)}
+          onGenerate={(options: any) => {
+            setShowGenerateFormDialog(false)
+            generateFormWithOptions(options)
+          }}
+        />
+      )}
     </div>
   )
 }

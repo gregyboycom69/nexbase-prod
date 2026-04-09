@@ -1,0 +1,369 @@
+NexBase - Phase 15 - Super Designer (AppSheet Style)
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+Make the form designer intelligent and beautiful like AppSheet, Glide, or Softr.
+Professional app builder experience.
+
+=== CONCEPT ===
+
+When user opens a form that is bound to a table:
+The designer INTELLIGENTLY suggests and auto-places controls.
+User can accept suggestions or customize freely.
+Everything looks beautiful out of the box.
+
+=== FEATURE 1 - SMART FORM GENERATOR ===
+
+When form has a Record Source table and user clicks "+ Add All Fields":
+
+Instead of dumping all fields randomly:
+1. Show a "Generate Form" dialog with options:
+
+   Layout Style:
+   ○ Single Column - labels on top, fields below (mobile friendly)
+   ○ Two Column - label left, field right (like MS Access)
+   ○ Card Style - grouped in sections with cards
+   ○ Compact Grid - dense layout for data entry
+
+   Theme:
+   ○ Clean White (default)
+   ○ Dark Professional
+   ○ Colorful (workspace brand color accents)
+   ○ Minimal
+
+   Include:
+   ☑ Save Button
+   ☑ Clear/New Button
+   ☑ Delete Button
+   ☑ Navigation Bar (if bound to table)
+   ☑ Form Title (heading with table name)
+   ☑ Section Dividers between field groups
+
+2. Click Generate → auto-places controls beautifully:
+
+   TWO COLUMN layout example:
+   Form Header: Heading "Customer Details" (large, brand color)
+   
+   Detail section:
+   [Company Name *]     [Type here...]
+   [Contact Person]     [Type here...]
+   ─── Contact Info ──────────────────
+   [Email Address]      [Type here...]
+   [Phone]              [Type here...]
+   [Country]            [Dropdown...]
+   ─── Status ────────────────────────
+   [Status]             [Active ▾]
+   [Revenue]            [0.00]
+   [Created Date]       [DD/MM/YYYY]
+   
+   Form Footer:
+   [Save] [New] [Delete]    Record 1 of 5 |< < > >|
+
+   Each Label is right-aligned, bold, 12px
+   Each input is properly sized for its data type
+   Required fields show asterisk *
+   Fields grouped by type with section dividers
+
+=== FEATURE 2 - BEAUTIFUL CONTROL LIBRARY ===
+
+Redesign how controls look in design view to be polished:
+
+TextBox design view:
+- Clean white bg
+- Subtle shadow: 0 1px 3px rgba(0,0,0,0.06)
+- 1.5px border #e2e8f0
+- 3px left accent in indigo
+- Placeholder in #9ca3af
+- Rounded corners 8px
+
+Button design view:
+- Indigo gradient background by default
+- White text
+- Shadow: 0 4px 14px rgba(99,102,241,0.4)
+- Rounded 10px
+- Bold caption centered
+- Hover shows slight lift effect in preview
+
+Label design view:
+- No visible border
+- Text in #374151
+- Clean, not boxed
+
+ComboBox design view:
+- White bg with border
+- Custom dropdown arrow (not browser default)
+- Clean modern look
+
+DatePicker design view:
+- Calendar icon left
+- Clean date format display
+- Border matching TextBox
+
+All controls:
+- When SELECTED: indigo outline 2px with 2px offset
+- Resize handles: small indigo circles on all 8 points
+- Smooth transitions on hover
+
+=== FEATURE 3 - PROPERTY SHEET REDESIGN ===
+
+Make the property sheet look like Figma or Adobe XD properties panel.
+
+Group properties visually with icons:
+
+POSITION & SIZE group (with grid icon):
+┌─────────┬─────────┐
+│ X  [41] │ Y  [77] │
+├─────────┼─────────┤
+│ W [200] │ H  [44] │
+└─────────┴─────────┘
+
+APPEARANCE group (with paint icon):
+BG Color: [████] #4f46e5
+Text:     [████] #ffffff
+Radius:   [────] 8px slider
+Opacity:  [────] 100%
+Shadow:   ○ None  ● Small  ○ Large
+
+TYPOGRAPHY group (with T icon):
+Font: [Plus Jakarta Sans ▾]
+Size: [14] Bold [☑] Italic [☐] Underline [☐]
+Align: [≡] [≡] [≡] [≡]
+
+DATA group (with database icon):
+Control Source: [name ▾]
+Default: [text input]
+Required: [toggle]
+Readonly: [toggle]
+
+EVENTS group (with lightning icon):
+On Click: [SaveCustomer ▾] [Edit macro ...]
+On Change: [(none) ▾]
+
+Each group has a collapse arrow.
+Clean dark theme:
+  Group headers: #252840 bg, #6366f1 text, small uppercase
+  Inputs: #0f1117 bg, #c8d0f0 text
+  Color swatches: clickable colored squares
+
+=== FEATURE 4 - LIVE PREVIEW SPLIT VIEW ===
+
+Add a split view mode button in toolbar: [Split View]
+
+When Split View active:
+Left half: Design View (canvas with toolbox)
+Right half: Form View (live preview, updates in real time)
+
+As user moves/resizes/edits controls on left:
+Right side updates instantly to show how it looks to the user.
+
+This is very useful for designers to see live changes.
+
+Toggle button: [Design] [Split] [Preview]
+
+=== FEATURE 5 - TEMPLATE STARTER FORMS ===
+
+When creating a new form show TEMPLATE options:
+
+"Start from a template:"
+
+[Blank Form]     [Contact Form]    [Login Form]
+[Data Entry]     [Search & List]   [Dashboard]
+[Invoice]        [Report View]     [Approval Flow]
+
+Each template shows a small preview thumbnail (CSS mockup).
+
+Blank Form: empty canvas
+Contact Form: Name, Email, Phone, Message, Send button
+Login Form: Username, Password, Login button, Forgot password link
+Data Entry: Title heading, multiple fields in 2 columns, Save/Cancel buttons
+Search & List: Search box at top, DataTable below, Add New button
+Dashboard: KPI cards at top, Chart, recent records table
+Invoice: Logo area, billing details, line items table, total, Print button
+Report View: Title, filters row, DataTable with export button
+Approval Flow: Record details, Approve/Reject buttons, Notes field
+
+When template selected: auto-populate canvas with those controls.
+User can then customize colors, captions, sizes.
+
+=== FEATURE 6 - FORM SECTIONS / GROUPING ===
+
+Allow user to add named sections inside the Detail area.
+
+Section control (already exists as SectionHeader):
+- Drag to canvas like any control
+- Full width by default
+- Shows section title in bold
+- Has collapse/expand toggle in preview
+
+Smart grouping:
+When auto-generating form from table:
+- Group text fields together: "Basic Info" section
+- Group date/number fields: "Details" section
+- Group Yes/No fields: "Settings" section
+- Group lookup fields: "Related" section
+
+=== FEATURE 7 - ALIGNMENT AND DISTRIBUTION TOOLS ===
+
+Add alignment toolbar that appears when 2+ controls selected.
+
+To select multiple: Shift+Click each control.
+
+When multiple selected:
+Show alignment toolbar above canvas:
+[Align Left] [Center H] [Align Right] [Align Top] [Center V] [Align Bottom]
+[Distribute H] [Distribute V] [Same Width] [Same Height]
+
+Align Left: set all selected controls x = leftmost x
+Center H: center all horizontally around midpoint
+Align Right: set all right edges to rightmost right edge
+Align Top: set all y = topmost y
+Center V: center all vertically
+Align Bottom: align bottom edges
+Distribute H: equal horizontal spacing between controls
+Distribute V: equal vertical spacing between controls
+Same Width: set all to width of first selected
+Same Height: set all to height of first selected
+
+=== FEATURE 8 - UNDO/REDO HISTORY ===
+
+Keep history of last 30 canvas states.
+
+When any change is made (add/delete/move/resize/property change):
+Push snapshot of current controls array to history stack.
+
+Ctrl+Z: pop from history, restore previous state
+Ctrl+Y: redo (pop from redo stack)
+
+Show undo/redo buttons in toolbar:
+[↩ Undo] [↪ Redo]
+Disabled (grayed) when nothing to undo/redo.
+Tooltip shows what will be undone: "Undo: Move Label"
+
+=== FEATURE 9 - KEYBOARD SHORTCUTS PANEL ===
+
+Press ? key to show keyboard shortcuts reference panel.
+
+Shows all shortcuts in a nice modal:
+SELECTION
+  Escape          Deselect all
+  Ctrl+A          Select all
+  Shift+Click     Add to selection
+
+EDITING  
+  Ctrl+C          Copy
+  Ctrl+V          Paste
+  Ctrl+D          Duplicate
+  Ctrl+X          Cut
+  Delete          Delete selected
+
+UNDO
+  Ctrl+Z          Undo
+  Ctrl+Y          Redo
+
+SAVE
+  Ctrl+S          Save form
+
+VIEW
+  Ctrl+P          Toggle preview
+  Ctrl+G          Toggle grid
+  ?               Show shortcuts
+
+MOVE
+  Arrow keys      Move 1px
+  Shift+Arrow     Move 8px
+
+=== FEATURE 10 - SMART SUGGESTIONS ===
+
+When a TextBox is placed:
+Show a small tooltip: "Tip: Set Control Source to bind this to a table field"
+
+When a Button is placed:
+Show: "Tip: Double-click to add macro actions"
+
+When Record Source is set:
+Show: "✓ Form bound to [table]. Click + Add All Fields to generate form"
+
+When form has no controls:
+Show in center of canvas:
+"Start designing your form"
+[+ Add All Fields] [Choose Template] [Drag from toolbox]
+
+These tips are dismissable and only show once.
+
+=== FEATURE 11 - MOBILE PREVIEW ===
+
+Add a Mobile View toggle button.
+
+When Mobile View on:
+- Canvas shows at 390px width (iPhone size)
+- Controls scale to fit
+- Shows phone frame around canvas
+- Can test mobile layout
+
+When Desktop View:
+- Canvas shows at full width
+
+Toggle: [📱 Mobile] [🖥 Desktop]
+
+=== FEATURE 12 - FORM SETTINGS PANEL ===
+
+Replace the basic form properties with a dedicated Form Settings panel.
+Accessible via Settings button (gear icon) in toolbar.
+
+Shows in a side panel or modal:
+
+GENERAL
+  Form Name: [editable]
+  Description: [textarea]
+  Icon: [emoji picker]
+
+DATA
+  Record Source: [table dropdown]
+  Filter: [expression input with helper]
+  Sort By: [field] [ASC/DESC]
+  Allow Edits: [toggle]
+  Allow New Records: [toggle]
+  Allow Delete: [toggle]
+
+DISPLAY
+  Form Type: Single / Continuous / Datasheet / Split / Popup
+  Navigation Bar: [toggle]
+  Record Selectors: [toggle]
+  Default View: [dropdown]
+
+EVENTS
+  On Open: [macro select]
+  On Close: [macro select]
+  On Save: [macro select]
+
+STYLE
+  Background Color: [color picker]
+  Canvas Width: [number]
+  Font Family: [dropdown]
+  Brand Color: [auto from workspace]
+
+=== IMPLEMENTATION NOTES ===
+
+Keep the existing working drag-draw canvas.
+Keep the existing save to Supabase.
+Keep the existing property sheet tabs.
+
+Add the new features ON TOP of what is already working.
+Do not break existing functionality.
+
+Priority order to implement:
+1. Feature 1 (Smart Form Generator) - most important
+2. Feature 2 (Beautiful controls)
+3. Feature 8 (Undo/Redo)
+4. Feature 7 (Alignment tools)
+5. Feature 3 (Better property sheet layout)
+6. Feature 4 (Split view)
+7. Feature 5 (Templates)
+8. Features 9-12 (remaining)
+
+=== AFTER DONE ===
+
+npm run build
+git add -A
+git commit -m "Phase 15 Super Designer - Smart generator, templates, alignment, undo/redo"
+git push origin main
