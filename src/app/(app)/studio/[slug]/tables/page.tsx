@@ -24,6 +24,13 @@ type Field = {
   relatedTable?: string
   relatedField?: string
   displayField?: string
+  allowOtherValues?: boolean
+  displayControl?: string
+  rowSourceType?: string
+  rowSource?: string
+  boundColumn?: number
+  columnCount?: number
+  limitToList?: boolean
 }
 
 const DATA_TYPES = [
@@ -60,6 +67,7 @@ export default function TableDesignerPage() {
   const [newTableName, setNewTableName] = useState('')
   const [datasheetData, setDatasheetData] = useState<any[]>([])
   const [activePropertyTab, setActivePropertyTab] = useState<'general' | 'lookup'>('general')
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     loadWorkspace()
@@ -78,36 +86,67 @@ export default function TableDesignerPage() {
   }, [view, selectedTable])
 
   async function loadWorkspace() {
-    const { data: ws } = await supabase.from('workspaces').select('*').eq('slug', slug).single()
-    if (!ws) {
+    console.log('📂 Loading workspace...', slug)
+    const { data: ws, error } = await supabase
+      .from('workspaces')
+      .select('*')
+      .eq('slug', slug)
+      .single()
+
+    if (error || !ws) {
+      console.error('❌ Workspace load error:', error)
       router.push('/dashboard')
       return
     }
+
+    console.log('✅ Workspace loaded:', ws.id)
     setWorkspace(ws)
-    loadTables(ws.id)
+    await loadTables(ws.id)
   }
 
   async function loadTables(workspaceId: string) {
-    const { data } = await supabase
+    console.log('📋 Loading tables for workspace:', workspaceId)
+    const { data, error } = await supabase
       .from('workspace_tables')
       .select('*')
       .eq('workspace_id', workspaceId)
       .order('name')
 
+    if (error) {
+      console.error('❌ Tables load error:', error)
+      return
+    }
+
+    console.log(`✅ Loaded ${data?.length || 0} tables`)
     setTables(data || [])
   }
 
   async function loadTable(tableId: string) {
+    console.log('📊 Loading table:', tableId)
     const table = tables.find((t) => t.id === tableId)
-    if (!table) return
+    if (!table) {
+      console.warn('⚠️ Table not found:', tableId)
+      return
+    }
 
     setSelectedTable(table)
     setTableName(table.name)
 
     const loadedFields = Array.isArray(table.fields) && table.fields.length > 0
       ? table.fields
-      : [{ id: 'field-0', name: 'id', type: 'AutoNumber', description: 'Primary Key', required: true, defaultValue: '', isPrimaryKey: true }]
+      : [
+          {
+            id: 'field-0',
+            name: 'id',
+            type: 'AutoNumber',
+            description: 'Primary Key',
+            required: true,
+            defaultValue: '',
+            isPrimaryKey: true,
+          },
+        ]
 
+    console.log('✅ Loaded fields:', loadedFields.length)
     setFields(loadedFields)
     if (loadedFields.length > 0) {
       setSelectedFieldId(loadedFields[0].id)
@@ -128,39 +167,96 @@ export default function TableDesignerPage() {
   }
 
   async function handleSaveTable() {
-    if (!workspace || !selectedTable) return
+    console.log('💾 Saving table...')
 
-    const { error } = await supabase
-      .from('workspace_tables')
-      .update({
-        name: tableName,
-        slug: tableName.toLowerCase().replace(/\s+/g, '_'),
-        fields: fields,
-      })
-      .eq('id', selectedTable.id)
-
-    if (!error) {
-      alert('Table saved successfully!')
-      loadTables(workspace.id)
-    } else {
-      alert('Error saving table: ' + error.message)
+    if (!workspace) {
+      console.error('❌ Workspace not loaded')
+      alert('Error: Workspace not loaded. Please refresh the page.')
+      return
     }
+
+    if (!selectedTable) {
+      console.error('❌ No table selected')
+      alert('Error: No table selected')
+      return
+    }
+
+    if (!tableName.trim()) {
+      alert('Error: Table name cannot be empty')
+      return
+    }
+
+    setIsSaving(true)
+
+    const tableSlug = tableName.toLowerCase().replace(/\s+/g, '_')
+    console.log('📝 Table data:', {
+      id: selectedTable.id,
+      name: tableName,
+      slug: tableSlug,
+      fieldsCount: fields.length,
+    })
+
+    // UPSERT table (insert if doesn't exist, update if it does)
+    const { data, error } = await supabase
+      .from('workspace_tables')
+      .upsert(
+        {
+          id: selectedTable.id,
+          workspace_id: workspace.id,
+          name: tableName,
+          slug: tableSlug,
+          fields: fields,
+        },
+        {
+          onConflict: 'id',
+        }
+      )
+      .select()
+
+    setIsSaving(false)
+
+    if (error) {
+      console.error('❌ Save error:', error)
+      alert('Error saving table: ' + error.message)
+      return
+    }
+
+    console.log('✅ Table saved successfully')
+    alert('✓ Table saved successfully!')
+    await loadTables(workspace.id)
   }
 
   async function handleCreateNewTable() {
-    console.log('🔍 handleCreateNewTable called')
+    console.log('🆕 Creating new table...')
     console.log('Workspace:', workspace)
     console.log('New table name:', newTableName)
 
-    if (!workspace || !newTableName.trim()) {
-      console.log('❌ Validation failed: workspace or newTableName missing')
-      alert('Error: Workspace not loaded or table name is empty')
+    if (!workspace) {
+      console.error('❌ Workspace not loaded')
+      alert('Error: Workspace not loaded. Please refresh the page.')
+      return
+    }
+
+    if (!newTableName.trim()) {
+      console.log('❌ Table name is empty')
+      setIsCreatingNew(false)
       return
     }
 
     const slug = newTableName.toLowerCase().replace(/\s+/g, '_')
     console.log('Generated slug:', slug)
-    console.log('Workspace ID:', workspace.id)
+
+    const defaultFields = [
+      {
+        id: 'field-0',
+        name: 'id',
+        type: 'AutoNumber',
+        description: 'Primary Key',
+        required: true,
+        defaultValue: '',
+        isPrimaryKey: true,
+      },
+    ]
 
     console.log('📤 Inserting into workspace_tables...')
     const { data, error } = await supabase
@@ -169,17 +265,7 @@ export default function TableDesignerPage() {
         workspace_id: workspace.id,
         name: newTableName,
         slug,
-        fields: [
-          {
-            id: 'field-0',
-            name: 'id',
-            type: 'AutoNumber',
-            description: 'Primary Key',
-            required: true,
-            defaultValue: '',
-            isPrimaryKey: true,
-          },
-        ],
+        fields: defaultFields,
       })
       .select()
       .single()
@@ -194,12 +280,12 @@ export default function TableDesignerPage() {
 
     if (data) {
       console.log('✅ Table created successfully:', data.id)
-      loadTables(workspace.id)
+      await loadTables(workspace.id)
       setSelectedTableId(data.id)
       setIsCreatingNew(false)
       setNewTableName('')
     } else {
-      console.log('⚠️ No data returned from insert')
+      console.error('⚠️ No data returned from insert')
       alert('Error: Table creation returned no data')
     }
   }
@@ -207,14 +293,46 @@ export default function TableDesignerPage() {
   async function handleDeleteTable(tableId: string) {
     if (!confirm('Delete this table? This cannot be undone.')) return
 
-    await supabase.from('workspace_tables').delete().eq('id', tableId)
-    loadTables(workspace?.id)
+    console.log('🗑️ Deleting table:', tableId)
+    const { error } = await supabase.from('workspace_tables').delete().eq('id', tableId)
+
+    if (error) {
+      console.error('❌ Delete error:', error)
+      alert('Error deleting table: ' + error.message)
+      return
+    }
+
+    console.log('✅ Table deleted')
+    await loadTables(workspace?.id)
 
     if (selectedTableId === tableId) {
       setSelectedTableId(null)
       setSelectedTable(null)
       setFields([])
     }
+  }
+
+  async function handleRenameTable(tableId: string, currentName: string) {
+    const newName = prompt('Enter new table name:', currentName)
+    if (!newName || !newName.trim() || newName === currentName) return
+
+    console.log('✏️ Renaming table:', tableId, 'to:', newName)
+    const { error } = await supabase
+      .from('workspace_tables')
+      .update({
+        name: newName,
+        slug: newName.toLowerCase().replace(/\s+/g, '_'),
+      })
+      .eq('id', tableId)
+
+    if (error) {
+      console.error('❌ Rename error:', error)
+      alert('Error renaming table: ' + error.message)
+      return
+    }
+
+    console.log('✅ Table renamed')
+    await loadTables(workspace.id)
   }
 
   function handleAddField() {
@@ -236,10 +354,12 @@ export default function TableDesignerPage() {
   }
 
   function handleDeleteField(fieldId: string) {
-    if (fields.find((f) => f.id === fieldId)?.isPrimaryKey) {
+    const field = fields.find((f) => f.id === fieldId)
+    if (field?.isPrimaryKey) {
       alert('Cannot delete primary key field')
       return
     }
+    if (!confirm('Delete this field?')) return
     setFields(fields.filter((f) => f.id !== fieldId))
   }
 
@@ -350,17 +470,22 @@ export default function TableDesignerPage() {
 
         <div style={{ padding: 16, borderTop: '1px solid #252840' }}>
           <button
-            onClick={() => setIsCreatingNew(true)}
+            onClick={() => {
+              setIsCreatingNew(true)
+              setNewTableName('')
+            }}
+            disabled={isCreatingNew}
             style={{
               width: '100%',
               padding: '8px 12px',
-              background: '#6366f1',
+              background: isCreatingNew ? '#4f46e5' : '#6366f1',
               color: '#fff',
               border: 'none',
               borderRadius: 4,
               fontSize: 12,
               fontWeight: 600,
-              cursor: 'pointer',
+              cursor: isCreatingNew ? 'not-allowed' : 'pointer',
+              opacity: isCreatingNew ? 0.6 : 1,
             }}
           >
             + New Table
@@ -433,18 +558,20 @@ export default function TableDesignerPage() {
               />
               <button
                 onClick={handleSaveTable}
+                disabled={isSaving}
                 style={{
                   padding: '6px 16px',
-                  background: '#10b981',
+                  background: isSaving ? '#059669' : '#10b981',
                   color: '#fff',
                   border: 'none',
                   borderRadius: 4,
                   fontSize: 12,
                   fontWeight: 600,
-                  cursor: 'pointer',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  opacity: isSaving ? 0.6 : 1,
                 }}
               >
-                💾 Save Table
+                {isSaving ? '💾 Saving...' : '💾 Save Table'}
               </button>
               <button
                 onClick={() => setView('design')}
@@ -480,7 +607,14 @@ export default function TableDesignerPage() {
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 {/* Field Grid */}
                 <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-                  <div style={{ background: '#1a1d2e', border: '1px solid #252840', borderRadius: 4, overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      background: '#1a1d2e',
+                      border: '1px solid #252840',
+                      borderRadius: 4,
+                      overflow: 'hidden',
+                    }}
+                  >
                     {/* Header */}
                     <div
                       style={{
@@ -608,8 +742,27 @@ export default function TableDesignerPage() {
                 </div>
 
                 {/* Field Properties */}
-                <div style={{ height: 280, borderTop: '2px solid #252840', background: '#1a1d2e', display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ background: '#252840', padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#8890b8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div
+                  style={{
+                    height: 280,
+                    borderTop: '2px solid #252840',
+                    background: '#1a1d2e',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  <div
+                    style={{
+                      background: '#252840',
+                      padding: '8px 16px',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: '#8890b8',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
                     <span>Field Properties</span>
                     <div style={{ display: 'flex', gap: 4 }}>
                       <button
@@ -647,34 +800,200 @@ export default function TableDesignerPage() {
                     {selectedField ? (
                       activePropertyTab === 'general' ? (
                         <>
-                          <PropertyRow label="Caption" value={selectedField.caption || ''} onChange={(v) => handleUpdateField(selectedField.id, { caption: v })} />
-                          <PropertyRow label="Description" value={selectedField.description || ''} onChange={(v) => handleUpdateField(selectedField.id, { description: v })} />
-                          <PropertyRow label="Required" value={selectedField.required ? 'Yes' : 'No'} onChange={(v) => handleUpdateField(selectedField.id, { required: v === 'Yes' })} type="yesno" />
-                          <PropertyRow label="Default Value" value={selectedField.defaultValue || ''} onChange={(v) => handleUpdateField(selectedField.id, { defaultValue: v })} />
-                          <PropertyRow label="Validation Rule" value={selectedField.validationRule || ''} onChange={(v) => handleUpdateField(selectedField.id, { validationRule: v })} />
-                          <PropertyRow label="Validation Text" value={selectedField.validationText || ''} onChange={(v) => handleUpdateField(selectedField.id, { validationText: v })} />
+                          <PropertyRow
+                            label="Caption"
+                            value={selectedField.caption || ''}
+                            onChange={(v) => handleUpdateField(selectedField.id, { caption: v })}
+                          />
+                          <PropertyRow
+                            label="Description"
+                            value={selectedField.description || ''}
+                            onChange={(v) => handleUpdateField(selectedField.id, { description: v })}
+                          />
+                          <PropertyRow
+                            label="Required"
+                            value={selectedField.required ? 'Yes' : 'No'}
+                            onChange={(v) => handleUpdateField(selectedField.id, { required: v === 'Yes' })}
+                            type="yesno"
+                          />
+                          <PropertyRow
+                            label="Default Value"
+                            value={selectedField.defaultValue || ''}
+                            onChange={(v) => handleUpdateField(selectedField.id, { defaultValue: v })}
+                          />
+                          <PropertyRow
+                            label="Validation Rule"
+                            value={selectedField.validationRule || ''}
+                            onChange={(v) => handleUpdateField(selectedField.id, { validationRule: v })}
+                          />
+                          <PropertyRow
+                            label="Validation Text"
+                            value={selectedField.validationText || ''}
+                            onChange={(v) => handleUpdateField(selectedField.id, { validationText: v })}
+                          />
 
                           {selectedField.type === 'Short Text' && (
                             <>
-                              <PropertyRow label="Field Size" value={String(selectedField.size || 255)} onChange={(v) => handleUpdateField(selectedField.id, { size: v })} type="number" />
-                              <PropertyRow label="Allow Zero Length" value={selectedField.allowZeroLength ? 'Yes' : 'No'} onChange={(v) => handleUpdateField(selectedField.id, { allowZeroLength: v === 'Yes' })} type="yesno" />
+                              <PropertyRow
+                                label="Field Size"
+                                value={String(selectedField.size || 255)}
+                                onChange={(v) => handleUpdateField(selectedField.id, { size: v })}
+                                type="number"
+                              />
+                              <PropertyRow
+                                label="Allow Zero Length"
+                                value={selectedField.allowZeroLength ? 'Yes' : 'No'}
+                                onChange={(v) =>
+                                  handleUpdateField(selectedField.id, { allowZeroLength: v === 'Yes' })
+                                }
+                                type="yesno"
+                              />
+                              <PropertyRow
+                                label="Indexed"
+                                value={selectedField.indexed || 'No'}
+                                onChange={(v) => handleUpdateField(selectedField.id, { indexed: v })}
+                                type="select"
+                                options={['No', 'Yes (Duplicates OK)', 'Yes (No Duplicates)']}
+                              />
                             </>
                           )}
 
+                          {selectedField.type === 'Number' && (
+                            <>
+                              <PropertyRow
+                                label="Field Size"
+                                value={String(selectedField.size || 'Long Integer')}
+                                onChange={(v) => handleUpdateField(selectedField.id, { size: v })}
+                                type="select"
+                                options={['Integer', 'Long Integer', 'Double']}
+                              />
+                              <PropertyRow
+                                label="Decimal Places"
+                                value={selectedField.decimalPlaces || 'Auto'}
+                                onChange={(v) => handleUpdateField(selectedField.id, { decimalPlaces: v })}
+                                type="select"
+                                options={['Auto', '0', '1', '2', '3', '4']}
+                              />
+                              <PropertyRow
+                                label="Format"
+                                value={selectedField.format || 'General'}
+                                onChange={(v) => handleUpdateField(selectedField.id, { format: v })}
+                                type="select"
+                                options={['General', 'Fixed', 'Standard', 'Currency', 'Percent']}
+                              />
+                            </>
+                          )}
+
+                          {selectedField.type === 'Currency' && (
+                            <>
+                              <PropertyRow
+                                label="Decimal Places"
+                                value={selectedField.decimalPlaces || 'Auto'}
+                                onChange={(v) => handleUpdateField(selectedField.id, { decimalPlaces: v })}
+                                type="select"
+                                options={['Auto', '0', '1', '2']}
+                              />
+                              <PropertyRow
+                                label="Format"
+                                value={selectedField.format || 'Currency'}
+                                onChange={(v) => handleUpdateField(selectedField.id, { format: v })}
+                                type="select"
+                                options={['Currency', 'Fixed', 'Standard', 'Percent']}
+                              />
+                            </>
+                          )}
+
+                          {selectedField.type === 'Date/Time' && (
+                            <PropertyRow
+                              label="Format"
+                              value={selectedField.format || 'Short Date'}
+                              onChange={(v) => handleUpdateField(selectedField.id, { format: v })}
+                              type="select"
+                              options={['Short Date', 'Long Date', 'Medium Date', 'Short Time', 'Long Time']}
+                            />
+                          )}
+
                           {selectedField.type === 'Choice' && (
-                            <PropertyRow label="Options" value={selectedField.options || ''} onChange={(v) => handleUpdateField(selectedField.id, { options: v })} />
+                            <>
+                              <PropertyRow
+                                label="Options"
+                                value={selectedField.options || ''}
+                                onChange={(v) => handleUpdateField(selectedField.id, { options: v })}
+                              />
+                              <PropertyRow
+                                label="Allow Other Values"
+                                value={selectedField.allowOtherValues ? 'Yes' : 'No'}
+                                onChange={(v) =>
+                                  handleUpdateField(selectedField.id, { allowOtherValues: v === 'Yes' })
+                                }
+                                type="yesno"
+                              />
+                            </>
                           )}
 
                           {selectedField.type === 'Lookup' && (
                             <>
-                              <PropertyRow label="Related Table" value={selectedField.relatedTable || ''} onChange={(v) => handleUpdateField(selectedField.id, { relatedTable: v })} type="select" options={tables.map((t: any) => t.name)} />
+                              <PropertyRow
+                                label="Related Table"
+                                value={selectedField.relatedTable || ''}
+                                onChange={(v) => handleUpdateField(selectedField.id, { relatedTable: v })}
+                                type="select"
+                                options={tables.map((t: any) => t.name)}
+                              />
+                              <PropertyRow
+                                label="Related Field"
+                                value={selectedField.relatedField || ''}
+                                onChange={(v) => handleUpdateField(selectedField.id, { relatedField: v })}
+                              />
+                              <PropertyRow
+                                label="Display Field"
+                                value={selectedField.displayField || ''}
+                                onChange={(v) => handleUpdateField(selectedField.id, { displayField: v })}
+                              />
                             </>
                           )}
                         </>
                       ) : (
-                        <div style={{ padding: 20, textAlign: 'center', fontSize: 11, color: '#7480a8' }}>
-                          Lookup properties
-                        </div>
+                        // Lookup Tab
+                        <>
+                          <PropertyRow
+                            label="Display Control"
+                            value={selectedField.displayControl || 'Text Box'}
+                            onChange={(v) => handleUpdateField(selectedField.id, { displayControl: v })}
+                            type="select"
+                            options={['Text Box', 'Combo Box', 'List Box']}
+                          />
+                          <PropertyRow
+                            label="Row Source Type"
+                            value={selectedField.rowSourceType || 'Table/Query'}
+                            onChange={(v) => handleUpdateField(selectedField.id, { rowSourceType: v })}
+                            type="select"
+                            options={['Table/Query', 'Value List']}
+                          />
+                          <PropertyRow
+                            label="Row Source"
+                            value={selectedField.rowSource || ''}
+                            onChange={(v) => handleUpdateField(selectedField.id, { rowSource: v })}
+                          />
+                          <PropertyRow
+                            label="Bound Column"
+                            value={String(selectedField.boundColumn || 1)}
+                            onChange={(v) => handleUpdateField(selectedField.id, { boundColumn: Number(v) })}
+                            type="number"
+                          />
+                          <PropertyRow
+                            label="Column Count"
+                            value={String(selectedField.columnCount || 1)}
+                            onChange={(v) => handleUpdateField(selectedField.id, { columnCount: Number(v) })}
+                            type="number"
+                          />
+                          <PropertyRow
+                            label="Limit To List"
+                            value={selectedField.limitToList ? 'Yes' : 'No'}
+                            onChange={(v) => handleUpdateField(selectedField.id, { limitToList: v === 'Yes' })}
+                            type="yesno"
+                          />
+                        </>
                       )
                     ) : (
                       <div style={{ padding: 20, textAlign: 'center', fontSize: 11, color: '#7480a8' }}>
@@ -687,7 +1006,14 @@ export default function TableDesignerPage() {
             ) : (
               // Datasheet View
               <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-                <div style={{ background: '#1a1d2e', border: '1px solid #252840', borderRadius: 4, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    background: '#1a1d2e',
+                    border: '1px solid #252840',
+                    borderRadius: 4,
+                    overflow: 'hidden',
+                  }}
+                >
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
                     <thead>
                       <tr style={{ background: '#252840' }}>
@@ -772,14 +1098,7 @@ export default function TableDesignerPage() {
             onClick={() => {
               const table = tables.find((t) => t.id === contextMenu.tableId)
               if (table) {
-                const newName = prompt('Enter new table name:', table.name)
-                if (newName && newName.trim()) {
-                  supabase
-                    .from('workspace_tables')
-                    .update({ name: newName, slug: newName.toLowerCase().replace(/\s+/g, '_') })
-                    .eq('id', table.id)
-                    .then(() => loadTables(workspace.id))
-                }
+                handleRenameTable(table.id, table.name)
               }
               setContextMenu(null)
             }}
