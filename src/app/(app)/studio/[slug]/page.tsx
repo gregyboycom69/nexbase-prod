@@ -468,7 +468,8 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   }
 
   async function saveFormProps(props: any) {
-    await supabase.from('pages').update({
+    console.log('💾 Saving form props:', props)
+    const { error } = await supabase.from('pages').update({
       record_source: props.recordSource,
       allow_edits: props.allowEdits,
       allow_additions: props.allowAdditions,
@@ -477,6 +478,22 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
       default_view: props.defaultView,
       form_type: props.formType,
     }).eq('id', pageId)
+
+    if (error) {
+      console.error('❌ Error saving form props:', error)
+    } else {
+      console.log('✅ Form props saved successfully')
+      // BUG 2 FIX: After saving record source, fetch table fields
+      if (props.recordSource) {
+        const table = tables.find((t: any) => t.name === props.recordSource)
+        if (table && table.fields) {
+          console.log('📋 Loading fields from table:', table.name, table.fields)
+          setRecordSourceFields(table.fields)
+        }
+      } else {
+        setRecordSourceFields([])
+      }
+    }
   }
 
   function handleCanvasMouseDown(e: React.MouseEvent, section: 'header' | 'detail' | 'footer') {
@@ -1169,9 +1186,10 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
 
         <div style={{ background: '#252840', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700, marginTop: 8 }}>APPEARANCE</div>
         {!['Divider', 'NavigationButtons', 'StatusBar'].includes(control.type) && <PropRow label="Caption" value={props.caption || ''} onChange={(v: string) => onUpdate(control.id, 'caption', v)} />}
-        {['TextBox', 'Button', 'ComboBox', 'DatePicker', 'CheckBox'].includes(control.type) && (
+        {/* BUG 1 FIX: Show colors for Label too */}
+        {['Label', 'Heading', 'TextBox', 'Button', 'ComboBox', 'DatePicker', 'CheckBox'].includes(control.type) && (
           <>
-            <PropRow label="Back Color" value={props.bg || '#fff'} onChange={(v: string) => onUpdate(control.id, 'bg', v)} type="color" />
+            <PropRow label="Back Color" value={props.bg || (control.type === 'Label' || control.type === 'Heading' ? 'transparent' : '#fff')} onChange={(v: string) => onUpdate(control.id, 'bg', v)} type="color" />
             <PropRow label="Fore Color" value={props.color || '#000'} onChange={(v: string) => onUpdate(control.id, 'color', v)} type="color" />
           </>
         )}
@@ -1194,46 +1212,74 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
   }
 
   if (tab === 'data' || tab === 'all') {
+    // BUG 1 FIX: Show appropriate data properties for each control type
+    const hasDataProperties = ['TextBox', 'ComboBox', 'CheckBox', 'DatePicker', 'NumberBox', 'Lookup', 'DataTable'].includes(control.type)
+
     return (
       <>
         <div style={{ background: '#252840', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>DATA</div>
-        {['TextBox', 'ComboBox', 'CheckBox', 'DatePicker', 'NumberBox'].includes(control.type) && (
+        {hasDataProperties ? (
           <>
-            <PropRow
-              label="Control Source"
-              value={props.controlSource || ''}
-              onChange={(v: string) => onUpdate(control.id, 'controlSource', v)}
-              type="select"
-              options={recordSourceFields.length > 0 ? ['', ...recordSourceFields.map((f: any) => f.name)] : ['(Set Record Source on form first)']}
-            />
-            <PropRow label="Default Value" value={props.defaultValue || ''} onChange={(v: string) => onUpdate(control.id, 'defaultValue', v)} />
-            <PropRow label="Enabled" value={props.enabled !== false} onChange={(v: boolean) => onUpdate(control.id, 'enabled', v)} type="yesno" />
-            <PropRow label="Locked" value={props.locked === true} onChange={(v: boolean) => onUpdate(control.id, 'locked', v)} type="yesno" />
+            {['TextBox', 'ComboBox', 'CheckBox', 'DatePicker', 'NumberBox'].includes(control.type) && (
+              <>
+                <PropRow
+                  label="Control Source"
+                  value={props.controlSource || ''}
+                  onChange={(v: string) => onUpdate(control.id, 'controlSource', v)}
+                  type="select"
+                  options={recordSourceFields.length > 0 ? ['', ...recordSourceFields.map((f: any) => f.name)] : ['(Set Record Source on form first)']}
+                />
+                <PropRow label="Default Value" value={props.defaultValue || ''} onChange={(v: string) => onUpdate(control.id, 'defaultValue', v)} />
+                <PropRow label="Enabled" value={props.enabled !== false} onChange={(v: boolean) => onUpdate(control.id, 'enabled', v)} type="yesno" />
+                <PropRow label="Locked" value={props.locked === true} onChange={(v: boolean) => onUpdate(control.id, 'locked', v)} type="yesno" />
+              </>
+            )}
+            {control.type === 'ComboBox' && (
+              <PropRow label="Options" value={props.options || ''} onChange={(v: string) => onUpdate(control.id, 'options', v)} />
+            )}
+            {control.type === 'DataTable' && (
+              <>
+                <PropRow label="Record Source" value={props.recordSource || ''} onChange={(v: string) => onUpdate(control.id, 'recordSource', v)} type="select" options={['', ...recordSourceFields.map((f: any) => f.name)]} />
+                <PropRow label="Columns" value={props.columns || ''} onChange={(v: string) => onUpdate(control.id, 'columns', v)} />
+              </>
+            )}
           </>
-        )}
-        {control.type === 'ComboBox' && (
-          <PropRow label="Options" value={props.options || ''} onChange={(v: string) => onUpdate(control.id, 'options', v)} />
+        ) : (
+          <div style={{ padding: 12, fontSize: 11, color: '#8890b8', textAlign: 'center' }}>
+            No data properties for {control.type}
+          </div>
         )}
       </>
     )
   }
 
   if (tab === 'event' || tab === 'all') {
+    // BUG 1 FIX: Show appropriate event properties for each control type
+    const hasEventProperties = ['Button', 'TextBox', 'ComboBox', 'CheckBox', 'DatePicker', 'NumberBox', 'Lookup'].includes(control.type)
+
     return (
       <>
         <div style={{ background: '#252840', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>EVENTS</div>
-        {control.type === 'Button' && (
+        {hasEventProperties ? (
           <>
-            <PropRow label="On Click" value={props.onClick || ''} onChange={(v: string) => onUpdate(control.id, 'onClick', v)} type="select" options={['', ...macros.map((m: any) => m.name)]} />
-            <PropRow label="Before Update" value={props.beforeUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'beforeUpdate', v)} type="select" options={['', ...macros.map((m: any) => m.name)]} />
-            <PropRow label="After Update" value={props.afterUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'afterUpdate', v)} type="select" options={['', ...macros.map((m: any) => m.name)]} />
+            {control.type === 'Button' && (
+              <>
+                <PropRow label="On Click" value={props.onClickMacro || ''} onChange={(v: string) => onUpdate(control.id, 'onClickMacro', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
+                <PropRow label="Before Update" value={props.beforeUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'beforeUpdate', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
+                <PropRow label="After Update" value={props.afterUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'afterUpdate', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
+              </>
+            )}
+            {['TextBox', 'ComboBox', 'CheckBox', 'DatePicker', 'NumberBox'].includes(control.type) && (
+              <>
+                <PropRow label="Before Update" value={props.beforeUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'beforeUpdate', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
+                <PropRow label="After Update" value={props.afterUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'afterUpdate', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
+              </>
+            )}
           </>
-        )}
-        {['TextBox', 'ComboBox', 'CheckBox', 'DatePicker', 'NumberBox'].includes(control.type) && (
-          <>
-            <PropRow label="Before Update" value={props.beforeUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'beforeUpdate', v)} type="select" options={['', ...macros.map((m: any) => m.name)]} />
-            <PropRow label="After Update" value={props.afterUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'afterUpdate', v)} type="select" options={['', ...macros.map((m: any) => m.name)]} />
-          </>
+        ) : (
+          <div style={{ padding: 12, fontSize: 11, color: '#8890b8', textAlign: 'center' }}>
+            No event properties for {control.type}
+          </div>
         )}
       </>
     )
