@@ -2126,7 +2126,7 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
   const props = control.props || {}
 
   // Phase 15 Feature 3: Collapsible sections state
-  const [expandedSections, setExpandedSections] = useState({
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     position: true,
     appearance: true,
     typography: true,
