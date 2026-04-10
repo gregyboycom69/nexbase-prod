@@ -364,16 +364,15 @@ function CreateFormDialog({ workspace, tables, onClose, onCreated }: any) {
       .from('pages')
       .insert({
         workspace_id: workspace.id,
-        slug: formSlug,
-        title: formName,
         name: formName,
+        slug: formSlug,
         icon: '📄',
-        published: false,
-        form_type: formType,
-        default_view: formType,
-        record_source: bindToTable || null,
+        subtitle: '',
+        display_order: existingPages?.length || 0,
         is_home: false,
-        display_order: existingPages?.length || 0
+        form_type: formType,
+        record_source: bindToTable || null,
+        published: false
       })
       .select()
       .single()
