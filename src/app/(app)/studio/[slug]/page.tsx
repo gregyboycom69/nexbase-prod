@@ -564,6 +564,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   const [view, setView] = useState<ViewType>('design')
   const [controls, setControls] = useState<Control[]>([])
   const [selectedControlId, setSelectedControlId] = useState<string | null>(null)
+  const [selectedControlIds, setSelectedControlIds] = useState<string[]>([]) // Phase 15 Feature 7: Multiple selection
   const [activeTool, setActiveTool] = useState<string>('Select')
   const [propertyTab, setPropertyTab] = useState<'format' | 'data' | 'event' | 'other' | 'all'>('format')
   const [showFieldList, setShowFieldList] = useState(false)
@@ -1105,6 +1106,169 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     }
   }
 
+  // Phase 15 Feature 7: Handle control selection with Shift+Click support
+  function handleControlSelect(controlId: string, event?: any) {
+    if (event?.shiftKey && selectedControlId) {
+      // Shift+Click: Add to selection
+      if (selectedControlIds.includes(controlId)) {
+        // Deselect if already selected
+        setSelectedControlIds(selectedControlIds.filter(id => id !== controlId))
+      } else {
+        // Add to selection, including the previously single-selected control if not already there
+        const newSelection = selectedControlIds.includes(selectedControlId)
+          ? [...selectedControlIds, controlId]
+          : [selectedControlId, ...selectedControlIds, controlId]
+        setSelectedControlIds(newSelection)
+      }
+    } else if (selectedControlIds.length > 0 && !event?.shiftKey) {
+      // Clear multi-selection if clicking without Shift
+      setSelectedControlIds([])
+      setSelectedControlId(controlId)
+    } else {
+      // Normal click: select single control
+      setSelectedControlId(controlId)
+    }
+  }
+
+  // Phase 15 Feature 7: Alignment and Distribution Tools
+  function alignLeft() {
+    if (selectedControlIds.length < 2) return
+    const selectedControls = controls.filter(c => selectedControlIds.includes(c.id))
+    const minX = Math.min(...selectedControls.map(c => c.x))
+    const updated = controls.map(c =>
+      selectedControlIds.includes(c.id) ? { ...c, x: minX } : c
+    )
+    addControlToHistory(updated)
+    triggerAutoSave()
+  }
+
+  function alignRight() {
+    if (selectedControlIds.length < 2) return
+    const selectedControls = controls.filter(c => selectedControlIds.includes(c.id))
+    const maxRight = Math.max(...selectedControls.map(c => c.x + c.w))
+    const updated = controls.map(c =>
+      selectedControlIds.includes(c.id) ? { ...c, x: maxRight - c.w } : c
+    )
+    addControlToHistory(updated)
+    triggerAutoSave()
+  }
+
+  function alignTop() {
+    if (selectedControlIds.length < 2) return
+    const selectedControls = controls.filter(c => selectedControlIds.includes(c.id))
+    const minY = Math.min(...selectedControls.map(c => c.y))
+    const updated = controls.map(c =>
+      selectedControlIds.includes(c.id) ? { ...c, y: minY } : c
+    )
+    addControlToHistory(updated)
+    triggerAutoSave()
+  }
+
+  function alignBottom() {
+    if (selectedControlIds.length < 2) return
+    const selectedControls = controls.filter(c => selectedControlIds.includes(c.id))
+    const maxBottom = Math.max(...selectedControls.map(c => c.y + c.h))
+    const updated = controls.map(c =>
+      selectedControlIds.includes(c.id) ? { ...c, y: maxBottom - c.h } : c
+    )
+    addControlToHistory(updated)
+    triggerAutoSave()
+  }
+
+  function alignCenterH() {
+    if (selectedControlIds.length < 2) return
+    const selectedControls = controls.filter(c => selectedControlIds.includes(c.id))
+    const minX = Math.min(...selectedControls.map(c => c.x))
+    const maxRight = Math.max(...selectedControls.map(c => c.x + c.w))
+    const centerX = (minX + maxRight) / 2
+    const updated = controls.map(c =>
+      selectedControlIds.includes(c.id) ? { ...c, x: centerX - c.w / 2 } : c
+    )
+    addControlToHistory(updated)
+    triggerAutoSave()
+  }
+
+  function alignCenterV() {
+    if (selectedControlIds.length < 2) return
+    const selectedControls = controls.filter(c => selectedControlIds.includes(c.id))
+    const minY = Math.min(...selectedControls.map(c => c.y))
+    const maxBottom = Math.max(...selectedControls.map(c => c.y + c.h))
+    const centerY = (minY + maxBottom) / 2
+    const updated = controls.map(c =>
+      selectedControlIds.includes(c.id) ? { ...c, y: centerY - c.h / 2 } : c
+    )
+    addControlToHistory(updated)
+    triggerAutoSave()
+  }
+
+  function distributeH() {
+    if (selectedControlIds.length < 3) return
+    const selectedControls = controls.filter(c => selectedControlIds.includes(c.id))
+    const sorted = [...selectedControls].sort((a, b) => a.x - b.x)
+    const minX = sorted[0].x
+    const maxRight = sorted[sorted.length - 1].x + sorted[sorted.length - 1].w
+    const totalWidth = sorted.reduce((sum, c) => sum + c.w, 0)
+    const gap = (maxRight - minX - totalWidth) / (sorted.length - 1)
+
+    let currentX = minX
+    const updated = controls.map(c => {
+      const index = sorted.findIndex(s => s.id === c.id)
+      if (index !== -1) {
+        const newX = index === 0 ? minX : currentX
+        currentX = newX + c.w + gap
+        return { ...c, x: newX }
+      }
+      return c
+    })
+    addControlToHistory(updated)
+    triggerAutoSave()
+  }
+
+  function distributeV() {
+    if (selectedControlIds.length < 3) return
+    const selectedControls = controls.filter(c => selectedControlIds.includes(c.id))
+    const sorted = [...selectedControls].sort((a, b) => a.y - b.y)
+    const minY = sorted[0].y
+    const maxBottom = sorted[sorted.length - 1].y + sorted[sorted.length - 1].h
+    const totalHeight = sorted.reduce((sum, c) => sum + c.h, 0)
+    const gap = (maxBottom - minY - totalHeight) / (sorted.length - 1)
+
+    let currentY = minY
+    const updated = controls.map(c => {
+      const index = sorted.findIndex(s => s.id === c.id)
+      if (index !== -1) {
+        const newY = index === 0 ? minY : currentY
+        currentY = newY + c.h + gap
+        return { ...c, y: newY }
+      }
+      return c
+    })
+    addControlToHistory(updated)
+    triggerAutoSave()
+  }
+
+  function makeSameWidth() {
+    if (selectedControlIds.length < 2) return
+    const firstControl = controls.find(c => c.id === selectedControlIds[0])
+    if (!firstControl) return
+    const updated = controls.map(c =>
+      selectedControlIds.includes(c.id) ? { ...c, w: firstControl.w } : c
+    )
+    addControlToHistory(updated)
+    triggerAutoSave()
+  }
+
+  function makeSameHeight() {
+    if (selectedControlIds.length < 2) return
+    const firstControl = controls.find(c => c.id === selectedControlIds[0])
+    if (!firstControl) return
+    const updated = controls.map(c =>
+      selectedControlIds.includes(c.id) ? { ...c, h: firstControl.h } : c
+    )
+    addControlToHistory(updated)
+    triggerAutoSave()
+  }
+
   // FIX 6: Auto-generate form
   function autoGenerateForm() {
     if (!formProps.recordSource) {
@@ -1556,6 +1720,60 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
             ))}
           </div>
 
+          {/* Phase 15 Feature 7: Alignment Toolbar (shows when 2+ controls selected) */}
+          {selectedControlIds.length >= 2 && (
+            <div style={{ background: '#1a1d2e', borderBottom: '1px solid #252840', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, color: '#8890b8', marginRight: 8 }}>{selectedControlIds.length} controls selected</span>
+
+              <div style={{ display: 'flex', gap: 4, borderLeft: '1px solid #252840', paddingLeft: 8 }}>
+                <button onClick={alignLeft} title="Align Left" style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+                  ⬅ Left
+                </button>
+                <button onClick={alignCenterH} title="Center Horizontally" style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+                  ↔ Center H
+                </button>
+                <button onClick={alignRight} title="Align Right" style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+                  ➡ Right
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', gap: 4, borderLeft: '1px solid #252840', paddingLeft: 8 }}>
+                <button onClick={alignTop} title="Align Top" style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+                  ⬆ Top
+                </button>
+                <button onClick={alignCenterV} title="Center Vertically" style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+                  ↕ Center V
+                </button>
+                <button onClick={alignBottom} title="Align Bottom" style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+                  ⬇ Bottom
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', gap: 4, borderLeft: '1px solid #252840', paddingLeft: 8 }}>
+                <button onClick={distributeH} disabled={selectedControlIds.length < 3} title="Distribute Horizontally" style={{ padding: '6px 10px', background: selectedControlIds.length >= 3 ? '#252840' : '#1a1d2e', color: selectedControlIds.length >= 3 ? '#c8d0f0' : '#4b5563', border: 'none', borderRadius: 4, fontSize: 10, cursor: selectedControlIds.length >= 3 ? 'pointer' : 'not-allowed', opacity: selectedControlIds.length >= 3 ? 1 : 0.5 }}>
+                  ⬌ Distribute H
+                </button>
+                <button onClick={distributeV} disabled={selectedControlIds.length < 3} title="Distribute Vertically" style={{ padding: '6px 10px', background: selectedControlIds.length >= 3 ? '#252840' : '#1a1d2e', color: selectedControlIds.length >= 3 ? '#c8d0f0' : '#4b5563', border: 'none', borderRadius: 4, fontSize: 10, cursor: selectedControlIds.length >= 3 ? 'pointer' : 'not-allowed', opacity: selectedControlIds.length >= 3 ? 1 : 0.5 }}>
+                  ⬍ Distribute V
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', gap: 4, borderLeft: '1px solid #252840', paddingLeft: 8 }}>
+                <button onClick={makeSameWidth} title="Same Width" style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+                  ↔ Width
+                </button>
+                <button onClick={makeSameHeight} title="Same Height" style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+                  ↕ Height
+                </button>
+              </div>
+
+              <div style={{ flex: 1 }} />
+              <button onClick={() => setSelectedControlIds([])} style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+                Clear Selection
+              </button>
+            </div>
+          )}
+
           {/* Canvas */}
           <div ref={canvasRef} style={{ flex: 1, overflow: 'auto', background: '#fff', cursor: activeTool !== 'Select' ? 'crosshair' : 'default' }} onClick={() => setContextMenu(null)}>
             {/* Form Header */}
@@ -1567,8 +1785,8 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
                 <ControlWrapper
                   key={ctrl.id}
                   control={ctrl}
-                  selected={selectedControlId === ctrl.id}
-                  onSelect={() => setSelectedControlId(ctrl.id)}
+                  selected={selectedControlId === ctrl.id || selectedControlIds.includes(ctrl.id)}
+                  onSelect={(e: any) => handleControlSelect(ctrl.id, e)}
                   onUpdate={(updates: any) => updateControlGeometry(ctrl.id, updates)}
                   onContextMenu={(e: React.MouseEvent) => {
                     e.preventDefault()
@@ -1592,8 +1810,8 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
                 <ControlWrapper
                   key={ctrl.id}
                   control={ctrl}
-                  selected={selectedControlId === ctrl.id}
-                  onSelect={() => setSelectedControlId(ctrl.id)}
+                  selected={selectedControlId === ctrl.id || selectedControlIds.includes(ctrl.id)}
+                  onSelect={(e: any) => handleControlSelect(ctrl.id, e)}
                   onUpdate={(updates: any) => updateControlGeometry(ctrl.id, updates)}
                   onContextMenu={(e: React.MouseEvent) => {
                     e.preventDefault()
@@ -1617,8 +1835,8 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
                 <ControlWrapper
                   key={ctrl.id}
                   control={ctrl}
-                  selected={selectedControlId === ctrl.id}
-                  onSelect={() => setSelectedControlId(ctrl.id)}
+                  selected={selectedControlId === ctrl.id || selectedControlIds.includes(ctrl.id)}
+                  onSelect={(e: any) => handleControlSelect(ctrl.id, e)}
                   onUpdate={(updates: any) => updateControlGeometry(ctrl.id, updates)}
                   onContextMenu={(e: React.MouseEvent) => {
                     e.preventDefault()
@@ -1740,7 +1958,7 @@ function ControlWrapper({ control, selected, onSelect, onUpdate, onContextMenu }
   function handleMouseDown(e: React.MouseEvent, handle?: string) {
     if (e.button !== 0) return
     e.stopPropagation()
-    onSelect()
+    onSelect(e) // Phase 15 Feature 7: Pass event for Shift+Click support
 
     if (handle) {
       setIsResizing(true)
