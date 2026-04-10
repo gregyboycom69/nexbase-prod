@@ -353,7 +353,13 @@ function CreateFormDialog({ workspace, tables, onClose, onCreated }: any) {
   async function handleCreate() {
     if (!formName.trim() || !workspace) return
 
-    const formSlug = formName.toLowerCase().replace(/\s+/g, '-')
+    // Get existing pages count for display_order
+    const { data: existingPages } = await supabase
+      .from('pages')
+      .select('id')
+      .eq('workspace_id', workspace.id)
+
+    const formSlug = formName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
     const { data, error } = await supabase
       .from('pages')
       .insert({
@@ -361,17 +367,22 @@ function CreateFormDialog({ workspace, tables, onClose, onCreated }: any) {
         slug: formSlug,
         title: formName,
         name: formName,
+        icon: '📄',
         published: false,
         form_type: formType,
         default_view: formType,
         record_source: bindToTable || null,
         is_home: false,
+        display_order: existingPages?.length || 0
       })
       .select()
       .single()
 
     if (!error && data) {
       onCreated(data.id, data.name)
+    } else if (error) {
+      console.error('Error creating form:', error)
+      alert('Error creating form: ' + error.message)
     }
   }
 
@@ -621,13 +632,26 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   }, [pageId])
 
   useEffect(() => {
-    if (formProps.recordSource) {
-      const table = tables.find((t: any) => t.name === formProps.recordSource)
-      if (table) {
-        setRecordSourceFields(table.fields || [])
+    async function loadTableFields() {
+      if (formProps.recordSource && workspace) {
+        const { data: tableData } = await supabase
+          .from('workspace_tables')
+          .select('*')
+          .eq('workspace_id', workspace.id)
+          .eq('name', formProps.recordSource)
+          .single()
+
+        if (tableData && tableData.fields) {
+          setRecordSourceFields(tableData.fields)
+        } else {
+          setRecordSourceFields([])
+        }
+      } else {
+        setRecordSourceFields([])
       }
     }
-  }, [formProps.recordSource, tables])
+    loadTableFields()
+  }, [formProps.recordSource, workspace])
 
   // FIX 7: Keyboard shortcuts
   useEffect(() => {

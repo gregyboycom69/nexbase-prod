@@ -1,0 +1,334 @@
+NexBase - Phase 16 - Complete Property Sheet Fix
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+The property sheet tabs are not showing properties correctly.
+Rewrite the entire PropertySheet component from scratch.
+
+=== THE PROBLEM ===
+
+When a control is selected:
+- FORMAT tab shows nothing or wrong things
+- DATA tab does not show Control Source dropdown with table fields
+- EVENT tab does not show macro dropdowns
+- OTHER tab is empty
+
+=== COMPLETE REWRITE OF PROPERTY SHEET ===
+
+Find the PropertySheet component (could be in studio/page.tsx or 
+a separate file like PropertySheet.tsx or ControlProperties.tsx).
+
+Replace it entirely with this logic:
+
+The PropertySheet receives these props:
+- selectedControl: the currently selected control object (or null)
+- formPage: the current form/page object (has record_source etc)
+- tableFields: array of fields from the bound table
+- workspaceMacros: array of macros from workspace_macros table
+- workspaceTables: array of all tables in this workspace
+- workspaceQueries: array of all queries
+- workspaceForms: array of all forms/pages
+- onUpdateControl: function(controlId, changes) - updates control
+- onUpdateForm: function(changes) - updates form/page properties
+
+=== WHEN NOTHING SELECTED - SHOW FORM PROPERTIES ===
+
+Header: "Property Sheet"
+Subheader: "Selection type: Form"
+Name box: shows current form name
+
+FORMAT tab:
+- Caption: text input → updates page.name
+- Default View: select [Single Form, Continuous, Datasheet, Split Form, Popup]
+- Navigation Buttons: select [Yes, No]
+- Scroll Bars: select [Both, Neither, Vertical Only, Horizontal Only]
+- Auto Resize: select [Yes, No]
+- Border Style: select [None, Thin, Sizable, Dialog]
+
+DATA tab:
+- Record Source: SELECT dropdown
+  Options: "(none)" then all workspaceTables names then all workspaceQueries names
+  Value: formPage.record_source
+  onChange: call onUpdateForm({record_source: value})
+  IMPORTANT: this must actually save to Supabase pages table
+  UPDATE pages SET record_source = value WHERE id = formPage.id
+
+- Filter: text input (expression like "status = 'Active'")
+- Order By: text input (like "name ASC")
+- Allow Edits: select [Yes, No] → saves to pages.allow_edits
+- Allow Additions: select [Yes, No] → saves to pages.allow_additions
+- Allow Deletions: select [Yes, No] → saves to pages.allow_deletions
+
+EVENT tab:
+- On Open: select of workspaceMacros + "(none)"
+- On Load: select of workspaceMacros + "(none)"
+- On Close: select of workspaceMacros + "(none)"
+- On Current: select of workspaceMacros + "(none)"
+- Before Insert: select of workspaceMacros + "(none)"
+- After Insert: select of workspaceMacros + "(none)"
+- Before Update: select of workspaceMacros + "(none)"
+- After Update: select of workspaceMacros + "(none)"
+
+OTHER tab:
+- Moveable: select [Yes, No]
+- Pop Up: select [Yes, No]
+- Modal: select [Yes, No]
+
+=== WHEN A CONTROL IS SELECTED ===
+
+Header: "Property Sheet"
+Subheader: "Selection type: [TextBox / Button / Label / etc]"
+Name box: shows ctrl.props.name or ctrl.type + ctrl.id (editable)
+
+Show 5 tab buttons: Format | Data | Event | Other | All
+
+Each tab shows property rows.
+Each row: 2 columns - property label (130px) | input (flex 1)
+
+Row styling:
+display: grid
+grid-template-columns: 130px 1fr
+border-bottom: 1px solid #252840
+min-height: 24px
+align-items: center
+padding: 0 8px
+
+Label style: font-size 11px, color #8890b8, font-family JetBrains Mono
+Input style: background #0f1117, color #c8d0f0, border none, font-size 11px, width 100%
+Select style: background #0f1117, color #c8d0f0, border none, font-size 11px, width 100%, cursor pointer
+
+=== FORMAT TAB - ALL CONTROL TYPES ===
+
+Show these for EVERY control type:
+
+"POSITION" section header:
+X (Left):    number input ← ctrl.x, onChange: onUpdateControl(id, {x: val})
+Y (Top):     number input ← ctrl.y, onChange: onUpdateControl(id, {y: val})
+Width:       number input ← ctrl.w, onChange: onUpdateControl(id, {w: val})
+Height:      number input ← ctrl.h, onChange: onUpdateControl(id, {h: val})
+
+"APPEARANCE" section header:
+Back Color:  color input ← ctrl.props.bg, onChange: onUpdateControl(id, {props: {...ctrl.props, bg: val}})
+Text Color:  color input ← ctrl.props.color
+Border Radius: number ← ctrl.props.radius
+Visible:     select Yes/No ← ctrl.props.visible !== false
+
+"TYPOGRAPHY" section header (hide for Divider, ProgressBar, Image):
+Font Size:   number ← ctrl.props.fontSize
+Bold:        select Yes/No ← ctrl.props.bold
+Italic:      select Yes/No ← ctrl.props.italic
+Text Align:  select [Left, Center, Right] ← ctrl.props.textAlign
+
+"CONTENT" section header (show for Label, Heading, Button, Badge):
+Caption:     text input ← ctrl.props.caption
+
+For BUTTON additionally in FORMAT:
+Variant:     select [Filled, Outline, Ghost] ← ctrl.props.variant
+
+For COMBOBOX additionally in FORMAT:
+Placeholder: text input ← ctrl.props.placeholder
+Options:     text input ← ctrl.props.options (comma separated, for Value List)
+
+For TEXTBOX additionally in FORMAT:
+Placeholder: text input ← ctrl.props.placeholder
+
+=== DATA TAB - BY CONTROL TYPE ===
+
+For TEXTBOX:
+Control Source: SELECT dropdown
+  - Shows "(none)" option first
+  - Then shows each field from tableFields array
+  - Format: field.caption || field.name (shown) = field.name (value)
+  - Current value: ctrl.props.controlSource || ''
+  - onChange: onUpdateControl(id, {props: {...ctrl.props, controlSource: val}})
+  - If tableFields is empty: show "(Set Record Source on form first)"
+
+Default Value:   text input ← ctrl.props.defaultValue
+Validation Rule: text input ← ctrl.props.validationRule
+Validation Text: text input ← ctrl.props.validationText
+Enabled:         select Yes/No ← ctrl.props.enabled !== false
+Locked:          select Yes/No ← ctrl.props.locked === true
+
+For COMBOBOX:
+Control Source:  SELECT of tableFields (same as TextBox)
+Row Source Type: select [Value List, Table/Query]
+Row Source:      
+  if Value List: text input for comma-separated options
+  if Table/Query: select of workspaceTables
+Enabled:         select Yes/No
+Locked:          select Yes/No
+Limit to List:   select Yes/No
+
+For CHECKBOX:
+Control Source:  SELECT of Yes/No fields from tableFields
+Default Value:   select [Yes, No]
+Enabled:         select Yes/No
+
+For DATEPICKER:
+Control Source:  SELECT of Date/Time fields from tableFields
+Default Value:   text input (e.g. =Today())
+Min Date:        date input
+Max Date:        date input
+Date Format:     select [DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD, Long Date]
+Enabled:         select Yes/No
+
+For NUMBERBOX:
+Control Source:  SELECT of Number/Currency fields from tableFields
+Default Value:   number input
+Min Value:       number input
+Max Value:       number input
+Step:            number input
+Decimal Places:  select [0, 1, 2, 3, Auto]
+Format:          select [General, Currency, Percent, Fixed]
+Enabled:         select Yes/No
+
+For DATATABLE:
+Record Source:   SELECT of workspaceTables + workspaceQueries
+  onChange: onUpdateControl(id, {props: {...ctrl.props, recordSource: val}})
+Columns:         text input (comma separated field names, blank = show all)
+Filter:          text input
+Order By:        text input
+Allow Edits:     select Yes/No
+Allow Additions: select Yes/No
+Allow Deletions: select Yes/No
+Show Search:     select Yes/No
+Show Export:     select Yes/No
+Records Per Page: select [10, 25, 50, 100]
+
+For CHART:
+Record Source:   SELECT of workspaceTables
+X Axis Field:    SELECT of fields from selected record source table
+Y Axis Field:    SELECT of number fields from record source table
+Chart Type:      select [Bar, Line, Pie, Donut, Area]
+Chart Title:     text input
+Show Legend:     select Yes/No
+
+For SUBFORM:
+Source Object:        SELECT of workspaceForms (other forms)
+Link Master Fields:   SELECT of fields from parent form tableFields
+Link Child Fields:    SELECT of fields from subform's record source table
+
+For LABEL, HEADING, BADGE, DIVIDER, IMAGE, CARD:
+(No Control Source for these - they don't bind to data)
+Show: Default Value text input (static value to display)
+
+For BUTTON:
+(Buttons don't bind to data)
+Default:  select Yes/No (is default button - Enter activates)
+Cancel:   select Yes/No (is cancel button - Escape activates)
+
+=== EVENT TAB - ALL CONTROL TYPES ===
+
+For ALL controls show:
+On Click:      SELECT of workspaceMacros names + "(none)"
+On Dbl Click:  SELECT of workspaceMacros names + "(none)"
+On Got Focus:  SELECT of workspaceMacros names + "(none)"
+On Lost Focus: SELECT of workspaceMacros names + "(none)"
+
+For TextBox, ComboBox, DatePicker, NumberBox also show:
+Before Update: SELECT of workspaceMacros names + "(none)"
+After Update:  SELECT of workspaceMacros names + "(none)"
+On Change:     SELECT of workspaceMacros names + "(none)"
+
+For Button specifically - MOST IMPORTANT:
+On Click shows the macro select PLUS a "▶ Edit Macro Steps" button
+Clicking "Edit Macro Steps" opens the Macro Builder modal
+where user can add steps: save, goto, toast, filter, etc.
+
+The macro dropdown and steps builder both work for buttons:
+- If user picks a saved macro: button runs that macro
+- If user builds custom steps: stored in ctrl.props.steps array
+
+=== OTHER TAB - ALL CONTROL TYPES ===
+
+Name:          text input ← ctrl.props.ctrlName (unique identifier)
+Status Bar:    text input ← ctrl.props.statusBarText (help text at bottom)
+ControlTip:    text input ← ctrl.props.tooltip (hover tooltip)
+Tab Stop:      select Yes/No ← ctrl.props.tabStop !== false
+Tab Index:     number ← ctrl.props.tabIndex || 0
+
+=== ALL TAB ===
+
+Shows ALL properties from Format + Data + Event + Other in one scrollable list.
+Same rows, same inputs, just all combined.
+
+=== MACRO BUILDER MODAL FOR BUTTONS ===
+
+When "▶ Edit Macro Steps" is clicked on a Button:
+Show a modal (bottom sheet, 60% height):
+
+Title: "Macro Steps — [Button caption]"
+
+Left panel (200px): Action Catalog
+Groups:
+  RECORDS: Save Record, New Record, Delete Record, Update Field
+  NAVIGATE: Go To Page, Next Record, Prev Record, First, Last
+  MESSAGES: Show Toast, Alert, Confirm Dialog
+  DATA: Filter, Clear Filters, Sort, Search, Export CSV
+  LOGIC: Set Field, Calculate, If Condition, Wait, Audit Log
+  FORMS: Open Form, Close Form, Refresh
+
+Each action: icon + name, click to add to steps
+
+Right panel: Steps list
+Each step shows:
+  [number] [action icon] [action name]
+  Parameter inputs for that action
+  [↑] [↓] [✕] buttons
+
+Parameters by action:
+  Save Record: Table dropdown (workspaceTables)
+  New Record: (no params)
+  Delete Record: Table dropdown, Confirm message text
+  Go To Page: Page dropdown (workspaceForms)
+  Show Toast: Message text, Type select (success/error/warning/info)
+  Alert: Message text
+  Confirm: Question text
+  Filter: Table, Field, Value
+  Export CSV: Table, Filename
+  Set Field: Field name, Value
+  Calculate: Formula text, Store in field name
+  If Condition: Field, Operator (equals/not equals/contains/greater/less), Value
+  Wait: Milliseconds select (200/500/1000/2000)
+  Open Form: Form select (workspaceForms)
+  Close Form: (no params)
+  Audit Log: Action text
+
+Bottom buttons: [▷ Test Run] [Clear All] [Close & Save]
+
+Test Run: simulates the steps and shows a log panel below with results
+Close & Save: saves steps to ctrl.props.steps and closes modal
+
+=== HOW TO CONNECT EVERYTHING ===
+
+In the studio page (page.tsx), maintain these states:
+- tableFields: array - fields from current form's record source table
+- workspaceMacros: array - all macros from workspace_macros
+- workspaceTables: array - all tables from workspace_tables
+- workspaceQueries: array - all queries from workspace_queries
+- workspaceForms: array - all pages/forms for this workspace
+
+Load on studio mount:
+const { data: macros } = await supabase
+  .from('workspace_macros')
+  .select('*')
+  .eq('workspace_id', workspaceId)
+setWorkspaceMacros(macros || [])
+
+const { data: tables } = await supabase
+  .from('workspace_tables')
+  .select('*')
+  .eq('workspace_id', workspaceId)
+setWorkspaceTables(tables || [])
+
+When form's record_source changes:
+const table = workspaceTables.find(t => t.name === newRecordSource)
+if (table) setTableFields(table.fields || [])
+
+Pass all these to PropertySheet component.
+
+=== AFTER DONE ===
+
+git add -A
+git commit -m "Phase 16 Complete property sheet rewrite - all tabs working"
+git push origin main
