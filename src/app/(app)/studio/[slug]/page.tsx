@@ -1083,7 +1083,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   function addControlToHistory(newControls: Control[]) {
     const newHistory = history.slice(0, historyIndex + 1)
     newHistory.push(newControls)
-    if (newHistory.length > 20) newHistory.shift()
+    if (newHistory.length > 30) newHistory.shift() // Phase 15: Increased from 20 to 30
     setHistory(newHistory)
     setHistoryIndex(newHistory.length - 1)
     setControls(newControls)
@@ -1457,6 +1457,45 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
             + Add All Fields
           </button>
         )}
+
+        {/* Phase 15 Feature 8: Undo/Redo buttons */}
+        <div style={{ borderLeft: '1px solid #252840', paddingLeft: 12, display: 'flex', gap: 8 }}>
+          <button
+            onClick={undo}
+            disabled={historyIndex <= 0}
+            title={historyIndex > 0 ? 'Undo (Ctrl+Z)' : 'Nothing to undo'}
+            style={{
+              padding: '6px 12px',
+              background: historyIndex > 0 ? '#252840' : '#1a1d2e',
+              color: historyIndex > 0 ? '#c8d0f0' : '#4b5563',
+              border: 'none',
+              borderRadius: 4,
+              fontSize: 11,
+              cursor: historyIndex > 0 ? 'pointer' : 'not-allowed',
+              opacity: historyIndex > 0 ? 1 : 0.5
+            }}
+          >
+            ↩ Undo
+          </button>
+          <button
+            onClick={redo}
+            disabled={historyIndex >= history.length - 1}
+            title={historyIndex < history.length - 1 ? 'Redo (Ctrl+Y)' : 'Nothing to redo'}
+            style={{
+              padding: '6px 12px',
+              background: historyIndex < history.length - 1 ? '#252840' : '#1a1d2e',
+              color: historyIndex < history.length - 1 ? '#c8d0f0' : '#4b5563',
+              border: 'none',
+              borderRadius: 4,
+              fontSize: 11,
+              cursor: historyIndex < history.length - 1 ? 'pointer' : 'not-allowed',
+              opacity: historyIndex < history.length - 1 ? 1 : 0.5
+            }}
+          >
+            ↪ Redo
+          </button>
+        </div>
+
         <div style={{ flex: 1 }} />
         {/* FIX 1: Large prominent Save button */}
         <button onClick={() => saveAllControls(true)} disabled={saveStatus === 'saving'} style={{ padding: '8px 20px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: saveStatus === 'saving' ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 2px 8px rgba(99,102,241,0.3)' }}>
