@@ -2082,26 +2082,17 @@ function ControlWrapper({ control, selected, onSelect, onUpdate, onContextMenu }
 
 // FIX 5: Completely rebuilt Property Sheet Component
 function PropertySheet({ selectedControl, formProps, propertyTab, setPropertyTab, tables, queries, macros, recordSourceFields, onUpdateControlProp, onUpdateControlGeometry, onUpdateFormProp, onDelete, onSaveSingleControl }: any) {
-  const tabs = ['format', 'data', 'event', 'other', 'all'] as const
-
   return (
-    <div style={{ width: 240, background: '#1a1d2e', borderLeft: '1px solid #252840', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ background: '#252840', padding: '8px 12px', borderBottom: '1px solid #1a1d2e' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', marginBottom: 4 }}>Property Sheet</div>
-        <div style={{ fontSize: 11, color: '#8890b8' }}>
-          Selection: {selectedControl ? selectedControl.type : 'Form'}
+    <div style={{ width: 280, background: '#1a1d2e', borderLeft: '1px solid #252840', display: 'flex', flexDirection: 'column' }}>
+      {/* Phase 15 Feature 3: Simplified header (no more tabs) */}
+      <div style={{ background: '#252840', padding: '12px 16px', borderBottom: '1px solid #3d4059' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Properties</div>
+        <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600 }}>
+          {selectedControl ? selectedControl.type : 'Form'}
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 2, padding: '8px 8px', background: '#252840', borderBottom: '1px solid #1a1d2e', flexWrap: 'wrap' }}>
-        {tabs.map((tab) => (
-          <button key={tab} onClick={() => setPropertyTab(tab)} style={{ padding: '4px 8px', background: propertyTab === tab ? '#6366f1' : '#1a1d2e', color: propertyTab === tab ? '#fff' : '#7480a8', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer', textTransform: 'capitalize' }}>
-            {tab}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
+      <div style={{ flex: 1, overflow: 'auto' }}>
         {selectedControl ? (
           <ControlProperties
             control={selectedControl}
@@ -2134,89 +2125,161 @@ function PropertySheet({ selectedControl, formProps, propertyTab, setPropertyTab
 function ControlProperties({ control, tab, tables, queries, macros, recordSourceFields, onUpdate, onUpdateGeometry, onDelete, onSave }: any) {
   const props = control.props || {}
 
-  // FIX 5: Property Row Component (with onBlur to save on focus loss)
-  function PropRow({ label, value, onChange, type = 'text', options = [], onBlur }: any) {
+  // Phase 15 Feature 3: Collapsible sections state
+  const [expandedSections, setExpandedSections] = useState({
+    position: true,
+    appearance: true,
+    typography: true,
+    data: true,
+    events: false
+  })
+
+  function toggleSection(section: string) {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }
+
+  // Phase 15 Feature 3: Property Group Component (Figma-style)
+  function PropertyGroup({ title, icon, section, children }: any) {
+    const isExpanded = expandedSections[section]
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: '1px solid #252840', minHeight: 24, alignItems: 'center', padding: '0 8px' }}>
-        <span style={{ fontSize: 11, color: '#8890b8', fontFamily: "'JetBrains Mono', monospace" }}>{label}</span>
-        {type === 'select' ? (
-          <select value={value} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px', cursor: 'pointer' }}>
-            {options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
-          </select>
-        ) : type === 'color' ? (
-          <input type="color" value={value || '#ffffff'} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ width: '100%', height: 20, background: '#0f1117', border: 'none' }} />
-        ) : type === 'number' ? (
-          <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} onBlur={onBlur} style={{ background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px' }} />
-        ) : (
-          <input type="text" value={value || ''} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px' }} />
+      <div style={{ marginBottom: 8 }}>
+        <div
+          onClick={() => toggleSection(section)}
+          style={{
+            background: '#252840',
+            padding: '8px 12px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            borderBottom: isExpanded ? '1px solid #3d4059' : 'none'
+          }}
+        >
+          <span style={{ fontSize: 10, color: '#8890b8' }}>{isExpanded ? '▼' : '▶'}</span>
+          <span style={{ fontSize: 14 }}>{icon}</span>
+          <span style={{ fontSize: 10, color: '#6366f1', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', flex: 1 }}>
+            {title}
+          </span>
+        </div>
+        {isExpanded && (
+          <div style={{ background: '#1a1d2e', padding: '8px' }}>
+            {children}
+          </div>
         )}
       </div>
     )
   }
 
-  // FIX 5: FORMAT TAB - Show for ALL controls
-  if (tab === 'format' || tab === 'all') {
+  // Phase 15 Feature 3: Property Row Component (redesigned)
+  function PropRow({ label, value, onChange, type = 'text', options = [], onBlur, grid = false }: any) {
+    if (grid) {
+      // Grid layout for position/size (2x2)
+      return children
+    }
+
     return (
-      <>
-        <PropRow label="Caption" value={props.caption} onChange={(v: string) => onUpdate(control.id, 'caption', v)} onBlur={onSave} />
-        <PropRow label="Width" value={control.w} onChange={(v: number) => onUpdateGeometry(control.id, { w: v })} type="number" onBlur={onSave} />
-        <PropRow label="Height" value={control.h} onChange={(v: number) => onUpdateGeometry(control.id, { h: v })} type="number" onBlur={onSave} />
-        <PropRow label="Left (X)" value={control.x} onChange={(v: number) => onUpdateGeometry(control.id, { x: v })} type="number" onBlur={onSave} />
-        <PropRow label="Top (Y)" value={control.y} onChange={(v: number) => onUpdateGeometry(control.id, { y: v })} type="number" onBlur={onSave} />
-        <PropRow label="Font Size" value={props.fontSize || 13} onChange={(v: number) => onUpdate(control.id, 'fontSize', v)} type="number" onBlur={onSave} />
-        <PropRow label="Bold" value={props.fontWeight === 'bold' ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'fontWeight', v === 'Yes' ? 'bold' : 'normal')} type="select" options={['Yes', 'No']} onBlur={onSave} />
-        <PropRow label="Back Color" value={props.bg} onChange={(v: string) => onUpdate(control.id, 'bg', v)} type="color" onBlur={onSave} />
+      <div style={{ marginBottom: 8 }}>
+        <label style={{ display: 'block', fontSize: 10, color: '#8890b8', marginBottom: 4 }}>{label}</label>
+        {type === 'select' ? (
+          <select value={value} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ width: '100%', background: '#0f1117', color: '#c8d0f0', border: '1px solid #252840', borderRadius: 4, fontSize: 11, padding: '6px 8px', cursor: 'pointer' }}>
+            {options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
+          </select>
+        ) : type === 'color' ? (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input type="color" value={value || '#ffffff'} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ width: 40, height: 32, background: '#0f1117', border: '1px solid #252840', borderRadius: 4, cursor: 'pointer' }} />
+            <input type="text" value={value || '#ffffff'} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ flex: 1, background: '#0f1117', color: '#c8d0f0', border: '1px solid #252840', borderRadius: 4, fontSize: 11, padding: '6px 8px' }} />
+          </div>
+        ) : type === 'number' ? (
+          <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} onBlur={onBlur} style={{ width: '100%', background: '#0f1117', color: '#c8d0f0', border: '1px solid #252840', borderRadius: 4, fontSize: 11, padding: '6px 8px' }} />
+        ) : type === 'toggle' ? (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+            <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} onBlur={onBlur} style={{ width: 16, height: 16 }} />
+            <span style={{ fontSize: 11, color: '#c8d0f0' }}>{value ? 'Enabled' : 'Disabled'}</span>
+          </label>
+        ) : (
+          <input type="text" value={value || ''} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ width: '100%', background: '#0f1117', color: '#c8d0f0', border: '1px solid #252840', borderRadius: 4, fontSize: 11, padding: '6px 8px' }} />
+        )}
+      </div>
+    )
+  }
+
+  // Phase 15 Feature 3: Render grouped property sections (no more tabs!)
+  return (
+    <div style={{ padding: 0 }}>
+      {/* POSITION & SIZE */}
+      <PropertyGroup title="Position & Size" icon="📐" section="position">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 10, color: '#8890b8', marginBottom: 4 }}>X</label>
+            <input type="number" value={control.x} onChange={(e) => onUpdateGeometry(control.id, { x: Number(e.target.value) })} onBlur={onSave} style={{ width: '100%', background: '#0f1117', color: '#c8d0f0', border: '1px solid #252840', borderRadius: 4, fontSize: 11, padding: '6px 8px' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 10, color: '#8890b8', marginBottom: 4 }}>Y</label>
+            <input type="number" value={control.y} onChange={(e) => onUpdateGeometry(control.id, { y: Number(e.target.value) })} onBlur={onSave} style={{ width: '100%', background: '#0f1117', color: '#c8d0f0', border: '1px solid #252840', borderRadius: 4, fontSize: 11, padding: '6px 8px' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 10, color: '#8890b8', marginBottom: 4 }}>W</label>
+            <input type="number" value={control.w} onChange={(e) => onUpdateGeometry(control.id, { w: Number(e.target.value) })} onBlur={onSave} style={{ width: '100%', background: '#0f1117', color: '#c8d0f0', border: '1px solid #252840', borderRadius: 4, fontSize: 11, padding: '6px 8px' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 10, color: '#8890b8', marginBottom: 4 }}>H</label>
+            <input type="number" value={control.h} onChange={(e) => onUpdateGeometry(control.id, { h: Number(e.target.value) })} onBlur={onSave} style={{ width: '100%', background: '#0f1117', color: '#c8d0f0', border: '1px solid #252840', borderRadius: 4, fontSize: 11, padding: '6px 8px' }} />
+          </div>
+        </div>
+      </PropertyGroup>
+
+      {/* APPEARANCE */}
+      <PropertyGroup title="Appearance" icon="🎨" section="appearance">
+        <PropRow label="Background Color" value={props.bg} onChange={(v: string) => onUpdate(control.id, 'bg', v)} type="color" onBlur={onSave} />
         <PropRow label="Text Color" value={props.color} onChange={(v: string) => onUpdate(control.id, 'color', v)} type="color" onBlur={onSave} />
         <PropRow label="Border Radius" value={props.radius || 0} onChange={(v: number) => onUpdate(control.id, 'radius', v)} type="number" onBlur={onSave} />
-        <PropRow label="Visible" value={props.visible !== false ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'visible', v === 'Yes')} type="select" options={['Yes', 'No']} onBlur={onSave} />
+        <PropRow label="Visible" value={props.visible !== false} onChange={(v: boolean) => onUpdate(control.id, 'visible', v)} type="toggle" onBlur={onSave} />
+      </PropertyGroup>
 
-        <div style={{ padding: 8, marginTop: 8 }}>
-          <button onClick={onDelete} style={{ width: '100%', padding: '6px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
-            Delete Control
-          </button>
+      {/* TYPOGRAPHY */}
+      <PropertyGroup title="Typography" icon="T" section="typography">
+        <PropRow label="Caption" value={props.caption} onChange={(v: string) => onUpdate(control.id, 'caption', v)} onBlur={onSave} />
+        <PropRow label="Font Size" value={props.fontSize || 13} onChange={(v: number) => onUpdate(control.id, 'fontSize', v)} type="number" onBlur={onSave} />
+        <div style={{ marginBottom: 8 }}>
+          <label style={{ display: 'block', fontSize: 10, color: '#8890b8', marginBottom: 4 }}>Style</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: '#0f1117', padding: '6px 10px', borderRadius: 4, border: '1px solid #252840' }}>
+              <input type="checkbox" checked={props.bold} onChange={(e) => onUpdate(control.id, 'bold', e.target.checked)} onBlur={onSave} style={{ width: 14, height: 14 }} />
+              <span style={{ fontSize: 11, color: '#c8d0f0', fontWeight: 700 }}>B</span>
+            </label>
+            <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: '#0f1117', padding: '6px 10px', borderRadius: 4, border: '1px solid #252840' }}>
+              <input type="checkbox" checked={props.italic} onChange={(e) => onUpdate(control.id, 'italic', e.target.checked)} onBlur={onSave} style={{ width: 14, height: 14 }} />
+              <span style={{ fontSize: 11, color: '#c8d0f0', fontStyle: 'italic' }}>I</span>
+            </label>
+          </div>
         </div>
-      </>
-    )
-  }
+      </PropertyGroup>
 
-  // FIX 5: DATA TAB - Show for ALL controls
-  if (tab === 'data' || tab === 'all') {
-    return (
-      <>
+      {/* DATA */}
+      <PropertyGroup title="Data" icon="🗄️" section="data">
         <PropRow label="Control Source" value={props.controlSource || ''} onChange={(v: string) => onUpdate(control.id, 'controlSource', v)} type="select" options={['', ...recordSourceFields.map((f: any) => f.name)]} onBlur={onSave} />
         <PropRow label="Default Value" value={props.defaultValue || ''} onChange={(v: string) => onUpdate(control.id, 'defaultValue', v)} onBlur={onSave} />
-        <PropRow label="Enabled" value={props.enabled !== false ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'enabled', v === 'Yes')} type="select" options={['Yes', 'No']} onBlur={onSave} />
-        <PropRow label="Locked" value={props.locked === true ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'locked', v === 'Yes')} type="select" options={['Yes', 'No']} onBlur={onSave} />
-      </>
-    )
-  }
+        <PropRow label="Enabled" value={props.enabled !== false} onChange={(v: boolean) => onUpdate(control.id, 'enabled', v)} type="toggle" onBlur={onSave} />
+        <PropRow label="Locked" value={props.locked === true} onChange={(v: boolean) => onUpdate(control.id, 'locked', v)} type="toggle" onBlur={onSave} />
+      </PropertyGroup>
 
-  // FIX 5: EVENT TAB - Show for ALL controls
-  if (tab === 'event' || tab === 'all') {
-    return (
-      <>
+      {/* EVENTS */}
+      <PropertyGroup title="Events" icon="⚡" section="events">
         <PropRow label="On Click" value={props.onClickMacro || ''} onChange={(v: string) => onUpdate(control.id, 'onClickMacro', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} onBlur={onSave} />
         <PropRow label="Before Update" value={props.beforeUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'beforeUpdate', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} onBlur={onSave} />
         <PropRow label="After Update" value={props.afterUpdate || ''} onChange={(v: string) => onUpdate(control.id, 'afterUpdate', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} onBlur={onSave} />
         <PropRow label="On Got Focus" value={props.onGotFocus || ''} onChange={(v: string) => onUpdate(control.id, 'onGotFocus', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} onBlur={onSave} />
         <PropRow label="On Lost Focus" value={props.onLostFocus || ''} onChange={(v: string) => onUpdate(control.id, 'onLostFocus', v)} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} onBlur={onSave} />
-      </>
-    )
-  }
+      </PropertyGroup>
 
-  // FIX 5: OTHER TAB - Show for ALL controls
-  if (tab === 'other' || tab === 'all') {
-    return (
-      <>
-        <PropRow label="Name" value={props.name || control.type + control.id.slice(-4)} onChange={(v: string) => onUpdate(control.id, 'name', v)} onBlur={onSave} />
-        <PropRow label="ControlTip" value={props.tooltip || ''} onChange={(v: string) => onUpdate(control.id, 'tooltip', v)} />
-        <PropRow label="Tab Stop" value={props.tabStop !== false ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'tabStop', v === 'Yes')} type="select" options={['Yes', 'No']} />
-        <PropRow label="Tab Index" value={props.tabIndex || 0} onChange={(v: number) => onUpdate(control.id, 'tabIndex', v)} type="number" />
-      </>
-    )
-  }
-
-  return null
+      {/* DELETE BUTTON */}
+      <div style={{ padding: 12 }}>
+        <button onClick={onDelete} style={{ width: '100%', padding: '10px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(239,68,68,0.3)' }}>
+          Delete Control
+        </button>
+      </div>
+    </div>
+  )
 }
 
 // FIX 5: Form Properties
