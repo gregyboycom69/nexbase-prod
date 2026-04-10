@@ -89,7 +89,7 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
             color: ctrl.color || '#1e293b',
             borderRadius: ctrl.radius !== undefined ? ctrl.radius : 8,
             fontSize: ctrl.fontSize || 14,
-            border: '1px solid #e2e8f0',
+            border: '1.5px solid #e2e8f0',
             borderLeft: '3px solid #6366f1',
             padding: '0 12px',
             outline: 'none'
@@ -104,8 +104,9 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         color: ctrl.color || '#1e293b',
         borderRadius: ctrl.radius !== undefined ? ctrl.radius : 8,
         fontSize: ctrl.fontSize || 14,
-        border: '1px solid #e2e8f0',
+        border: '1.5px solid #e2e8f0',
         borderLeft: '3px solid #6366f1',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
         display: 'flex',
         alignItems: 'center',
         padding: '0 12px'
@@ -123,20 +124,27 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
       onClick?.()
     }
 
+    // Create gradient background if using default indigo color
+    const buttonBg = ctrl.bg || '#6366f1'
+    const useGradient = !ctrl.bg || ctrl.bg === '#6366f1'
+    const background = useGradient
+      ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'
+      : buttonBg
+
     return (
       <button
         onClick={handleClick}
         style={{
           ...base,
-          background: ctrl.bg || '#6366f1',
+          background,
           color: ctrl.color || '#ffffff',
-          borderRadius: ctrl.radius !== undefined ? ctrl.radius : 8,
+          borderRadius: ctrl.radius !== undefined ? ctrl.radius : 10,
           fontSize: ctrl.fontSize || 14,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontWeight: ctrl.bold ? 700 : 400,
-          boxShadow: `0 4px 14px ${ctrl.bg || '#6366f1'}55`,
+          fontWeight: ctrl.bold !== false ? 700 : 400,
+          boxShadow: '0 4px 14px rgba(99,102,241,0.4)',
           cursor: isPreview ? 'pointer' : 'default',
           border: 'none',
         }}
@@ -179,14 +187,16 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         ...base,
         background: ctrl.bg || '#ffffff',
         color: ctrl.color || '#374151',
-        border: '1px solid #e2e8f0',
+        border: '1.5px solid #e2e8f0',
+        borderRadius: ctrl.radius !== undefined ? ctrl.radius : 8,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
         display: 'flex',
         alignItems: 'center',
         padding: '0 12px',
         justifyContent: 'space-between'
       }}>
         <span style={{ color: '#9ca3af', fontSize: 11 }}>{ctrl.placeholder || 'Select...'}</span>
-        <div style={{ background: '#f3f4f6', padding: '2px 6px', marginRight: -12, height: '100%', display: 'flex', alignItems: 'center' }}>
+        <div style={{ background: '#f3f4f6', padding: '2px 6px', marginRight: -12, height: '100%', display: 'flex', alignItems: 'center', borderRadius: '0 6px 6px 0' }}>
           <span style={{ color: '#6b7280', fontSize: 10 }}>▾</span>
         </div>
       </div>
@@ -215,7 +225,9 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         ...base,
         background: ctrl.bg || '#ffffff',
         color: ctrl.color || '#374151',
-        border: '1px solid #e2e8f0',
+        border: '1.5px solid #e2e8f0',
+        borderRadius: ctrl.radius !== undefined ? ctrl.radius : 8,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
         display: 'flex',
         alignItems: 'center',
         padding: '0 12px',
@@ -237,7 +249,9 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         ...base,
         background: ctrl.bg || '#ffffff',
         color: ctrl.color || '#374151',
-        border: '1px solid #e2e8f0',
+        border: '1.5px solid #e2e8f0',
+        borderRadius: ctrl.radius !== undefined ? ctrl.radius : 8,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -379,17 +393,17 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         background: ctrl.bg || '#ffffff',
         color: ctrl.color || '#0f172a',
         border: '1px solid #e2e8f0',
-        borderRadius: 8,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        borderRadius: ctrl.radius !== undefined ? ctrl.radius : 12,
+        boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden'
       }}>
-        <div style={{ padding: '8px 12px', fontSize: 9, textTransform: 'uppercase', color: ctrl.color || '#0f172a', letterSpacing: '0.05em', fontWeight: 600 }}>
+        <div style={{ padding: '12px 16px', fontSize: 11, textTransform: 'uppercase', color: ctrl.color || '#0f172a', letterSpacing: '0.05em', fontWeight: 600 }}>
           {ctrl.caption || 'Card Title'}
         </div>
         <div style={{ height: 1, background: '#e2e8f0' }} />
-        <div style={{ flex: 1, padding: 12, fontSize: 11, color: '#9ca3af' }}>Content area</div>
+        <div style={{ flex: 1, padding: 16, fontSize: 11, color: '#9ca3af' }}>Content area</div>
       </div>
     )
   }
