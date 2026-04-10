@@ -2171,12 +2171,7 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
   }
 
   // Phase 15 Feature 3: Property Row Component (redesigned)
-  function PropRow({ label, value, onChange, type = 'text', options = [], onBlur, grid = false }: any) {
-    if (grid) {
-      // Grid layout for position/size (2x2)
-      return children
-    }
-
+  function PropRow({ label, value, onChange, type = 'text', options = [], onBlur }: any) {
     return (
       <div style={{ marginBottom: 8 }}>
         <label style={{ display: 'block', fontSize: 10, color: '#8890b8', marginBottom: 4 }}>{label}</label>
