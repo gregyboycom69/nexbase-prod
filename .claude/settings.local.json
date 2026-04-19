@@ -17,7 +17,8 @@
       "Bash(unzip:*)",
       "Bash(tr:*)",
       "Bash(npm install:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(wc:*)"
     ]
   }
 }

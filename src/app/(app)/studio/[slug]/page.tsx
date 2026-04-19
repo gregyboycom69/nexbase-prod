@@ -338,8 +338,8 @@ export default function StudioPage() {
                     onClick={() => setActiveTabId(tab.id)}
                     style={{
                       padding: '10px 16px',
-                      background: activeTabId === tab.id ? '#252840' : 'transparent',
-                      color: activeTabId === tab.id ? '#c8d0f0' : '#8890b8',
+                      background: activeTabId === tab.id ? '#f1f5f9' : 'transparent',
+                      color: activeTabId === tab.id ? '#1e293b' : '#64748b',
                       borderRadius: '4px 4px 0 0',
                       fontSize: 12,
                       cursor: 'pointer',
@@ -357,7 +357,7 @@ export default function StudioPage() {
                         e.stopPropagation()
                         handleCloseTab(tab.id)
                       }}
-                      style={{ background: 'none', border: 'none', color: '#8890b8', fontSize: 14, cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                      style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 14, cursor: 'pointer', padding: 0, lineHeight: 1 }}
                     >
                       ✕
                     </button>
@@ -379,7 +379,7 @@ export default function StudioPage() {
                   />
                 )}
                 {activeTab && activeTab.type !== 'form' && (
-                  <div style={{ padding: 40, color: '#8890b8', textAlign: 'center' }}>
+                  <div style={{ padding: 40, color: '#64748b', textAlign: 'center' }}>
                     {activeTab.type} - {activeTab.name}
                   </div>
                 )}
@@ -450,24 +450,24 @@ function CreateFormDialog({ workspace, tables, onClose, onCreated }: any) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
-      <div style={{ background: '#1a1d2e', borderRadius: 8, padding: 24, width: 480, maxWidth: '90vw' }} onClick={(e) => e.stopPropagation()}>
-        <h2 style={{ margin: '0 0 20px 0', fontSize: 18, fontWeight: 700, color: '#c8d0f0' }}>Create New Form</h2>
+      <div style={{ background: '#f8fafc', borderRadius: 8, padding: 24, width: 480, maxWidth: '90vw' }} onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ margin: '0 0 20px 0', fontSize: 18, fontWeight: 700, color: '#1e293b' }}>Create New Form</h2>
 
         <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 12, color: '#8890b8', marginBottom: 6 }}>Form Name</label>
+          <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 6 }}>Form Name</label>
           <input
             type="text"
             value={formName}
             onChange={(e) => setFormName(e.target.value)}
             placeholder="Enter form name..."
-            style={{ width: '100%', padding: '8px 12px', background: '#0f1117', border: '1px solid #252840', borderRadius: 4, color: '#c8d0f0', fontSize: 13 }}
+            style={{ width: '100%', padding: '8px 12px', background: '#ffffff', border: '1px solid #f1f5f9', borderRadius: 4, color: '#1e293b', fontSize: 13 }}
             autoFocus
           />
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 12, color: '#8890b8', marginBottom: 6 }}>Form Type</label>
-          <select value={formType} onChange={(e) => setFormType(e.target.value)} style={{ width: '100%', padding: '8px 12px', background: '#0f1117', border: '1px solid #252840', borderRadius: 4, color: '#c8d0f0', fontSize: 13, cursor: 'pointer' }}>
+          <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 6 }}>Form Type</label>
+          <select value={formType} onChange={(e) => setFormType(e.target.value)} style={{ width: '100%', padding: '8px 12px', background: '#ffffff', border: '1px solid #f1f5f9', borderRadius: 4, color: '#1e293b', fontSize: 13, cursor: 'pointer' }}>
             <option value="single">Single Form - shows one record at a time</option>
             <option value="continuous">Continuous Form - shows multiple records stacked</option>
             <option value="datasheet">Datasheet - shows records in grid</option>
@@ -478,8 +478,8 @@ function CreateFormDialog({ workspace, tables, onClose, onCreated }: any) {
         </div>
 
         <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 12, color: '#8890b8', marginBottom: 6 }}>Bind to Table (optional)</label>
-          <select value={bindToTable} onChange={(e) => setBindToTable(e.target.value)} style={{ width: '100%', padding: '8px 12px', background: '#0f1117', border: '1px solid #252840', borderRadius: 4, color: '#c8d0f0', fontSize: 13, cursor: 'pointer' }}>
+          <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 6 }}>Bind to Table (optional)</label>
+          <select value={bindToTable} onChange={(e) => setBindToTable(e.target.value)} style={{ width: '100%', padding: '8px 12px', background: '#ffffff', border: '1px solid #f1f5f9', borderRadius: 4, color: '#1e293b', fontSize: 13, cursor: 'pointer' }}>
             <option value="">None</option>
             {tables.map((t: any) => (
               <option key={t.id} value={t.name}>{t.name}</option>
@@ -488,7 +488,7 @@ function CreateFormDialog({ workspace, tables, onClose, onCreated }: any) {
         </div>
 
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '8px 16px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 13, cursor: 'pointer' }}>
+          <button onClick={onClose} style={{ padding: '8px 16px', background: '#f1f5f9', color: '#1e293b', border: 'none', borderRadius: 4, fontSize: 13, cursor: 'pointer' }}>
             Cancel
           </button>
           <button onClick={handleCreate} disabled={!formName.trim()} style={{ padding: '8px 16px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 4, fontSize: 13, fontWeight: 600, cursor: formName.trim() ? 'pointer' : 'not-allowed', opacity: formName.trim() ? 1 : 0.5 }}>
@@ -527,12 +527,12 @@ function GenerateFormDialog({ onClose, onGenerate }: any) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
-      <div style={{ background: '#1a1d2e', borderRadius: 8, padding: 24, width: 560, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
-        <h2 style={{ margin: '0 0 20px 0', fontSize: 18, fontWeight: 700, color: '#c8d0f0' }}>Generate Form</h2>
+      <div style={{ background: '#f8fafc', borderRadius: 8, padding: 24, width: 560, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ margin: '0 0 20px 0', fontSize: 18, fontWeight: 700, color: '#1e293b' }}>Generate Form</h2>
 
         {/* Layout Style */}
         <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 12, color: '#8890b8', marginBottom: 8, fontWeight: 600 }}>Layout Style</label>
+          <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 8, fontWeight: 600 }}>Layout Style</label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {[
               { value: 'single', label: 'Single Column', desc: 'Labels on top, mobile friendly' },
@@ -545,15 +545,15 @@ function GenerateFormDialog({ onClose, onGenerate }: any) {
                 onClick={() => setLayoutStyle(opt.value as any)}
                 style={{
                   padding: 12,
-                  background: layoutStyle === opt.value ? '#6366f1' : '#252840',
+                  background: layoutStyle === opt.value ? '#6366f1' : '#f1f5f9',
                   border: `1px solid ${layoutStyle === opt.value ? '#818cf8' : '#3d4059'}`,
                   borderRadius: 6,
                   cursor: 'pointer',
                   transition: 'all 0.2s'
                 }}
               >
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#c8d0f0', marginBottom: 4 }}>{opt.label}</div>
-                <div style={{ fontSize: 11, color: '#8890b8' }}>{opt.desc}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', marginBottom: 4 }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: '#64748b' }}>{opt.desc}</div>
               </div>
             ))}
           </div>
@@ -561,11 +561,11 @@ function GenerateFormDialog({ onClose, onGenerate }: any) {
 
         {/* Theme */}
         <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 12, color: '#8890b8', marginBottom: 8, fontWeight: 600 }}>Theme</label>
+          <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 8, fontWeight: 600 }}>Theme</label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {[
               { value: 'clean', label: 'Clean White', color: '#ffffff' },
-              { value: 'dark', label: 'Dark Professional', color: '#1a1d2e' },
+              { value: 'dark', label: 'Dark Professional', color: '#f8fafc' },
               { value: 'colorful', label: 'Colorful', color: '#f59e0b' },
               { value: 'minimal', label: 'Minimal', color: '#64748b' }
             ].map(opt => (
@@ -574,7 +574,7 @@ function GenerateFormDialog({ onClose, onGenerate }: any) {
                 onClick={() => setTheme(opt.value as any)}
                 style={{
                   padding: 12,
-                  background: theme === opt.value ? '#6366f1' : '#252840',
+                  background: theme === opt.value ? '#6366f1' : '#f1f5f9',
                   border: `1px solid ${theme === opt.value ? '#818cf8' : '#3d4059'}`,
                   borderRadius: 6,
                   cursor: 'pointer',
@@ -585,7 +585,7 @@ function GenerateFormDialog({ onClose, onGenerate }: any) {
                 }}
               >
                 <div style={{ width: 16, height: 16, background: opt.color, borderRadius: 3, border: '1px solid rgba(255,255,255,0.1)' }} />
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#c8d0f0' }}>{opt.label}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{opt.label}</div>
               </div>
             ))}
           </div>
@@ -593,7 +593,7 @@ function GenerateFormDialog({ onClose, onGenerate }: any) {
 
         {/* Include Options */}
         <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 12, color: '#8890b8', marginBottom: 8, fontWeight: 600 }}>Include</label>
+          <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 8, fontWeight: 600 }}>Include</label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[
               { checked: includeSaveButton, setter: setIncludeSaveButton, label: 'Save Button' },
@@ -603,21 +603,21 @@ function GenerateFormDialog({ onClose, onGenerate }: any) {
               { checked: includeFormTitle, setter: setIncludeFormTitle, label: 'Form Title (heading with table name)' },
               { checked: includeSectionDividers, setter: setIncludeSectionDividers, label: 'Section Dividers between field groups' }
             ].map((opt, idx) => (
-              <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#252840', borderRadius: 4, cursor: 'pointer' }}>
+              <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#f1f5f9', borderRadius: 4, cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={opt.checked}
                   onChange={(e) => opt.setter(e.target.checked)}
                   style={{ width: 16, height: 16, cursor: 'pointer' }}
                 />
-                <span style={{ fontSize: 13, color: '#c8d0f0' }}>{opt.label}</span>
+                <span style={{ fontSize: 13, color: '#1e293b' }}>{opt.label}</span>
               </label>
             ))}
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', paddingTop: 8, borderTop: '1px solid #252840' }}>
-          <button onClick={onClose} style={{ padding: '8px 16px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 13, cursor: 'pointer' }}>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', paddingTop: 8, borderTop: '1px solid #f1f5f9' }}>
+          <button onClick={onClose} style={{ padding: '8px 16px', background: '#f1f5f9', color: '#1e293b', border: 'none', borderRadius: 4, fontSize: 13, cursor: 'pointer' }}>
             Cancel
           </button>
           <button onClick={handleGenerate} style={{ padding: '8px 16px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 4, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
@@ -1056,21 +1056,21 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
 
   function getDefaultProps(type: string) {
     const defaults: any = {
-      Label: { caption: 'Label', color: '#1f2937', fontSize: 13 },
-      Heading: { caption: 'Heading', color: '#1f2937', fontSize: 24, fontWeight: 'bold' },
-      TextBox: { placeholder: 'Type here...', color: '#1f2937', bg: '#fff', fontSize: 13 },
-      Button: { caption: 'Button', bg: '#6366f1', color: '#fff', fontSize: 13 },
-      ComboBox: { placeholder: 'Select...', color: '#1f2937', bg: '#fff', fontSize: 13, options: '' },
-      CheckBox: { caption: 'Checkbox', checked: false },
-      DatePicker: { placeholder: 'DD/MM/YYYY', bg: '#fff' },
-      NumberBox: { value: 0, min: 0, max: 100, step: 1 },
+      Label: { caption: 'Label', color: '#374151', fontSize: 13, bg: 'transparent' },
+      Heading: { caption: 'Heading', color: '#0f172a', fontSize: 24, fontWeight: 'bold', bg: 'transparent' },
+      TextBox: { placeholder: 'Type here...', color: '#1e293b', bg: '#ffffff', fontSize: 13 },
+      Button: { caption: 'Button', bg: '#4f46e5', color: '#ffffff', fontSize: 13 },
+      ComboBox: { placeholder: 'Select...', color: '#374151', bg: '#ffffff', fontSize: 13, options: '' },
+      CheckBox: { caption: 'Checkbox', color: '#374151', bg: 'transparent', checked: false },
+      DatePicker: { placeholder: 'DD/MM/YYYY', color: '#374151', bg: '#ffffff' },
+      NumberBox: { value: 0, color: '#374151', bg: '#ffffff', min: 0, max: 100, step: 1 },
       DataTable: { caption: 'Table', columns: '' },
       Chart: { caption: 'Chart Title', chartType: 'bar' },
       Subform: { sourceObject: '', linkMasterFields: '', linkChildFields: '' },
       Card: { caption: 'Card Title' },
       TabPanel: { tabs: 'Tab 1,Tab 2,Tab 3' },
       Modal: { caption: 'Modal Title' },
-      Badge: { caption: 'Badge', bg: '#6366f1', color: '#fff' },
+      Badge: { caption: 'Badge', bg: '#4f46e5', color: '#ffffff' },
       Image: { src: '', alt: 'Image' },
       ProgressBar: { value: 65, max: 100 },
       NavigationButtons: {},
@@ -1383,7 +1383,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     // Theme colors
     const themes = {
       clean: { bg: '#ffffff', text: '#1f2937', accent: '#6366f1', labelColor: '#374151' },
-      dark: { bg: '#1a1d2e', text: '#c8d0f0', accent: '#818cf8', labelColor: '#9ca3af' },
+      dark: { bg: '#f8fafc', text: '#1e293b', accent: '#818cf8', labelColor: '#9ca3af' },
       colorful: { bg: '#ffffff', text: '#1e293b', accent: '#f59e0b', labelColor: '#475569' },
       minimal: { bg: '#fafafa', text: '#0f172a', accent: '#64748b', labelColor: '#334155' },
     }
@@ -1687,19 +1687,19 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
   const selectedControl = controls.find(c => c.id === selectedControlId)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#13141f' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#f1f5f9' }}>
       {/* FIX 1: Toolbar with prominent Save button */}
-      <div style={{ background: '#1a1d2e', borderBottom: '1px solid #252840', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={() => setView('design')} style={{ padding: '6px 12px', background: view === 'design' ? '#6366f1' : '#252840', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>
+      <div style={{ background: '#f8fafc', borderBottom: '1px solid #f1f5f9', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button onClick={() => setView('design')} style={{ padding: '6px 12px', background: view === 'design' ? '#6366f1' : '#f1f5f9', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>
           Design View
         </button>
-        <button onClick={() => setView('form')} style={{ padding: '6px 12px', background: view === 'form' ? '#6366f1' : '#252840', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>
+        <button onClick={() => setView('form')} style={{ padding: '6px 12px', background: view === 'form' ? '#6366f1' : '#f1f5f9', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>
           Form View
         </button>
-        <button onClick={() => setView('datasheet')} style={{ padding: '6px 12px', background: view === 'datasheet' ? '#6366f1' : '#252840', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>
+        <button onClick={() => setView('datasheet')} style={{ padding: '6px 12px', background: view === 'datasheet' ? '#6366f1' : '#f1f5f9', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>
           Datasheet
         </button>
-        <button onClick={() => setShowFieldList(!showFieldList)} style={{ padding: '6px 12px', background: showFieldList ? '#6366f1' : '#252840', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>
+        <button onClick={() => setShowFieldList(!showFieldList)} style={{ padding: '6px 12px', background: showFieldList ? '#6366f1' : '#f1f5f9', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>
           Field List
         </button>
         {formProps.recordSource && (
@@ -1709,15 +1709,15 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
         )}
 
         {/* Phase 15 Feature 8: Undo/Redo buttons */}
-        <div style={{ borderLeft: '1px solid #252840', paddingLeft: 12, display: 'flex', gap: 8 }}>
+        <div style={{ borderLeft: '1px solid #f1f5f9', paddingLeft: 12, display: 'flex', gap: 8 }}>
           <button
             onClick={undo}
             disabled={historyIndex <= 0}
             title={historyIndex > 0 ? 'Undo (Ctrl+Z)' : 'Nothing to undo'}
             style={{
               padding: '6px 12px',
-              background: historyIndex > 0 ? '#252840' : '#1a1d2e',
-              color: historyIndex > 0 ? '#c8d0f0' : '#4b5563',
+              background: historyIndex > 0 ? '#f1f5f9' : '#f8fafc',
+              color: historyIndex > 0 ? '#1e293b' : '#4b5563',
               border: 'none',
               borderRadius: 4,
               fontSize: 11,
@@ -1733,8 +1733,8 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
             title={historyIndex < history.length - 1 ? 'Redo (Ctrl+Y)' : 'Nothing to redo'}
             style={{
               padding: '6px 12px',
-              background: historyIndex < history.length - 1 ? '#252840' : '#1a1d2e',
-              color: historyIndex < history.length - 1 ? '#c8d0f0' : '#4b5563',
+              background: historyIndex < history.length - 1 ? '#f1f5f9' : '#f8fafc',
+              color: historyIndex < history.length - 1 ? '#1e293b' : '#4b5563',
               border: 'none',
               borderRadius: 4,
               fontSize: 11,
@@ -1770,12 +1770,12 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
           pageId={pageId}
         />
       ) : (
-        <div style={{ flex: 1, display: 'flex', background: '#13141f' }}>
+        <div style={{ flex: 1, display: 'flex', background: '#f1f5f9' }}>
           {/* Toolbox */}
-          <div style={{ width: 72, background: '#1e2035', borderRight: '1px solid #252840', padding: '8px 4px', overflow: 'auto' }}>
+          <div style={{ width: 72, background: '#f8fafc', borderRight: '1px solid #f1f5f9', padding: '8px 4px', overflow: 'auto' }}>
             {['BASIC', 'INPUTS', 'DATA', 'LAYOUT'].map((group) => (
               <div key={group}>
-                <div style={{ fontSize: 9, color: '#8890b8', marginTop: group !== 'BASIC' ? 12 : 0, marginBottom: 4, textAlign: 'center', fontWeight: 700 }}>
+                <div style={{ fontSize: 9, color: '#94a3b8', marginTop: group !== 'BASIC' ? 12 : 0, marginBottom: 4, textAlign: 'center', fontWeight: 700 }}>
                   {group}
                 </div>
                 {CONTROL_TYPES.filter(ct => ct.group === group).map((ct) => (
@@ -1784,12 +1784,12 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
                     onClick={() => setActiveTool(ct.name)}
                     style={{
                       padding: '8px 4px',
-                      background: activeTool === ct.name ? '#6366f1' : '#252840',
-                      border: activeTool === ct.name ? '2px solid #818cf8' : '1px solid transparent',
+                      background: activeTool === ct.name ? 'rgba(99,102,241,0.06)' : 'transparent',
+                      border: activeTool === ct.name ? '1px solid #4f46e5' : '1px solid transparent',
                       borderRadius: 4,
                       marginBottom: 4,
                       fontSize: 9,
-                      color: '#c8d0f0',
+                      color: activeTool === ct.name ? '#4f46e5' : '#64748b',
                       textAlign: 'center',
                       cursor: 'pointer',
                       display: 'flex',
@@ -1797,8 +1797,18 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
                       alignItems: 'center',
                       gap: 2,
                     }}
+                    onMouseEnter={(e) => {
+                      if (activeTool !== ct.name) {
+                        e.currentTarget.style.background = '#f1f5f9'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (activeTool !== ct.name) {
+                        e.currentTarget.style.background = 'transparent'
+                      }
+                    }}
                   >
-                    <div style={{ fontSize: 16 }}>{ct.icon}</div>
+                    <div style={{ fontSize: 16, color: activeTool === ct.name ? '#4f46e5' : '#64748b' }}>{ct.icon}</div>
                     <div>{ct.name}</div>
                   </div>
                 ))}
@@ -1808,53 +1818,53 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
 
           {/* Phase 15 Feature 7: Alignment Toolbar (shows when 2+ controls selected) */}
           {selectedControlIds.length >= 2 && (
-            <div style={{ background: '#1a1d2e', borderBottom: '1px solid #252840', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 11, color: '#8890b8', marginRight: 8 }}>{selectedControlIds.length} controls selected</span>
+            <div style={{ background: '#f8fafc', borderBottom: '1px solid #f1f5f9', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, color: '#64748b', marginRight: 8 }}>{selectedControlIds.length} controls selected</span>
 
-              <div style={{ display: 'flex', gap: 4, borderLeft: '1px solid #252840', paddingLeft: 8 }}>
-                <button onClick={alignLeft} title="Align Left" style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+              <div style={{ display: 'flex', gap: 4, borderLeft: '1px solid #f1f5f9', paddingLeft: 8 }}>
+                <button onClick={alignLeft} title="Align Left" style={{ padding: '6px 10px', background: '#f1f5f9', color: '#1e293b', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
                   ⬅ Left
                 </button>
-                <button onClick={alignCenterH} title="Center Horizontally" style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+                <button onClick={alignCenterH} title="Center Horizontally" style={{ padding: '6px 10px', background: '#f1f5f9', color: '#1e293b', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
                   ↔ Center H
                 </button>
-                <button onClick={alignRight} title="Align Right" style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+                <button onClick={alignRight} title="Align Right" style={{ padding: '6px 10px', background: '#f1f5f9', color: '#1e293b', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
                   ➡ Right
                 </button>
               </div>
 
-              <div style={{ display: 'flex', gap: 4, borderLeft: '1px solid #252840', paddingLeft: 8 }}>
-                <button onClick={alignTop} title="Align Top" style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+              <div style={{ display: 'flex', gap: 4, borderLeft: '1px solid #f1f5f9', paddingLeft: 8 }}>
+                <button onClick={alignTop} title="Align Top" style={{ padding: '6px 10px', background: '#f1f5f9', color: '#1e293b', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
                   ⬆ Top
                 </button>
-                <button onClick={alignCenterV} title="Center Vertically" style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+                <button onClick={alignCenterV} title="Center Vertically" style={{ padding: '6px 10px', background: '#f1f5f9', color: '#1e293b', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
                   ↕ Center V
                 </button>
-                <button onClick={alignBottom} title="Align Bottom" style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+                <button onClick={alignBottom} title="Align Bottom" style={{ padding: '6px 10px', background: '#f1f5f9', color: '#1e293b', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
                   ⬇ Bottom
                 </button>
               </div>
 
-              <div style={{ display: 'flex', gap: 4, borderLeft: '1px solid #252840', paddingLeft: 8 }}>
-                <button onClick={distributeH} disabled={selectedControlIds.length < 3} title="Distribute Horizontally" style={{ padding: '6px 10px', background: selectedControlIds.length >= 3 ? '#252840' : '#1a1d2e', color: selectedControlIds.length >= 3 ? '#c8d0f0' : '#4b5563', border: 'none', borderRadius: 4, fontSize: 10, cursor: selectedControlIds.length >= 3 ? 'pointer' : 'not-allowed', opacity: selectedControlIds.length >= 3 ? 1 : 0.5 }}>
+              <div style={{ display: 'flex', gap: 4, borderLeft: '1px solid #f1f5f9', paddingLeft: 8 }}>
+                <button onClick={distributeH} disabled={selectedControlIds.length < 3} title="Distribute Horizontally" style={{ padding: '6px 10px', background: selectedControlIds.length >= 3 ? '#f1f5f9' : '#f8fafc', color: selectedControlIds.length >= 3 ? '#1e293b' : '#4b5563', border: 'none', borderRadius: 4, fontSize: 10, cursor: selectedControlIds.length >= 3 ? 'pointer' : 'not-allowed', opacity: selectedControlIds.length >= 3 ? 1 : 0.5 }}>
                   ⬌ Distribute H
                 </button>
-                <button onClick={distributeV} disabled={selectedControlIds.length < 3} title="Distribute Vertically" style={{ padding: '6px 10px', background: selectedControlIds.length >= 3 ? '#252840' : '#1a1d2e', color: selectedControlIds.length >= 3 ? '#c8d0f0' : '#4b5563', border: 'none', borderRadius: 4, fontSize: 10, cursor: selectedControlIds.length >= 3 ? 'pointer' : 'not-allowed', opacity: selectedControlIds.length >= 3 ? 1 : 0.5 }}>
+                <button onClick={distributeV} disabled={selectedControlIds.length < 3} title="Distribute Vertically" style={{ padding: '6px 10px', background: selectedControlIds.length >= 3 ? '#f1f5f9' : '#f8fafc', color: selectedControlIds.length >= 3 ? '#1e293b' : '#4b5563', border: 'none', borderRadius: 4, fontSize: 10, cursor: selectedControlIds.length >= 3 ? 'pointer' : 'not-allowed', opacity: selectedControlIds.length >= 3 ? 1 : 0.5 }}>
                   ⬍ Distribute V
                 </button>
               </div>
 
-              <div style={{ display: 'flex', gap: 4, borderLeft: '1px solid #252840', paddingLeft: 8 }}>
-                <button onClick={makeSameWidth} title="Same Width" style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+              <div style={{ display: 'flex', gap: 4, borderLeft: '1px solid #f1f5f9', paddingLeft: 8 }}>
+                <button onClick={makeSameWidth} title="Same Width" style={{ padding: '6px 10px', background: '#f1f5f9', color: '#1e293b', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
                   ↔ Width
                 </button>
-                <button onClick={makeSameHeight} title="Same Height" style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+                <button onClick={makeSameHeight} title="Same Height" style={{ padding: '6px 10px', background: '#f1f5f9', color: '#1e293b', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
                   ↕ Height
                 </button>
               </div>
 
               <div style={{ flex: 1 }} />
-              <button onClick={() => setSelectedControlIds([])} style={{ padding: '6px 10px', background: '#252840', color: '#c8d0f0', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
+              <button onClick={() => setSelectedControlIds([])} style={{ padding: '6px 10px', background: '#f1f5f9', color: '#1e293b', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer' }}>
                 Clear Selection
               </button>
             </div>
@@ -1939,22 +1949,22 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
 
             {/* Field List Panel */}
             {showFieldList && (
-              <div style={{ position: 'absolute', top: 60, right: 260, width: 180, background: '#1a1d2e', border: '1px solid #252840', borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 100 }}>
-                <div style={{ padding: '8px 12px', background: '#252840', color: '#c8d0f0', fontSize: 12, fontWeight: 700, borderBottom: '1px solid #1a1d2e' }}>
+              <div style={{ position: 'absolute', top: 60, right: 260, width: 180, background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 100 }}>
+                <div style={{ padding: '8px 12px', background: '#f1f5f9', color: '#1e293b', fontSize: 12, fontWeight: 700, borderBottom: '1px solid #f8fafc' }}>
                   Field List
                 </div>
                 <div style={{ padding: 8 }}>
                   {formProps.recordSource ? (
                     <div>
-                      <div style={{ fontSize: 11, color: '#8890b8', marginBottom: 8 }}>{formProps.recordSource}</div>
+                      <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>{formProps.recordSource}</div>
                       {recordSourceFields.map((field: any) => (
-                        <div key={field.name} style={{ padding: '4px 8px', fontSize: 11, color: '#c8d0f0', cursor: 'pointer', borderRadius: 4 }} onMouseEnter={(e) => e.currentTarget.style.background = '#252840'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                        <div key={field.name} style={{ padding: '4px 8px', fontSize: 11, color: '#1e293b', cursor: 'pointer', borderRadius: 4 }} onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                           📝 {field.name}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div style={{ padding: 12, fontSize: 11, color: '#8890b8', textAlign: 'center' }}>
+                    <div style={{ padding: 12, fontSize: 11, color: '#64748b', textAlign: 'center' }}>
                       Set Record Source in the Data tab first
                     </div>
                   )}
@@ -1986,28 +1996,28 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
 
           {/* FIX 4: Context Menu */}
           {contextMenu && (
-            <div style={{ position: 'fixed', left: contextMenu.x, top: contextMenu.y, background: '#252840', border: '1px solid #3a3f5c', borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 10000, minWidth: 150 }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ position: 'fixed', left: contextMenu.x, top: contextMenu.y, background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 10000, minWidth: 150 }} onClick={(e) => e.stopPropagation()}>
               {contextMenu.controlId && (
                 <>
-                  <div onClick={() => { copyControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#c8d0f0', cursor: 'pointer', borderBottom: '1px solid #1a1d2e' }} onMouseEnter={(e) => e.currentTarget.style.background = '#1a1d2e'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                  <div onClick={() => { copyControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#1e293b', cursor: 'pointer', borderBottom: '1px solid #f8fafc' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                     Copy (Ctrl+C)
                   </div>
                   {clipboardControl && (
-                    <div onClick={() => { pasteControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#c8d0f0', cursor: 'pointer', borderBottom: '1px solid #1a1d2e' }} onMouseEnter={(e) => e.currentTarget.style.background = '#1a1d2e'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                    <div onClick={() => { pasteControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#1e293b', cursor: 'pointer', borderBottom: '1px solid #f8fafc' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                       Paste (Ctrl+V)
                     </div>
                   )}
-                  <div onClick={() => { duplicateControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#c8d0f0', cursor: 'pointer', borderBottom: '1px solid #1a1d2e' }} onMouseEnter={(e) => e.currentTarget.style.background = '#1a1d2e'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                  <div onClick={() => { duplicateControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#1e293b', cursor: 'pointer', borderBottom: '1px solid #f8fafc' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                     Duplicate (Ctrl+D)
                   </div>
-                  <div onClick={() => { cutControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#c8d0f0', cursor: 'pointer', borderBottom: '1px solid #1a1d2e' }} onMouseEnter={(e) => e.currentTarget.style.background = '#1a1d2e'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                  <div onClick={() => { cutControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#1e293b', cursor: 'pointer', borderBottom: '1px solid #f8fafc' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                     Cut (Ctrl+X)
                   </div>
-                  <div onClick={() => { deleteControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#ef4444', cursor: 'pointer', borderBottom: '1px solid #1a1d2e' }} onMouseEnter={(e) => e.currentTarget.style.background = '#1a1d2e'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                  <div onClick={() => { deleteControl(); setContextMenu(null) }} style={{ padding: '8px 12px', fontSize: 11, color: '#ef4444', cursor: 'pointer', borderBottom: '1px solid #f8fafc' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                     Delete (Del)
                   </div>
-                  <div style={{ borderBottom: '1px solid #3a3f5c', height: 1, margin: '4px 0' }} />
-                  <div onClick={() => setContextMenu(null)} style={{ padding: '8px 12px', fontSize: 11, color: '#c8d0f0', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = '#1a1d2e'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                  <div style={{ borderBottom: '1px solid #e2e8f0', height: 1, margin: '4px 0' }} />
+                  <div onClick={() => setContextMenu(null)} style={{ padding: '8px 12px', fontSize: 11, color: '#1e293b', cursor: 'pointer' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
                     Properties
                   </div>
                 </>
@@ -2171,19 +2181,35 @@ function PropertySheet({ selectedControl, formProps, propertyTab, setPropertyTab
   const tabs = ['format', 'data', 'event', 'other', 'all'] as const
 
   return (
-    <div style={{ width: 280, background: '#1a1d2e', borderLeft: '1px solid #252840', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: 280, background: '#ffffff', borderLeft: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <div style={{ background: '#252840', padding: '8px 12px', borderBottom: '1px solid #1a1d2e' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', marginBottom: 4 }}>Property Sheet</div>
-        <div style={{ fontSize: 11, color: '#8890b8' }}>
+      <div style={{ background: '#ffffff', padding: '8px 12px', borderBottom: '1px solid #f1f5f9' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Property Sheet</div>
+        <div style={{ fontSize: 11, color: '#64748b' }}>
           Selection: {selectedControl ? selectedControl.type : 'Form'}
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 2, padding: '8px 8px', background: '#252840', borderBottom: '1px solid #1a1d2e', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', background: '#ffffff', borderBottom: '1px solid #f1f5f9' }}>
         {tabs.map((tab) => (
-          <button key={tab} onClick={() => setPropertyTab(tab)} style={{ padding: '4px 8px', background: propertyTab === tab ? '#6366f1' : '#1a1d2e', color: propertyTab === tab ? '#fff' : '#7480a8', border: 'none', borderRadius: 4, fontSize: 10, cursor: 'pointer', textTransform: 'capitalize' }}>
+          <button
+            key={tab}
+            onClick={() => setPropertyTab(tab)}
+            style={{
+              flex: 1,
+              padding: '8px 4px',
+              background: 'transparent',
+              color: propertyTab === tab ? '#4f46e5' : '#64748b',
+              border: 'none',
+              borderBottom: `2px solid ${propertyTab === tab ? '#4f46e5' : 'transparent'}`,
+              fontSize: 11,
+              fontWeight: propertyTab === tab ? 500 : 400,
+              cursor: 'pointer',
+              textTransform: 'capitalize',
+              textAlign: 'center'
+            }}
+          >
             {tab}
           </button>
         ))}
@@ -2225,10 +2251,10 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
   // Property Row Component
   function PropRow({ label, value, onChange, type = 'text', options = [], onBlur }: any) {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: '1px solid #252840', minHeight: 24, alignItems: 'center', padding: '0 8px' }}>
-        <span style={{ fontSize: 11, color: '#8890b8', fontFamily: "'JetBrains Mono', monospace" }}>{label}</span>
+      <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: '1px solid #f1f5f9', minHeight: 24, alignItems: 'center', padding: '0 8px' }}>
+        <span style={{ fontSize: 11, color: '#64748b', fontFamily: "'JetBrains Mono', monospace" }}>{label}</span>
         {type === 'select' ? (
-          <select value={value} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px', cursor: 'pointer' }}>
+          <select value={value} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ background: 'transparent', color: '#1e293b', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px', cursor: 'pointer' }}>
             {options.map((opt: any) => (
               typeof opt === 'string' ?
                 <option key={opt} value={opt}>{opt}</option> :
@@ -2236,11 +2262,11 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
             ))}
           </select>
         ) : type === 'color' ? (
-          <input type="color" value={value || '#ffffff'} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ width: '100%', height: 20, background: '#0f1117', border: 'none' }} />
+          <input type="color" value={value || '#ffffff'} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ width: '100%', height: 20, background: 'transparent', border: 'none' }} />
         ) : type === 'number' ? (
-          <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} onBlur={onBlur} style={{ background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px' }} />
+          <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} onBlur={onBlur} style={{ background: 'transparent', color: '#1e293b', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px' }} />
         ) : (
-          <input type="text" value={value || ''} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px' }} />
+          <input type="text" value={value || ''} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ background: 'transparent', color: '#1e293b', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px' }} />
         )}
       </div>
     )
@@ -2248,8 +2274,8 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
 
   function SectionHeader({ title }: { title: string }) {
     return (
-      <div style={{ background: '#252840', padding: '4px 8px', borderBottom: '1px solid #1a1d2e', marginTop: 8 }}>
-        <span style={{ fontSize: 10, color: '#6366f1', fontWeight: 700, textTransform: 'uppercase' }}>{title}</span>
+      <div style={{ background: '#f8fafc', padding: '4px 8px', borderBottom: '1px solid #f1f5f9', marginTop: 8 }}>
+        <span style={{ fontSize: 9, color: '#4f46e5', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{title}</span>
       </div>
     )
   }
@@ -2416,10 +2442,10 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
 function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: any) {
   function PropRow({ label, value, onChange, type = 'text', options = [] }: any) {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', borderBottom: '1px solid #252840', padding: '3px 8px', height: 24, alignItems: 'center' }}>
-        <span style={{ fontSize: 10, color: '#8890b8', fontFamily: "'JetBrains Mono', monospace" }}>{label}</span>
+      <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', borderBottom: '1px solid #f1f5f9', padding: '3px 8px', height: 24, alignItems: 'center' }}>
+        <span style={{ fontSize: 10, color: '#64748b', fontFamily: "'JetBrains Mono', monospace" }}>{label}</span>
         {type === 'select' ? (
-          <select value={value} onChange={(e) => onChange(e.target.value)} style={{ width: '100%', background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 10, padding: '2px 4px' }}>
+          <select value={value} onChange={(e) => onChange(e.target.value)} style={{ width: '100%', background: '#ffffff', color: '#1e293b', border: 'none', fontSize: 10, padding: '2px 4px' }}>
             {options.map((opt: any) =>
               typeof opt === 'string' ? <option key={opt} value={opt}>{opt}</option> :
               opt.isHeader ? <option key={opt.label} disabled style={{ fontWeight: 700, color: '#6366f1' }}>{opt.label}</option> :
@@ -2427,12 +2453,12 @@ function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: a
             )}
           </select>
         ) : type === 'yesno' ? (
-          <select value={value ? 'Yes' : 'No'} onChange={(e) => onChange(e.target.value === 'Yes')} style={{ width: '100%', background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 10, padding: '2px 4px' }}>
+          <select value={value ? 'Yes' : 'No'} onChange={(e) => onChange(e.target.value === 'Yes')} style={{ width: '100%', background: '#ffffff', color: '#1e293b', border: 'none', fontSize: 10, padding: '2px 4px' }}>
             <option>Yes</option>
             <option>No</option>
           </select>
         ) : (
-          <input type="text" value={value} onChange={(e) => onChange(e.target.value)} style={{ width: '100%', background: '#0f1117', color: '#c8d0f0', border: 'none', fontSize: 10, padding: '2px 4px' }} />
+          <input type="text" value={value} onChange={(e) => onChange(e.target.value)} style={{ width: '100%', background: '#ffffff', color: '#1e293b', border: 'none', fontSize: 10, padding: '2px 4px' }} />
         )}
       </div>
     )
@@ -2441,7 +2467,7 @@ function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: a
   if (tab === 'format' || tab === 'all') {
     return (
       <>
-        <div style={{ background: '#252840', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>FORMAT</div>
+        <div style={{ background: '#f1f5f9', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>FORMAT</div>
         <PropRow label="Default View" value={formProps.defaultView || 'single'} onChange={(v: string) => onUpdate('defaultView', v)} type="select" options={['single', 'continuous', 'datasheet', 'split']} />
         <PropRow label="Navigation Buttons" value={formProps.navigationButtons} onChange={(v: boolean) => onUpdate('navigationButtons', v)} type="yesno" />
       </>
@@ -2459,7 +2485,7 @@ function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: a
 
     return (
       <>
-        <div style={{ background: '#252840', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>DATA</div>
+        <div style={{ background: '#f1f5f9', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>DATA</div>
         <PropRow label="Record Source" value={formProps.recordSource || ''} onChange={(v: string) => onUpdate('recordSource', v)} type="select" options={recordSourceOptions} />
         <PropRow label="Allow Edits" value={formProps.allowEdits} onChange={(v: boolean) => onUpdate('allowEdits', v)} type="yesno" />
         <PropRow label="Allow Additions" value={formProps.allowAdditions} onChange={(v: boolean) => onUpdate('allowAdditions', v)} type="yesno" />
@@ -2471,7 +2497,7 @@ function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: a
   if (tab === 'event' || tab === 'all') {
     return (
       <>
-        <div style={{ background: '#252840', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>EVENTS</div>
+        <div style={{ background: '#f1f5f9', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>EVENTS</div>
         <PropRow label="On Open" value={''} onChange={() => {}} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
         <PropRow label="On Load" value={''} onChange={() => {}} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
         <PropRow label="On Close" value={''} onChange={() => {}} type="select" options={['(none)', ...macros.map((m: any) => m.name)]} />
@@ -2481,7 +2507,7 @@ function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: a
   }
 
   return (
-    <div style={{ padding: 12, fontSize: 11, color: '#8890b8', textAlign: 'center' }}>
+    <div style={{ padding: 12, fontSize: 11, color: '#64748b', textAlign: 'center' }}>
       {tab} properties
     </div>
   )
@@ -2571,11 +2597,11 @@ function FormView({ controls, formProps, formData, setFormData, records, current
       {/* Navigation buttons below the form */}
       {formProps.recordSource && formProps.navigationButtons && (
         <div style={{ maxWidth: canvasWidth, margin: '20px auto 0', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', background: '#fff', padding: '12px 20px', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-          <button onClick={() => handleNavigation('first')} style={{ padding: '6px 12px', background: '#252840', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>|◀</button>
-          <button onClick={() => handleNavigation('prev')} style={{ padding: '6px 12px', background: '#252840', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>◀</button>
+          <button onClick={() => handleNavigation('first')} style={{ padding: '6px 12px', background: '#f1f5f9', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>|◀</button>
+          <button onClick={() => handleNavigation('prev')} style={{ padding: '6px 12px', background: '#f1f5f9', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>◀</button>
           <span style={{ fontSize: 12, color: '#6b7280' }}>Record {currentRecordIndex + 1} of {records.length}</span>
-          <button onClick={() => handleNavigation('next')} style={{ padding: '6px 12px', background: '#252840', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>▶</button>
-          <button onClick={() => handleNavigation('last')} style={{ padding: '6px 12px', background: '#252840', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>▶|</button>
+          <button onClick={() => handleNavigation('next')} style={{ padding: '6px 12px', background: '#f1f5f9', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>▶</button>
+          <button onClick={() => handleNavigation('last')} style={{ padding: '6px 12px', background: '#f1f5f9', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>▶|</button>
           <button onClick={() => handleNavigation('new')} style={{ padding: '6px 12px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', marginLeft: 8 }}>+ New</button>
         </div>
       )}
@@ -2757,5 +2783,5 @@ function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
     )
   }
 
-  return <div style={{ padding: 8, color: '#8890b8' }}>{ctrl.type}</div>
+  return <div style={{ padding: 8, color: '#64748b' }}>{ctrl.type}</div>
 }
