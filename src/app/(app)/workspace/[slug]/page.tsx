@@ -113,19 +113,34 @@ export default function WorkspacePage({ params }: WorkspacePageProps) {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#0f1117', color: '#c8d0f0' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#ffffff', color: '#0f172a' }}>
         Loading...
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0f1117', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f1f5f9', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       {/* Top Bar */}
-      <div style={{ height: 56, background: '#1a1d2e', borderBottom: '1px solid #252840', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#6366f1' }}>NexBase</div>
-          <div style={{ color: '#4a5277', fontSize: 20 }}>|</div>
+      <div style={{ height: 56, background: '#ffffff', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {/* Logo */}
+          <div style={{
+            width: 20,
+            height: 20,
+            background: '#4f46e5',
+            borderRadius: 6,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontSize: 11,
+            fontWeight: 600
+          }}>
+            N
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 500, color: '#0f172a' }}>NexBase</div>
+          <div style={{ width: 1, height: 16, background: '#e2e8f0' }} />
           {isEditingName ? (
             <input
               type="text"
@@ -134,22 +149,32 @@ export default function WorkspacePage({ params }: WorkspacePageProps) {
               onBlur={saveWorkspaceName}
               onKeyDown={(e) => e.key === 'Enter' && saveWorkspaceName()}
               autoFocus
-              style={{ background: '#0f1117', border: '1px solid #6366f1', color: '#c8d0f0', padding: '4px 8px', borderRadius: 4, fontSize: 14 }}
+              style={{ background: '#f8fafc', border: '1px solid #4f46e5', color: '#0f172a', padding: '4px 8px', borderRadius: 6, fontSize: 13 }}
             />
           ) : (
             <div
               onClick={() => setIsEditingName(true)}
-              style={{ fontSize: 14, color: '#c8d0f0', cursor: 'pointer', fontWeight: 500 }}
+              style={{ fontSize: 13, color: '#64748b', cursor: 'pointer', fontWeight: 400 }}
             >
               {workspace?.name}
             </div>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <span style={{ fontSize: 12, color: '#7480a8' }}>{user?.email}</span>
+          <span style={{ fontSize: 12, color: '#64748b' }}>{user?.email}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 7, height: 7, background: '#22c55e', borderRadius: '50%' }} />
+            <span style={{ fontSize: 12, color: '#22c55e', fontWeight: 500 }}>Live</span>
+          </div>
+          <button
+            onClick={() => router.push(`/studio/${params.slug}`)}
+            style={{ background: '#4f46e5', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+          >
+            Studio
+          </button>
           <button
             onClick={handleSignOut}
-            style={{ background: '#252840', color: '#c8d0f0', border: 'none', padding: '6px 12px', borderRadius: 4, fontSize: 12, cursor: 'pointer' }}
+            style={{ background: 'transparent', color: '#64748b', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer' }}
           >
             Sign Out
           </button>
@@ -158,7 +183,7 @@ export default function WorkspacePage({ params }: WorkspacePageProps) {
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Left Sidebar */}
-        <div style={{ width: 200, background: '#1a1d2e', borderRight: '1px solid #252840', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ width: 200, background: '#f8fafc', borderRight: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column' }}>
           {/* Search */}
           <div style={{ padding: 12 }}>
             <input
@@ -166,7 +191,7 @@ export default function WorkspacePage({ params }: WorkspacePageProps) {
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '100%', background: '#0f1117', border: '1px solid #252840', color: '#c8d0f0', padding: '6px 8px', borderRadius: 4, fontSize: 11 }}
+              style={{ width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', color: '#0f172a', padding: '6px 8px', borderRadius: 6, fontSize: 11 }}
             />
           </div>
 
@@ -176,10 +201,21 @@ export default function WorkspacePage({ params }: WorkspacePageProps) {
             <div>
               <div
                 onClick={() => toggleSection('tables')}
-                style={{ padding: '8px 12px', background: '#252840', color: '#8890b8', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                style={{ padding: '8px 12px 4px', color: '#94a3b8', fontSize: 10, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               >
-                <span>📊 Tables</span>
-                <span>{expandedSections.tables ? '▼' : '▶'}</span>
+                <span>TABLES</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      router.push(`/studio/${params.slug}/tables`)
+                    }}
+                    style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 14, cursor: 'pointer', padding: 0 }}
+                  >
+                    +
+                  </button>
+                  <span style={{ fontSize: 10 }}>{expandedSections.tables ? '▼' : '▶'}</span>
+                </div>
               </div>
               {expandedSections.tables && (
                 <div>
@@ -188,15 +224,16 @@ export default function WorkspacePage({ params }: WorkspacePageProps) {
                       key={table.id}
                       onClick={() => router.push(`/studio/${params.slug}/tables?table=${table.id}`)}
                       onDoubleClick={() => router.push(`/studio/${params.slug}/tables?table=${table.id}&design=true`)}
-                      style={{ padding: '6px 12px 6px 24px', fontSize: 11, color: '#c8d0f0', cursor: 'pointer', background: 'transparent' }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#252840'}
+                      style={{ padding: '6px 12px 6px 20px', fontSize: 12, color: '#64748b', cursor: 'pointer', background: 'transparent', display: 'flex', alignItems: 'center', gap: 6 }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
+                      <span style={{ fontSize: 10 }}>▦</span>
                       {table.name}
                     </div>
                   ))}
                   {filteredTables.length === 0 && (
-                    <div style={{ padding: '6px 12px 6px 24px', fontSize: 10, color: '#4a5277', fontStyle: 'italic' }}>
+                    <div style={{ padding: '6px 12px 6px 20px', fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>
                       No tables
                     </div>
                   )}
@@ -208,10 +245,21 @@ export default function WorkspacePage({ params }: WorkspacePageProps) {
             <div>
               <div
                 onClick={() => toggleSection('queries')}
-                style={{ padding: '8px 12px', background: '#252840', color: '#8890b8', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                style={{ padding: '8px 12px 4px', color: '#94a3b8', fontSize: 10, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               >
-                <span>🔍 Queries</span>
-                <span>{expandedSections.queries ? '▼' : '▶'}</span>
+                <span>QUERIES</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      router.push(`/studio/${params.slug}/queries`)
+                    }}
+                    style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 14, cursor: 'pointer', padding: 0 }}
+                  >
+                    +
+                  </button>
+                  <span style={{ fontSize: 10 }}>{expandedSections.queries ? '▼' : '▶'}</span>
+                </div>
               </div>
               {expandedSections.queries && (
                 <div>
@@ -220,15 +268,16 @@ export default function WorkspacePage({ params }: WorkspacePageProps) {
                       key={query.id}
                       onClick={() => router.push(`/studio/${params.slug}/queries?query=${query.id}`)}
                       onDoubleClick={() => router.push(`/studio/${params.slug}/queries?query=${query.id}&design=true`)}
-                      style={{ padding: '6px 12px 6px 24px', fontSize: 11, color: '#c8d0f0', cursor: 'pointer', background: 'transparent' }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#252840'}
+                      style={{ padding: '6px 12px 6px 20px', fontSize: 12, color: '#64748b', cursor: 'pointer', background: 'transparent', display: 'flex', alignItems: 'center', gap: 6 }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
+                      <span style={{ fontSize: 10 }}>⊕</span>
                       {query.name}
                     </div>
                   ))}
                   {filteredQueries.length === 0 && (
-                    <div style={{ padding: '6px 12px 6px 24px', fontSize: 10, color: '#4a5277', fontStyle: 'italic' }}>
+                    <div style={{ padding: '6px 12px 6px 20px', fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>
                       No queries
                     </div>
                   )}
@@ -240,10 +289,21 @@ export default function WorkspacePage({ params }: WorkspacePageProps) {
             <div>
               <div
                 onClick={() => toggleSection('forms')}
-                style={{ padding: '8px 12px', background: '#252840', color: '#8890b8', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                style={{ padding: '8px 12px 4px', color: '#94a3b8', fontSize: 10, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               >
-                <span>📄 Forms</span>
-                <span>{expandedSections.forms ? '▼' : '▶'}</span>
+                <span>FORMS</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      router.push(`/studio/${params.slug}`)
+                    }}
+                    style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 14, cursor: 'pointer', padding: 0 }}
+                  >
+                    +
+                  </button>
+                  <span style={{ fontSize: 10 }}>{expandedSections.forms ? '▼' : '▶'}</span>
+                </div>
               </div>
               {expandedSections.forms && (
                 <div>
@@ -252,15 +312,16 @@ export default function WorkspacePage({ params }: WorkspacePageProps) {
                       key={form.id}
                       onClick={() => router.push(`/app/${params.slug}?page=${form.id}`)}
                       onDoubleClick={() => router.push(`/studio/${params.slug}?form=${form.id}`)}
-                      style={{ padding: '6px 12px 6px 24px', fontSize: 11, color: '#c8d0f0', cursor: 'pointer', background: 'transparent' }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#252840'}
+                      style={{ padding: '6px 12px 6px 20px', fontSize: 12, color: '#64748b', cursor: 'pointer', background: 'transparent', display: 'flex', alignItems: 'center', gap: 6 }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
+                      <span style={{ fontSize: 10 }}>◻</span>
                       {form.name}
                     </div>
                   ))}
                   {filteredForms.length === 0 && (
-                    <div style={{ padding: '6px 12px 6px 24px', fontSize: 10, color: '#4a5277', fontStyle: 'italic' }}>
+                    <div style={{ padding: '6px 12px 6px 20px', fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>
                       No forms
                     </div>
                   )}
@@ -272,90 +333,118 @@ export default function WorkspacePage({ params }: WorkspacePageProps) {
             <div>
               <div
                 onClick={() => toggleSection('macros')}
-                style={{ padding: '8px 12px', background: '#252840', color: '#8890b8', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                style={{ padding: '8px 12px 4px', color: '#94a3b8', fontSize: 10, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               >
-                <span>⚡ Macros</span>
-                <span>{expandedSections.macros ? '▼' : '▶'}</span>
+                <span>MACROS</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 14, cursor: 'pointer', padding: 0 }}
+                  >
+                    +
+                  </button>
+                  <span style={{ fontSize: 10 }}>{expandedSections.macros ? '▼' : '▶'}</span>
+                </div>
               </div>
               {expandedSections.macros && (
-                <div style={{ padding: '6px 12px 6px 24px', fontSize: 10, color: '#4a5277', fontStyle: 'italic' }}>
+                <div style={{ padding: '6px 12px 6px 20px', fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>
                   No macros
                 </div>
               )}
             </div>
           </div>
+
+          {/* New Button */}
+          <div style={{ padding: 12, borderTop: '1px solid #e2e8f0' }}>
+            <button
+              onClick={() => router.push(`/studio/${params.slug}`)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                background: 'transparent',
+                color: '#64748b',
+                border: '1px dashed #cbd5e1',
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              + New object
+            </button>
+          </div>
         </div>
 
         {/* Main Area */}
-        <div style={{ flex: 1, overflow: 'auto', padding: 40 }}>
-          <h1 style={{ fontSize: 36, fontWeight: 700, color: '#c8d0f0', marginBottom: 40 }}>
+        <div style={{ flex: 1, overflow: 'auto', padding: 40, background: '#f1f5f9' }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', marginBottom: 32 }}>
             {workspace?.name}
           </h1>
 
           {/* Quick Actions */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20, marginBottom: 40, maxWidth: 600 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 32, maxWidth: 600 }}>
             <div
               onClick={() => router.push(`/studio/${params.slug}/tables`)}
-              style={{ background: '#1a1d2e', border: '1px solid #252840', borderRadius: 8, padding: 24, cursor: 'pointer', transition: 'all 0.2s' }}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = '#6366f1'}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = '#252840'}
+              style={{ background: '#ffffff', border: '1px solid #f1f5f9', borderRadius: 12, padding: 20, cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.08)'}
+              onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
             >
-              <div style={{ fontSize: 32, marginBottom: 12 }}>📊</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: '#c8d0f0', marginBottom: 4 }}>Design a Table</div>
-              <div style={{ fontSize: 12, color: '#7480a8' }}>Create and manage database tables</div>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>📊</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', marginBottom: 4 }}>Design a Table</div>
+              <div style={{ fontSize: 12, color: '#64748b' }}>Create and manage database tables</div>
             </div>
 
             <div
               onClick={() => router.push(`/studio/${params.slug}/queries`)}
-              style={{ background: '#1a1d2e', border: '1px solid #252840', borderRadius: 8, padding: 24, cursor: 'pointer', transition: 'all 0.2s' }}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = '#6366f1'}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = '#252840'}
+              style={{ background: '#ffffff', border: '1px solid #f1f5f9', borderRadius: 12, padding: 20, cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.08)'}
+              onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
             >
-              <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: '#c8d0f0', marginBottom: 4 }}>Create a Query</div>
-              <div style={{ fontSize: 12, color: '#7480a8' }}>Build queries visually</div>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>🔍</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', marginBottom: 4 }}>Create a Query</div>
+              <div style={{ fontSize: 12, color: '#64748b' }}>Build queries visually</div>
             </div>
 
             <div
               onClick={() => router.push(`/studio/${params.slug}`)}
-              style={{ background: '#1a1d2e', border: '1px solid #252840', borderRadius: 8, padding: 24, cursor: 'pointer', transition: 'all 0.2s' }}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = '#6366f1'}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = '#252840'}
+              style={{ background: '#ffffff', border: '1px solid #f1f5f9', borderRadius: 12, padding: 20, cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.08)'}
+              onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
             >
-              <div style={{ fontSize: 32, marginBottom: 12 }}>📄</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: '#c8d0f0', marginBottom: 4 }}>Design a Form</div>
-              <div style={{ fontSize: 12, color: '#7480a8' }}>Create custom forms</div>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>📄</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', marginBottom: 4 }}>Design a Form</div>
+              <div style={{ fontSize: 12, color: '#64748b' }}>Create custom forms</div>
             </div>
 
             <div
               onClick={() => window.open(`/app/${params.slug}`, '_blank')}
-              style={{ background: '#1a1d2e', border: '1px solid #252840', borderRadius: 8, padding: 24, cursor: 'pointer', transition: 'all 0.2s' }}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = '#6366f1'}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = '#252840'}
+              style={{ background: '#ffffff', border: '1px solid #f1f5f9', borderRadius: 12, padding: 20, cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.08)'}
+              onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
             >
-              <div style={{ fontSize: 32, marginBottom: 12 }}>🚀</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: '#c8d0f0', marginBottom: 4 }}>View Published App</div>
-              <div style={{ fontSize: 12, color: '#7480a8' }}>Open the live application</div>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>🚀</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', marginBottom: 4 }}>View Published App</div>
+              <div style={{ fontSize: 12, color: '#64748b' }}>Open the live application</div>
             </div>
           </div>
 
           {/* Workspace Stats */}
-          <div style={{ background: '#1a1d2e', border: '1px solid #252840', borderRadius: 8, padding: 24, maxWidth: 600 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#8890b8', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ background: '#ffffff', border: '1px solid #f1f5f9', borderRadius: 12, padding: 20, maxWidth: 600 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Workspace Statistics
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
               <div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#6366f1' }}>{tables.length}</div>
-                <div style={{ fontSize: 11, color: '#7480a8' }}>Tables</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#4f46e5' }}>{tables.length}</div>
+                <div style={{ fontSize: 11, color: '#64748b' }}>Tables</div>
               </div>
               <div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#6366f1' }}>{forms.length}</div>
-                <div style={{ fontSize: 11, color: '#7480a8' }}>Forms</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#4f46e5' }}>{forms.length}</div>
+                <div style={{ fontSize: 11, color: '#64748b' }}>Forms</div>
               </div>
               <div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#6366f1' }}>{queries.length}</div>
-                <div style={{ fontSize: 11, color: '#7480a8' }}>Queries</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: '#4f46e5' }}>{queries.length}</div>
+                <div style={{ fontSize: 11, color: '#64748b' }}>Queries</div>
               </div>
             </div>
           </div>
