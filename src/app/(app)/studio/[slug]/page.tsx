@@ -198,43 +198,106 @@ export default function StudioPage() {
   const activeTab = tabs.find(t => t.id === activeTabId)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0f1117', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      <div style={{ height: 56, background: '#1a1d2e', borderBottom: '1px solid #252840', display: 'flex', alignItems: 'center', padding: '0 20px', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <button
-            onClick={() => router.push(`/workspace/${slug}`)}
-            style={{ background: 'none', border: 'none', color: '#8890b8', fontSize: 20, cursor: 'pointer', padding: 0 }}
-          >
-            ←
-          </button>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#6366f1' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--color-background-tertiary)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      {/* Top Bar - Modern Design */}
+      <div style={{
+        height: 48,
+        background: 'var(--color-background-primary)',
+        borderBottom: '0.5px solid var(--color-border-tertiary)',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 16px',
+        justifyContent: 'space-between'
+      }}>
+        {/* Left Section */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 20,
+            height: 20,
+            background: '#4f46e5',
+            borderRadius: 6,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontSize: 11,
+            fontWeight: 600
+          }}>
+            N
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-primary)' }}>
+            NexBase
+          </div>
+          <div style={{ width: 1, height: 16, background: 'var(--color-border-tertiary)' }} />
+          <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
             {workspace?.name || slug}
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 4 }}>
-          {(['all', 'tables', 'queries', 'forms', 'macros'] as const).map((filter) => (
-            <button
-              key={filter}
-              onClick={() => setActiveFilter(filter)}
-              style={{
-                padding: '8px 16px',
-                background: activeFilter === filter ? '#6366f1' : 'transparent',
-                color: activeFilter === filter ? '#fff' : '#8890b8',
-                border: 'none',
-                borderRadius: 4,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer',
-                textTransform: 'capitalize',
-              }}
-            >
-              {filter}
-            </button>
-          ))}
+        {/* Center Section - Tabs */}
+        <div style={{
+          background: 'var(--color-background-secondary)',
+          padding: 3,
+          borderRadius: 8,
+          display: 'flex',
+          gap: 2
+        }}>
+          {(['Data', 'Design', 'Publish'] as const).map((tab) => {
+            const isActive = (tab === 'Design' && activeFilter === 'all') ||
+                           (tab === 'Data' && activeFilter === 'tables') ||
+                           (tab === 'Publish' && activeFilter === 'macros')
+            return (
+              <button
+                key={tab}
+                onClick={() => {
+                  if (tab === 'Design') setActiveFilter('all')
+                  else if (tab === 'Data') setActiveFilter('tables')
+                  else setActiveFilter('macros')
+                }}
+                style={{
+                  padding: '6px 16px',
+                  background: isActive ? '#fff' : 'transparent',
+                  color: isActive ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                  border: 'none',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  fontWeight: isActive ? 500 : 400,
+                  cursor: 'pointer',
+                  boxShadow: isActive ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
+                }}
+              >
+                {tab}
+              </button>
+            )
+          })}
         </div>
 
-        <div style={{ fontSize: 12, color: '#8890b8' }}>Studio</div>
+        {/* Right Section */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{
+              width: 7,
+              height: 7,
+              background: '#94a3b8',
+              borderRadius: '50%'
+            }} />
+            <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+              Draft
+            </span>
+          </div>
+          <button style={{
+            padding: '5px 14px',
+            background: '#4f46e5',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 500,
+            cursor: 'pointer'
+          }}>
+            Publish
+          </button>
+        </div>
       </div>
 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
@@ -249,11 +312,11 @@ export default function StudioPage() {
           onDeleteObject={handleDeleteObject}
         />
 
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#0f1117' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--color-background-tertiary)' }}>
           {tabs.length === 0 ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 24 }}>
-              <div style={{ fontSize: 32, fontWeight: 700, color: '#c8d0f0' }}>Welcome to {workspace?.name}</div>
-              <div style={{ fontSize: 14, color: '#8890b8', marginBottom: 16 }}>Get started:</div>
+              <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--color-text-primary)' }}>Welcome to {workspace?.name}</div>
+              <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 16 }}>Get started:</div>
               <div style={{ display: 'flex', gap: 16 }}>
                 <button onClick={() => handleNewObject('table')} style={{ padding: '12px 24px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
                   📊 Create a Table
@@ -268,7 +331,7 @@ export default function StudioPage() {
             </div>
           ) : (
             <>
-              <div style={{ display: 'flex', background: '#1a1d2e', borderBottom: '1px solid #252840', padding: '0 8px', gap: 4 }}>
+              <div style={{ display: 'flex', background: 'var(--color-background-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)', padding: '0 8px', gap: 4 }}>
                 {tabs.map((tab) => (
                   <div
                     key={tab.id}

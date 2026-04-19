@@ -1,0 +1,455 @@
+NexBase - Phase 17 - Complete Modern UI Redesign
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+Redesign the entire studio to match this exact modern layout.
+Keep all existing Supabase logic. Just redesign the UI.
+
+=== THE TARGET LAYOUT ===
+
+┌─────────────────────────────────────────────────────────────────┐
+│ TOP BAR (48px)                                                   │
+│ [N] NexBase / workspace-name  [Data][Design][Publish]  [Live●][Publish btn] │
+├──────────────┬──────────────────────────────┬──────────────────┤
+│ LEFT SIDEBAR │ CANVAS AREA                  │ PROPERTY SHEET   │
+│ (200px)      │ toolbar + canvas             │ (260px)          │
+│              │                              │                  │
+│ Tables +     │ [Design][Preview][Split]     │ Property Sheet   │
+│  Members     │ Bound to: Members   [Save ✓] │ Selection: Form  │
+│  Payments    │                              │                  │
+│              │ ┌──Form Header──────────┐   │ Format|Data|     │
+│ Forms +      │ │  Member Details       │   │ Event|Other      │
+│ ● MemberForm │ ├──Detail───────────────┤   │                  │
+│  PayEntry    │ │  Full Name  [______]  │   │ [property rows]  │
+│  MainMenu    │ │  Email      [______]  │   │                  │
+│              │ │  Type       [____▾]   │   │                  │
+│ Queries +    │ │  Join Date  [📅____]  │   │                  │
+│  Active Mbrs │ ├──Form Footer──────────┤   │                  │
+│              │ │  [Save] [Clear]  ◀1▶  │   │                  │
+│ Macros +     │ └───────────────────────┘   │                  │
+│  SaveMember  │                              │                  │
+│  SendReceipt │                              │                  │
+│              │                              │                  │
+│ [+ New]      │                              │                  │
+└──────────────┴──────────────────────────────┴──────────────────┘
+
+=== TOP BAR ===
+
+Height: 48px
+Background: var(--color-background-primary) which is white in light mode
+Border-bottom: 0.5px solid var(--color-border-tertiary)
+No gradients, no dark background - clean white
+
+Left section:
+- Small indigo square (20x20, border-radius 6px, background #4f46e5) with "N" in white 11px
+- "NexBase" text 15px font-weight 500
+- Divider line
+- Workspace name in muted color 13px
+
+Center section:
+- Three tab buttons: [Data] [Design] [Publish]
+- Tabs in a pill group: background var(--color-background-secondary), padding 3px, border-radius 8px
+- Active tab: white background, shadow 0 1px 3px rgba(0,0,0,.08), font-weight 500
+- Inactive: transparent, color var(--color-text-secondary)
+
+Right section:
+- Green dot (7px) + "Live" text in green when published
+- "Draft" in gray when not published
+- Publish button: background #4f46e5, white text, 5px 14px padding, border-radius 8px, font-size 12px
+
+=== LEFT SIDEBAR ===
+
+Width: 200px
+Background: var(--color-background-secondary)
+Border-right: 0.5px solid var(--color-border-tertiary)
+
+Sections: Tables | Forms | Queries | Macros
+
+Each section header:
+- Font-size 10px, font-weight 500, color var(--color-text-tertiary)
+- UPPERCASE, letter-spacing 0.06em
+- Padding: 8px 12px 4px
+- Has a + button on right (font-size 14px, cursor pointer)
+- Collapse/expand arrow
+
+Each item in section:
+- Padding: 6px 12px 6px 20px
+- Font-size 12px
+- Color var(--color-text-secondary)
+- Small icon before name (▦ for tables, ◻ for forms, ⊕ for queries, ⚡ for macros)
+- Active item: background var(--color-background-primary), color var(--color-text-primary), font-weight 500
+- Hover: background var(--color-background-primary)
+
+At bottom: "+ New object" button
+- Full width minus margins
+- Border: 0.5px dashed var(--color-border-secondary)
+- Background transparent
+- Font-size 11px
+
+=== CANVAS AREA (center, flex 1) ===
+
+Background: var(--color-background-tertiary) - light gray page bg
+
+CANVAS TOOLBAR (36px, white, border-bottom):
+Left: view toggle buttons [Design][Preview][Split]
+  - Same pill style as top bar tabs
+  - Design = form designer with toolbox
+  - Preview = form view interactive
+  - Split = designer left half + preview right half
+
+Middle: "Bound to: [table name]" in 11px muted text
+
+Right: "Saved ✓" in green 11px + [Save] button outline style
+
+TOOLBOX (left of canvas, 64px wide, only visible in Design mode):
+Background: var(--color-background-secondary)
+Border-right: 0.5px solid var(--color-border-tertiary)
+
+Groups with tiny labels:
+BASIC: Select(↖) Label(Aa) Heading(H) TextBox(⬜) Button(⬡)
+INPUTS: Combo(▾) Check(☑) Date(📅) Number(#) Lookup(🔍)
+DATA: Table(▦) Chart(📊) Subform(▭)
+LAYOUT: Card(▭) Tabs(⬜⬜) Modal(💬) Divider(—) Progress(▬) Nav(◀▶) Badge(◉) Image(🖼)
+
+Each tool:
+- 52px wide, padding 6px 4px
+- Icon 16px centered
+- Label 8px below
+- Active: border 0.5px solid #4f46e5, background rgba(99,102,241,.08)
+- Hover: background var(--color-background-primary)
+- border-radius 6px
+
+FORM CANVAS:
+- Centered in the gray area
+- White background var(--color-background-primary)
+- Border: 0.5px solid var(--color-border-tertiary)
+- Border-radius: var(--border-radius-lg)
+- Padding: none (sections handle their own padding)
+- Min-width: 520px
+- Auto height based on controls
+
+Three sections stacked:
+Each section has a section bar:
+- Height: 22px
+- Background: var(--color-background-secondary)
+- Border-bottom: 0.5px solid var(--color-border-tertiary)
+- Font-size: 11px, color var(--color-text-tertiary)
+- Text: "▼ Form Header" / "▼ Detail" / "▼ Form Footer"
+- Clicking ▼ collapses/expands section
+
+Form Header section:
+- Default height 60px
+- Background: slightly tinted (var(--color-background-secondary) with 30% opacity)
+- For logos, titles
+
+Detail section:
+- Default height 400px
+- White background with dot grid:
+  background-image: radial-gradient(circle, var(--color-border-tertiary) 1px, transparent 1px)
+  background-size: 8px 8px
+- Controls placed here by absolute position
+
+Form Footer section:
+- Default height 60px
+- Same as header, tinted
+
+CONTROL RENDERING (design mode):
+All controls use CSS variables for colors - DARK MODE SAFE
+
+TextBox:
+- Background: var(--color-background-primary)
+- Border: 0.5px solid var(--color-border-secondary)
+- Border-left: 2.5px solid #4f46e5
+- Border-radius: var(--border-radius-md)
+- Placeholder: var(--color-text-tertiary), 12px
+
+Button:
+- Background: #4f46e5
+- Color: #fff
+- Border-radius: var(--border-radius-md)
+- Font-size: 12px, font-weight 500
+- No shadow in design view (just flat)
+
+Label:
+- No border, no background
+- Color: var(--color-text-secondary)
+- Font-size: 11px, font-weight 500
+
+Heading:
+- No border, no background
+- Color: var(--color-text-primary)
+- Font-size: 18px, font-weight 500
+
+ComboBox:
+- Same as TextBox but with ▾ arrow on right
+- Arrow in small box with border-left
+
+DatePicker:
+- Same as TextBox with 📅 icon left (font-size 13px)
+
+NumberBox:
+- Same as TextBox, right-aligned text
+- ▲▼ arrows stacked on right
+
+CheckBox:
+- Small square (16x16) border 0.5px solid var(--color-border-secondary)
+- Label text to right
+- If checked: background #4f46e5, checkmark in white
+
+Badge:
+- Pill shape, small dot before text
+- Colors from props
+
+DataTable:
+- Header row: background var(--color-background-secondary), font-size 10px, uppercase
+- Rows: alternating var(--color-background-primary) and var(--color-background-secondary)
+- Thin borders
+
+Selected control:
+- Outline: 2px solid #4f46e5, outline-offset 1px
+- 8 resize handles: 7x7px circles, background #4f46e5, border 1.5px solid white
+
+Ghost rect while drawing:
+- Border: 1.5px dashed #4f46e5
+- Background: rgba(99,102,241,0.06)
+
+=== PROPERTY SHEET (right 260px) ===
+
+Background: var(--color-background-primary)
+Border-left: 0.5px solid var(--color-border-tertiary)
+
+HEADER (44px):
+- "Property Sheet" font-size 12px font-weight 500 color var(--color-text-primary)
+- Below: "Selection type: [TextBox]" font-size 10px color var(--color-text-secondary)
+- All in padding 10px 12px
+
+CONTROL NAME BOX:
+- Below header, border-bottom 0.5px
+- Input showing control name
+- Background var(--color-background-secondary)
+- Font-size 11px
+- Padding 6px 12px
+
+TABS (Format | Data | Event | Other):
+- Flex row, border-bottom 0.5px solid var(--color-border-tertiary)
+- Each tab: flex 1, padding 6px 0, text-align center, font-size 11px
+- Active tab: color #4f46e5, border-bottom 2px solid #4f46e5, font-weight 500
+- Inactive: color var(--color-text-secondary), border-bottom 2px solid transparent
+
+PROPERTY ROWS:
+Each row:
+display: grid
+grid-template-columns: 110px 1fr
+border-bottom: 0.5px solid var(--color-border-tertiary)
+min-height: 26px
+align-items: center
+padding: 0 10px
+
+Left cell (label): font-size 10px, color var(--color-text-secondary)
+Right cell (input): font-size 11px, color var(--color-text-primary)
+  - text inputs: background transparent, border none, width 100%, padding 2px 4px
+  - On focus: background var(--color-background-secondary), border-radius 4px
+  - Select: background transparent, border none, cursor pointer
+
+SECTION HEADERS inside tabs:
+- padding 4px 10px
+- font-size 9px, font-weight 500, color #4f46e5
+- text-transform uppercase, letter-spacing 0.06em
+- background var(--color-background-secondary)
+- border-bottom 0.5px solid var(--color-border-tertiary)
+
+MACRO STEPS DISPLAY (below event tab properties):
+"⚡ Edit Button Macro Steps" button:
+- Margin 8px 10px
+- Background var(--color-background-secondary)
+- Border 0.5px solid var(--color-border-secondary)
+- Border-radius var(--border-radius-md)
+- Font-size 11px, padding 7px 12px
+- Cursor pointer
+
+Steps list below button (if button selected with steps):
+Each step: margin 3px 10px, padding 5px 10px
+Background var(--color-background-secondary), border-radius var(--border-radius-md)
+Font-size 11px
+Step number circle: 16x16, background #4f46e5, color white, border-radius 50%, font-size 9px
+Step description text
+
+=== PROPERTY CONTENT BY TAB ===
+
+FORMAT TAB:
+Section "Position":
+  Left (X): number input ← ctrl.x
+  Top (Y): number input ← ctrl.y
+  Width: number input ← ctrl.w
+  Height: number input ← ctrl.h
+
+Section "Appearance":
+  Back Color: [colored swatch] + hex input ← ctrl.props.bg
+  Text Color: [colored swatch] + hex input ← ctrl.props.color
+  Border Radius: number input ← ctrl.props.radius
+  Visible: Yes/No select
+
+Section "Typography":
+  Font Size: number ← ctrl.props.fontSize
+  Bold: Yes/No select ← ctrl.props.bold
+  Text Align: Left/Center/Right select ← ctrl.props.textAlign
+  (hide for non-text controls like Divider, Image, ProgressBar)
+
+Section "Content" (for Label, Heading, Button, Badge):
+  Caption: text input ← ctrl.props.caption
+
+DATA TAB:
+Section "Binding":
+  Control Source: SELECT dropdown
+    - Shows "(none)" first
+    - Then all fields from form's Record Source table (tableFields state)
+    - Field display: field.caption || field.name
+    - Field value: field.name
+    - onChange: update ctrl.props.controlSource, save to Supabase on blur
+    - If form has no record source: show "(Set Record Source first)" disabled
+
+Section "Behavior":
+  Default Value: text input
+  Validation Rule: text input
+  Validation Text: text input
+  Enabled: Yes/No select
+  Locked: Yes/No select
+
+For COMBOBOX additionally:
+  Row Source Type: Value List / Table select
+  Row Source: text input (comma values) or table select
+
+For DATATABLE additionally:
+  Record Source: SELECT of workspaceTables
+  Columns: text input (comma separated)
+  Allow Edits: Yes/No
+  Allow Additions: Yes/No
+  Allow Deletions: Yes/No
+
+When NOTHING selected (form properties):
+DATA tab shows:
+  Record Source: SELECT of all workspaceTables and workspaceQueries
+    onChange: UPDATE pages SET record_source = value WHERE id = pageId
+    After change: fetch table fields and update tableFields state
+  Filter: text input
+  Order By: text input
+  Allow Edits: Yes/No
+  Allow Additions: Yes/No
+  Allow Deletions: Yes/No
+
+EVENT TAB:
+  On Click: select of workspaceMacros + "(none)"
+  On Double Click: select of workspaceMacros
+  On Got Focus: select of workspaceMacros
+  On Lost Focus: select of workspaceMacros
+  Before Update: select of workspaceMacros
+  After Update: select of workspaceMacros
+
+Below event selects, if control is a Button:
+  Show "⚡ Edit Macro Steps" button
+  Clicking opens Macro Builder modal
+
+OTHER TAB:
+  Name: text input
+  ControlTip: text input (tooltip on hover)
+  Tab Stop: Yes/No
+  Tab Index: number
+
+=== DATA TAB (workspace-level) ===
+
+When user clicks "Data" in top bar tabs:
+Show a spreadsheet view (like Google Sheets) for the selected table.
+
+Layout:
+- Left: list of tables (same sidebar)
+- Right: spreadsheet grid showing records from app_data
+
+Spreadsheet grid:
+- Column headers = table field names
+- Rows = records from app_data WHERE workspace_id AND table_name
+- Row numbers on left (1, 2, 3...)
+- Click cell to edit inline (contenteditable or input)
+- Tab to next cell, Enter to next row
+- Last row is empty for new records
+- Auto-save on blur (UPDATE app_data)
+- Toolbar: [+ New Row] [Delete Row] [Export CSV] [Import CSV]
+
+=== PUBLISH TAB ===
+
+When user clicks "Publish" in top bar:
+Shows publish settings page:
+
+Title: "Publish Your App"
+
+Card: App URL
+  Your app is live at:
+  [nexbase-inky.vercel.app/app/ggg] [Copy] [Open ↗]
+
+Card: Publish Settings
+  Status: [Published ●] or [Draft ○] - toggle
+  Workspace name (shown to clients): [input]
+  Brand color: [color picker]
+  Brand logo: [emoji picker]
+
+Card: Access Settings
+  Anyone with link can view: [toggle]
+  Require password: [toggle] [password input]
+
+Card: Share
+  [Copy Link] [QR Code] [Open in new tab]
+
+=== SAVE BEHAVIOR ===
+
+Auto-save triggers ONLY on:
+- Control mouseup (after move or resize)
+- Control added to canvas
+- Control deleted
+
+Auto-save does NOT trigger on:
+- Typing in property sheet inputs
+- Changing dropdowns in property sheet
+
+Property sheet changes:
+- onChange: update local React state immediately (instant preview)
+- onBlur: save that control to Supabase
+- Select onChange: save immediately (selects don't have blur issue)
+
+Manual save: Ctrl+S or [Save] button
+- Saves all controls
+- Shows "Saved ✓" in green for 2 seconds
+
+=== THEME AND DARK MODE ===
+
+Use ONLY CSS variables throughout - never hardcode colors.
+Every color must work in light AND dark mode.
+
+Text colors: var(--color-text-primary), var(--color-text-secondary), var(--color-text-tertiary)
+Background: var(--color-background-primary), var(--color-background-secondary), var(--color-background-tertiary)
+Borders: var(--color-border-tertiary), var(--color-border-secondary), var(--color-border-primary)
+
+Only use hardcoded colors for:
+- Brand purple #4f46e5 (buttons, accents, active states)
+- Green #22c55e (success, live indicator)
+- Red #ef4444 (delete, error)
+
+No dark backgrounds on sidebar or property sheet.
+Everything uses CSS variables so it works in both light/dark mode.
+
+=== KEEP EXISTING FUNCTIONALITY ===
+
+Do NOT remove or break:
+- Supabase save/load of controls
+- Drag-draw canvas (working)
+- Resize handles (working)
+- Form View (preview mode working)
+- Table designer
+- Workspace/form navigation
+
+Just RESTYLE everything to match this design.
+The logic stays the same - only the visual design changes.
+
+=== AFTER DONE ===
+
+git add -A
+git commit -m "Phase 17 Complete modern UI redesign - clean light theme"
+git push origin main

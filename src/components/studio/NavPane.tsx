@@ -68,33 +68,14 @@ export default function NavPane({
       <div
         style={{
           width: 200,
-          background: '#1a1d2e',
-          borderRight: '1px solid #252840',
+          background: 'var(--color-background-secondary)',
+          borderRight: '0.5px solid var(--color-border-tertiary)',
           display: 'flex',
           flexDirection: 'column',
           fontFamily: "'Plus Jakarta Sans', sans-serif",
         }}
         onClick={() => setContextMenu(null)}
       >
-        {/* Search */}
-        <div style={{ padding: 12, borderBottom: '1px solid #252840' }}>
-          <input
-            type="text"
-            placeholder="Search objects..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: '100%',
-              background: '#0f1117',
-              border: '1px solid #252840',
-              color: '#c8d0f0',
-              padding: '6px 8px',
-              borderRadius: 4,
-              fontSize: 11,
-            }}
-          />
-        </div>
-
         {/* Objects List */}
         <div style={{ flex: 1, overflow: 'auto' }}>
           {/* TABLES */}
@@ -103,20 +84,31 @@ export default function NavPane({
               <div
                 onClick={() => toggleSection('tables')}
                 style={{
-                  padding: '8px 12px',
-                  background: '#252840',
-                  color: '#8890b8',
+                  padding: '8px 12px 4px',
+                  color: 'var(--color-text-tertiary)',
                   fontSize: 10,
-                  fontWeight: 700,
+                  fontWeight: 500,
                   textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
                   cursor: 'pointer',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                 }}
               >
-                <span>📊 TABLES</span>
-                <span>{expandedSections.tables ? '▼' : '▶'}</span>
+                <span>TABLES</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onNewObject('table')
+                    }}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-text-tertiary)', fontSize: 14, cursor: 'pointer', padding: 0 }}
+                  >
+                    +
+                  </button>
+                  <span style={{ fontSize: 10 }}>{expandedSections.tables ? '▼' : '▶'}</span>
+                </div>
               </div>
               {expandedSections.tables &&
                 filteredTables.map((table) => (
@@ -125,83 +117,32 @@ export default function NavPane({
                     onDoubleClick={() => onOpenObject('table', table.id, table.name)}
                     onContextMenu={(e) => handleContextMenu(e, 'table', table.id, table.name)}
                     style={{
-                      padding: '6px 12px 6px 24px',
-                      fontSize: 11,
-                      color: '#c8d0f0',
+                      padding: '6px 12px 6px 20px',
+                      fontSize: 12,
+                      color: 'var(--color-text-secondary)',
                       cursor: 'pointer',
                       background: 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#252840')}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-background-primary)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
+                    <span style={{ fontSize: 10 }}>▦</span>
                     {table.name}
                   </div>
                 ))}
               {expandedSections.tables && filteredTables.length === 0 && (
                 <div
                   style={{
-                    padding: '6px 12px 6px 24px',
+                    padding: '6px 12px 6px 20px',
                     fontSize: 10,
-                    color: '#4a5277',
+                    color: 'var(--color-text-tertiary)',
                     fontStyle: 'italic',
                   }}
                 >
                   No tables
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* QUERIES */}
-          {showSection('queries') && (
-            <div>
-              <div
-                onClick={() => toggleSection('queries')}
-                style={{
-                  padding: '8px 12px',
-                  background: '#252840',
-                  color: '#8890b8',
-                  fontSize: 10,
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <span>🔍 QUERIES</span>
-                <span>{expandedSections.queries ? '▼' : '▶'}</span>
-              </div>
-              {expandedSections.queries &&
-                filteredQueries.map((query) => (
-                  <div
-                    key={query.id}
-                    onDoubleClick={() => onOpenObject('query', query.id, query.name)}
-                    onContextMenu={(e) => handleContextMenu(e, 'query', query.id, query.name)}
-                    style={{
-                      padding: '6px 12px 6px 24px',
-                      fontSize: 11,
-                      color: '#c8d0f0',
-                      cursor: 'pointer',
-                      background: 'transparent',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#252840')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    {query.name}
-                  </div>
-                ))}
-              {expandedSections.queries && filteredQueries.length === 0 && (
-                <div
-                  style={{
-                    padding: '6px 12px 6px 24px',
-                    fontSize: 10,
-                    color: '#4a5277',
-                    fontStyle: 'italic',
-                  }}
-                >
-                  No queries
                 </div>
               )}
             </div>
@@ -213,20 +154,31 @@ export default function NavPane({
               <div
                 onClick={() => toggleSection('forms')}
                 style={{
-                  padding: '8px 12px',
-                  background: '#252840',
-                  color: '#8890b8',
+                  padding: '8px 12px 4px',
+                  color: 'var(--color-text-tertiary)',
                   fontSize: 10,
-                  fontWeight: 700,
+                  fontWeight: 500,
                   textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
                   cursor: 'pointer',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                 }}
               >
-                <span>📄 FORMS</span>
-                <span>{expandedSections.forms ? '▼' : '▶'}</span>
+                <span>FORMS</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onNewObject('form')
+                    }}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-text-tertiary)', fontSize: 14, cursor: 'pointer', padding: 0 }}
+                  >
+                    +
+                  </button>
+                  <span style={{ fontSize: 10 }}>{expandedSections.forms ? '▼' : '▶'}</span>
+                </div>
               </div>
               {expandedSections.forms &&
                 filteredForms.map((form) => (
@@ -235,28 +187,102 @@ export default function NavPane({
                     onDoubleClick={() => onOpenObject('form', form.id, form.name || form.title || form.slug)}
                     onContextMenu={(e) => handleContextMenu(e, 'form', form.id, form.name || form.title || form.slug)}
                     style={{
-                      padding: '6px 12px 6px 24px',
-                      fontSize: 11,
-                      color: '#c8d0f0',
+                      padding: '6px 12px 6px 20px',
+                      fontSize: 12,
+                      color: 'var(--color-text-secondary)',
                       cursor: 'pointer',
                       background: 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#252840')}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-background-primary)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
+                    <span style={{ fontSize: 10 }}>◻</span>
                     {form.name || form.title || form.slug}
                   </div>
                 ))}
               {expandedSections.forms && filteredForms.length === 0 && (
                 <div
                   style={{
-                    padding: '6px 12px 6px 24px',
+                    padding: '6px 12px 6px 20px',
                     fontSize: 10,
-                    color: '#4a5277',
+                    color: 'var(--color-text-tertiary)',
                     fontStyle: 'italic',
                   }}
                 >
                   No forms
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* QUERIES */}
+          {showSection('queries') && (
+            <div>
+              <div
+                onClick={() => toggleSection('queries')}
+                style={{
+                  padding: '8px 12px 4px',
+                  color: 'var(--color-text-tertiary)',
+                  fontSize: 10,
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <span>QUERIES</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onNewObject('query')
+                    }}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-text-tertiary)', fontSize: 14, cursor: 'pointer', padding: 0 }}
+                  >
+                    +
+                  </button>
+                  <span style={{ fontSize: 10 }}>{expandedSections.queries ? '▼' : '▶'}</span>
+                </div>
+              </div>
+              {expandedSections.queries &&
+                filteredQueries.map((query) => (
+                  <div
+                    key={query.id}
+                    onDoubleClick={() => onOpenObject('query', query.id, query.name)}
+                    onContextMenu={(e) => handleContextMenu(e, 'query', query.id, query.name)}
+                    style={{
+                      padding: '6px 12px 6px 20px',
+                      fontSize: 12,
+                      color: 'var(--color-text-secondary)',
+                      cursor: 'pointer',
+                      background: 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-background-primary)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <span style={{ fontSize: 10 }}>⊕</span>
+                    {query.name}
+                  </div>
+                ))}
+              {expandedSections.queries && filteredQueries.length === 0 && (
+                <div
+                  style={{
+                    padding: '6px 12px 6px 20px',
+                    fontSize: 10,
+                    color: 'var(--color-text-tertiary)',
+                    fontStyle: 'italic',
+                  }}
+                >
+                  No queries
                 </div>
               )}
             </div>
@@ -268,20 +294,31 @@ export default function NavPane({
               <div
                 onClick={() => toggleSection('macros')}
                 style={{
-                  padding: '8px 12px',
-                  background: '#252840',
-                  color: '#8890b8',
+                  padding: '8px 12px 4px',
+                  color: 'var(--color-text-tertiary)',
                   fontSize: 10,
-                  fontWeight: 700,
+                  fontWeight: 500,
                   textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
                   cursor: 'pointer',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                 }}
               >
-                <span>⚡ MACROS</span>
-                <span>{expandedSections.macros ? '▼' : '▶'}</span>
+                <span>MACROS</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onNewObject('macro')
+                    }}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-text-tertiary)', fontSize: 14, cursor: 'pointer', padding: 0 }}
+                  >
+                    +
+                  </button>
+                  <span style={{ fontSize: 10 }}>{expandedSections.macros ? '▼' : '▶'}</span>
+                </div>
               </div>
               {expandedSections.macros &&
                 filteredMacros.map((macro) => (
@@ -290,24 +327,28 @@ export default function NavPane({
                     onDoubleClick={() => onOpenObject('macro', macro.id, macro.name)}
                     onContextMenu={(e) => handleContextMenu(e, 'macro', macro.id, macro.name)}
                     style={{
-                      padding: '6px 12px 6px 24px',
-                      fontSize: 11,
-                      color: '#c8d0f0',
+                      padding: '6px 12px 6px 20px',
+                      fontSize: 12,
+                      color: 'var(--color-text-secondary)',
                       cursor: 'pointer',
                       background: 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#252840')}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-background-primary)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
+                    <span style={{ fontSize: 10 }}>⚡</span>
                     {macro.name}
                   </div>
                 ))}
               {expandedSections.macros && filteredMacros.length === 0 && (
                 <div
                   style={{
-                    padding: '6px 12px 6px 24px',
+                    padding: '6px 12px 6px 20px',
                     fontSize: 10,
-                    color: '#4a5277',
+                    color: 'var(--color-text-tertiary)',
                     fontStyle: 'italic',
                   }}
                 >
@@ -319,18 +360,18 @@ export default function NavPane({
         </div>
 
         {/* New Button */}
-        <div style={{ padding: 12, borderTop: '1px solid #252840', position: 'relative' }}>
+        <div style={{ padding: 12, borderTop: '0.5px solid var(--color-border-tertiary)', position: 'relative' }}>
           <button
             onClick={() => setShowNewMenu(!showNewMenu)}
             style={{
               width: '100%',
               padding: '8px 12px',
-              background: '#6366f1',
-              color: '#fff',
-              border: 'none',
+              background: 'transparent',
+              color: 'var(--color-text-secondary)',
+              border: '0.5px dashed var(--color-border-secondary)',
               borderRadius: 4,
-              fontSize: 12,
-              fontWeight: 600,
+              fontSize: 11,
+              fontWeight: 500,
               cursor: 'pointer',
             }}
           >
@@ -343,11 +384,11 @@ export default function NavPane({
                 bottom: '100%',
                 left: 12,
                 right: 12,
-                background: '#252840',
-                border: '1px solid #3a3f5c',
+                background: 'var(--color-background-primary)',
+                border: '0.5px solid var(--color-border-tertiary)',
                 borderRadius: 4,
                 marginBottom: 4,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
               }}
             >
               {['table', 'query', 'form', 'macro'].map((type) => (
@@ -360,11 +401,11 @@ export default function NavPane({
                   style={{
                     padding: '8px 12px',
                     fontSize: 11,
-                    color: '#c8d0f0',
+                    color: 'var(--color-text-primary)',
                     cursor: 'pointer',
-                    borderBottom: '1px solid #1a1d2e',
+                    borderBottom: '0.5px solid var(--color-border-tertiary)',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#1a1d2e')}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-background-secondary)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   New {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -382,10 +423,10 @@ export default function NavPane({
             position: 'fixed',
             left: contextMenu.x,
             top: contextMenu.y,
-            background: '#252840',
-            border: '1px solid #3a3f5c',
+            background: 'var(--color-background-primary)',
+            border: '0.5px solid var(--color-border-tertiary)',
             borderRadius: 4,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             zIndex: 10000,
             minWidth: 150,
           }}
@@ -399,29 +440,28 @@ export default function NavPane({
             style={{
               padding: '8px 12px',
               fontSize: 11,
-              color: '#c8d0f0',
+              color: 'var(--color-text-primary)',
               cursor: 'pointer',
-              borderBottom: '1px solid #1a1d2e',
+              borderBottom: '0.5px solid var(--color-border-tertiary)',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#1a1d2e')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-background-secondary)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             Open
           </div>
           <div
             onClick={() => {
-              // Design view
               onOpenObject(contextMenu.type + '-design', contextMenu.id, contextMenu.name)
               setContextMenu(null)
             }}
             style={{
               padding: '8px 12px',
               fontSize: 11,
-              color: '#c8d0f0',
+              color: 'var(--color-text-primary)',
               cursor: 'pointer',
-              borderBottom: '1px solid #1a1d2e',
+              borderBottom: '0.5px solid var(--color-border-tertiary)',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#1a1d2e')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-background-secondary)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             Design View
@@ -434,7 +474,7 @@ export default function NavPane({
               color: '#ef4444',
               cursor: 'pointer',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#1a1d2e')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-background-secondary)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             Delete

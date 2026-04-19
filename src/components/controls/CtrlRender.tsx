@@ -31,8 +31,8 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
     height: '100%',
     overflow: 'hidden',
     borderRadius: ctrl.radius || 0,
-    fontSize: ctrl.fontSize || 14,
-    color: ctrl.color || '#1f2937',
+    fontSize: ctrl.fontSize || 12,
+    color: ctrl.color || 'var(--color-text-primary)',
     fontFamily: 'inherit',
     userSelect: 'none',
     pointerEvents: isPreview ? 'auto' : 'none',
@@ -48,10 +48,10 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         ...base,
         display: 'flex',
         alignItems: 'center',
-        background: ctrl.bg === 'transparent' || !ctrl.bg ? 'transparent' : ctrl.bg,
-        color: ctrl.color || '#374151',
-        fontSize: ctrl.fontSize || 13,
-        fontWeight: ctrl.bold ? 700 : 400
+        background: 'transparent',
+        color: ctrl.color || 'var(--color-text-secondary)',
+        fontSize: ctrl.fontSize || 11,
+        fontWeight: 500
       }}>
         {ctrl.caption || 'Label'}
       </div>
@@ -64,11 +64,10 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         ...base,
         display: 'flex',
         alignItems: 'center',
-        fontWeight: 800,
+        fontWeight: 500,
         background: 'transparent',
-        letterSpacing: '-0.02em',
-        color: ctrl.color || '#0f172a',
-        fontSize: ctrl.fontSize || 20
+        color: ctrl.color || 'var(--color-text-primary)',
+        fontSize: ctrl.fontSize || 18
       }}>
         {ctrl.caption || 'Heading'}
       </div>
@@ -85,13 +84,13 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
           defaultValue={displayValue}
           style={{
             ...base,
-            background: ctrl.bg || '#ffffff',
-            color: ctrl.color || '#1e293b',
-            borderRadius: ctrl.radius !== undefined ? ctrl.radius : 8,
-            fontSize: ctrl.fontSize || 14,
-            border: '1.5px solid #e2e8f0',
-            borderLeft: '3px solid #6366f1',
-            padding: '0 12px',
+            background: ctrl.bg || 'var(--color-background-primary)',
+            color: ctrl.color || 'var(--color-text-primary)',
+            borderRadius: ctrl.radius !== undefined ? ctrl.radius : 'var(--border-radius-md)',
+            fontSize: ctrl.fontSize || 12,
+            border: '0.5px solid var(--color-border-secondary)',
+            borderLeft: '2.5px solid #4f46e5',
+            padding: '0 10px',
             outline: 'none'
           }}
         />
@@ -100,18 +99,17 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
     return (
       <div style={{
         ...base,
-        background: ctrl.bg || '#ffffff',
-        color: ctrl.color || '#1e293b',
-        borderRadius: ctrl.radius !== undefined ? ctrl.radius : 8,
-        fontSize: ctrl.fontSize || 14,
-        border: '1.5px solid #e2e8f0',
-        borderLeft: '3px solid #6366f1',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        background: ctrl.bg || 'var(--color-background-primary)',
+        color: ctrl.color || 'var(--color-text-primary)',
+        borderRadius: ctrl.radius !== undefined ? ctrl.radius : 'var(--border-radius-md)',
+        fontSize: ctrl.fontSize || 12,
+        border: '0.5px solid var(--color-border-secondary)',
+        borderLeft: '2.5px solid #4f46e5',
         display: 'flex',
         alignItems: 'center',
-        padding: '0 12px'
+        padding: '0 10px'
       }}>
-        <span style={{ color: '#9ca3af', fontSize: 11 }}>{ctrl.placeholder || 'Type here...'}</span>
+        <span style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }}>{ctrl.placeholder || ''}</span>
       </div>
     )
   }
@@ -124,27 +122,19 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
       onClick?.()
     }
 
-    // Create gradient background if using default indigo color
-    const buttonBg = ctrl.bg || '#6366f1'
-    const useGradient = !ctrl.bg || ctrl.bg === '#6366f1'
-    const background = useGradient
-      ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'
-      : buttonBg
-
     return (
       <button
         onClick={handleClick}
         style={{
           ...base,
-          background,
+          background: ctrl.bg || '#4f46e5',
           color: ctrl.color || '#ffffff',
-          borderRadius: ctrl.radius !== undefined ? ctrl.radius : 10,
-          fontSize: ctrl.fontSize || 14,
+          borderRadius: ctrl.radius !== undefined ? ctrl.radius : 'var(--border-radius-md)',
+          fontSize: ctrl.fontSize || 12,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontWeight: ctrl.bold !== false ? 700 : 400,
-          boxShadow: '0 4px 14px rgba(99,102,241,0.4)',
+          fontWeight: 500,
           cursor: isPreview ? 'pointer' : 'default',
           border: 'none',
         }}
@@ -168,10 +158,12 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
           defaultValue={displayValue}
           style={{
             ...base,
-            background: ctrl.bg || '#ffffff',
-            color: ctrl.color || '#374151',
-            border: '1px solid #e2e8f0',
-            padding: '0 12px'
+            background: ctrl.bg || 'var(--color-background-primary)',
+            color: ctrl.color || 'var(--color-text-primary)',
+            border: '0.5px solid var(--color-border-secondary)',
+            borderLeft: '2.5px solid #4f46e5',
+            borderRadius: 'var(--border-radius-md)',
+            padding: '0 10px'
           }}
         >
           <option value="">{ctrl.placeholder || 'Select...'}</option>
@@ -185,19 +177,19 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
     return (
       <div style={{
         ...base,
-        background: ctrl.bg || '#ffffff',
-        color: ctrl.color || '#374151',
-        border: '1.5px solid #e2e8f0',
-        borderRadius: ctrl.radius !== undefined ? ctrl.radius : 8,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        background: ctrl.bg || 'var(--color-background-primary)',
+        color: ctrl.color || 'var(--color-text-primary)',
+        border: '0.5px solid var(--color-border-secondary)',
+        borderLeft: '2.5px solid #4f46e5',
+        borderRadius: 'var(--border-radius-md)',
         display: 'flex',
         alignItems: 'center',
-        padding: '0 12px',
+        padding: '0 10px',
         justifyContent: 'space-between'
       }}>
-        <span style={{ color: '#9ca3af', fontSize: 11 }}>{ctrl.placeholder || 'Select...'}</span>
-        <div style={{ background: '#f3f4f6', padding: '2px 6px', marginRight: -12, height: '100%', display: 'flex', alignItems: 'center', borderRadius: '0 6px 6px 0' }}>
-          <span style={{ color: '#6b7280', fontSize: 10 }}>▾</span>
+        <span style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }}>{ctrl.placeholder || ''}</span>
+        <div style={{ background: 'var(--color-background-secondary)', padding: '2px 6px', marginRight: -10, height: '100%', display: 'flex', alignItems: 'center', borderLeft: '0.5px solid var(--color-border-tertiary)' }}>
+          <span style={{ color: 'var(--color-text-secondary)', fontSize: 10 }}>▾</span>
         </div>
       </div>
     )
@@ -206,13 +198,22 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
   if (ctrl.type === 'CheckBox') {
     const isChecked = boundValue === true || boundValue === 1 || boundValue === 'Yes'
     return (
-      <div style={{ ...base, background: 'transparent', display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
-        <div style={{ width: 16, height: 16, border: '1.5px solid #6366f1', borderRadius: 3, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {isChecked && <span style={{ color: '#6366f1', fontSize: 14, fontWeight: 900 }}>✓</span>}
+      <div style={{ ...base, background: 'transparent', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{
+          width: 16,
+          height: 16,
+          border: '0.5px solid var(--color-border-secondary)',
+          borderRadius: 3,
+          background: isChecked ? '#4f46e5' : 'var(--color-background-primary)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          {isChecked && <span style={{ color: '#ffffff', fontSize: 12, fontWeight: 600 }}>✓</span>}
         </div>
         <span style={{
-          color: ctrl.color || '#374151',
-          fontSize: ctrl.fontSize || 13
+          color: ctrl.color || 'var(--color-text-primary)',
+          fontSize: ctrl.fontSize || 12
         }}>{ctrl.caption || 'CheckBox'}</span>
       </div>
     )
@@ -223,21 +224,18 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
     return (
       <div style={{
         ...base,
-        background: ctrl.bg || '#ffffff',
-        color: ctrl.color || '#374151',
-        border: '1.5px solid #e2e8f0',
-        borderRadius: ctrl.radius !== undefined ? ctrl.radius : 8,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        background: ctrl.bg || 'var(--color-background-primary)',
+        color: ctrl.color || 'var(--color-text-primary)',
+        border: '0.5px solid var(--color-border-secondary)',
+        borderLeft: '2.5px solid #4f46e5',
+        borderRadius: 'var(--border-radius-md)',
         display: 'flex',
         alignItems: 'center',
-        padding: '0 12px',
-        justifyContent: 'space-between'
+        padding: '0 10px',
+        gap: 6
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 14 }}>📅</span>
-          <span style={{ color: displayValue ? (ctrl.color || '#374151') : '#9ca3af', fontSize: 11 }}>{displayValue || 'DD/MM/YYYY'}</span>
-        </div>
-        <div style={{ width: 20, height: 20, background: '#f3f4f6', borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>▾</div>
+        <span style={{ fontSize: 13 }}>📅</span>
+        <span style={{ color: displayValue ? (ctrl.color || 'var(--color-text-primary)') : 'var(--color-text-tertiary)', fontSize: 12, flex: 1 }}>{displayValue || 'DD/MM/YYYY'}</span>
       </div>
     )
   }
@@ -247,20 +245,20 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
     return (
       <div style={{
         ...base,
-        background: ctrl.bg || '#ffffff',
-        color: ctrl.color || '#374151',
-        border: '1.5px solid #e2e8f0',
-        borderRadius: ctrl.radius !== undefined ? ctrl.radius : 8,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        background: ctrl.bg || 'var(--color-background-primary)',
+        color: ctrl.color || 'var(--color-text-primary)',
+        border: '0.5px solid var(--color-border-secondary)',
+        borderLeft: '2.5px solid #4f46e5',
+        borderRadius: 'var(--border-radius-md)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 12px'
+        padding: '0 10px'
       }}>
-        <span style={{ color: ctrl.color || '#374151', fontSize: 11, textAlign: 'right', flex: 1 }}>{displayValue}</span>
+        <span style={{ color: ctrl.color || 'var(--color-text-primary)', fontSize: 12, textAlign: 'right', flex: 1 }}>{displayValue}</span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 1, marginLeft: 4 }}>
-          <div style={{ width: 14, height: 10, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, borderRadius: 2 }}>▲</div>
-          <div style={{ width: 14, height: 10, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, borderRadius: 2 }}>▼</div>
+          <div style={{ width: 12, height: 10, background: 'var(--color-background-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, borderRadius: 2 }}>▲</div>
+          <div style={{ width: 12, height: 10, background: 'var(--color-background-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, borderRadius: 2 }}>▼</div>
         </div>
       </div>
     )
