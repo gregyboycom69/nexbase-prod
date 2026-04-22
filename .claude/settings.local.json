@@ -18,7 +18,9 @@
       "Bash(tr:*)",
       "Bash(npm install:*)",
       "Bash(grep:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git config:*)"
     ]
   }
 }
