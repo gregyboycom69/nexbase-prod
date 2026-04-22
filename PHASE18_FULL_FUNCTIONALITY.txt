@@ -1,0 +1,261 @@
+NexBase - Phase 18 - Full End to End Functionality
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+
+Make the entire app work end to end. Fix every broken piece.
+Priority: things that make the app USABLE for real clients.
+
+=== FIX 1 - WORKSPACE PAGE LIGHT THEME ===
+
+File: src/app/(app)/workspace/[slug]/page.tsx
+
+Change ALL dark colors to light:
+- Background: #ffffff and #f8fafc
+- Text: #0f172a, #374151, #64748b
+- Borders: #f1f5f9, #e2e8f0
+- Accent: #4f46e5
+
+Top bar: white bg, border-bottom 1px solid #f1f5f9
+Left sidebar: #f8fafc bg, items with hover #f1f5f9
+Main area: #f1f5f9 bg, white cards
+Cards: white bg, border 1px solid #f1f5f9, border-radius 12px
+Stats numbers: color #4f46e5
+
+=== FIX 2 - STUDIO LIGHT THEME ===
+
+File: src/app/(app)/studio/[slug]/page.tsx
+
+Replace ALL these dark hex values:
+#13141f → #f8fafc
+#1e2035 → #ffffff
+#252840 → #f1f5f9
+#0f1117 → #ffffff
+#0b0c14 → #f8fafc
+#1a1d2e → #f8fafc
+#181a28 → #ffffff
+#7480a8 → #64748b
+#c8d0f0 → #1e293b
+#4a5070 → #94a3b8
+
+Top bar: #ffffff bg, border-bottom 1px solid #f1f5f9
+Left toolbox: #f8fafc bg, border-right 1px solid #f1f5f9
+Right property sheet: #ffffff bg, border-left 1px solid #f1f5f9
+Canvas outer area: #f1f5f9 bg
+Form canvas: #ffffff bg, border 0.5px solid #e2e8f0
+
+Property sheet:
+- Tab active: color #4f46e5, border-bottom 2px solid #4f46e5
+- Tab inactive: color #64748b
+- Property labels: color #64748b, 11px
+- Property inputs: background transparent, color #1e293b
+- Section headers: background #f8fafc, color #4f46e5, 9px uppercase
+
+Toolbox buttons:
+- Active: border 1px solid #4f46e5, bg rgba(99,102,241,0.06), icon #4f46e5
+- Inactive: icon #64748b, label #94a3b8
+- Hover: bg #f1f5f9
+
+=== FIX 3 - CONTROL DEFAULT COLORS ===
+
+All controls must have WHITE/LIGHT defaults NOT dark red/brown.
+
+In the DEFAULTS or CDEFS object find each control type and fix:
+
+TextBox:   bg:'#ffffff', color:'#1e293b', border:'1px solid #e2e8f0'
+Label:     bg:'transparent', color:'#374151'
+Heading:   bg:'transparent', color:'#0f172a'
+Button:    bg:'#4f46e5', color:'#ffffff'
+ComboBox:  bg:'#ffffff', color:'#374151'
+CheckBox:  bg:'transparent', color:'#374151'
+DatePicker: bg:'#ffffff', color:'#374151'
+NumberBox: bg:'#ffffff', color:'#374151'
+Badge:     bg:'#eff6ff', color:'#4f46e5'
+Card:      bg:'#ffffff', color:'#0f172a'
+Divider:   bg:'#e2e8f0', color:'#e2e8f0'
+
+The dark red/maroon color appearing on textboxes is because 
+old controls have bg:'#7f1d1d' or similar saved in Supabase.
+When rendering, if bg is a very dark color and it's a TextBox,
+override to '#ffffff'.
+
+=== FIX 4 - PROPERTY SHEET FULLY WORKING ===
+
+The property sheet must show and save ALL properties.
+
+When TextBox selected - DATA tab MUST show:
+Control Source dropdown populated with fields from form's record source table.
+
+Steps to make this work:
+1. When studio loads, fetch ALL workspace_tables:
+   const {data: wTables} = await supabase
+     .from('workspace_tables')
+     .select('*')
+     .eq('workspace_id', workspaceId)
+
+2. When active page changes, get its record_source:
+   const recordSource = activePage?.record_source
+   
+3. Find the table matching that name:
+   const boundTable = wTables?.find(t => t.name === recordSource)
+   const tableFields = boundTable?.fields || []
+
+4. Pass tableFields to PropertySheet component
+
+5. In PropertySheet DATA tab for TextBox:
+   <select 
+     value={ctrl.props?.controlSource || ''}
+     onChange={e => updateCtrlProp('controlSource', e.target.value)}
+   >
+     <option value="">(none)</option>
+     {tableFields.map(f => (
+       <option key={f.name} value={f.name}>
+         {f.caption || f.name}
+       </option>
+     ))}
+   </select>
+
+When FORM is selected (no control) - DATA tab shows:
+   <select
+     value={activePage?.record_source || ''}
+     onChange={async e => {
+       await supabase
+         .from('pages')
+         .update({ record_source: e.target.value })
+         .eq('id', activePage.id)
+       setActivePage({...activePage, record_source: e.target.value})
+     }}
+   >
+     <option value="">(none)</option>
+     {wTables?.map(t => (
+       <option key={t.name} value={t.name}>{t.name}</option>
+     ))}
+   </select>
+
+=== FIX 5 - FORM VIEW POSITIONS ===
+
+In Form View (preview mode) all controls must be at 
+EXACT same position as in Design View.
+
+The Form View container:
+<div style={{
+  position: 'relative',
+  width: Math.max(600, ...controls.map(c => c.x + c.w + 40)),
+  height: Math.max(400, ...controls.map(c => c.y + c.h + 40)),
+  background: '#ffffff',
+  borderRadius: 12,
+  border: '1px solid #f1f5f9',
+}}>
+  {controls.map(ctrl => (
+    <div key={ctrl.id} style={{
+      position: 'absolute',
+      left: ctrl.x,
+      top: ctrl.y,
+      width: ctrl.w,
+      height: ctrl.h,
+    }}>
+      {renderInteractiveControl(ctrl)}
+    </div>
+  ))}
+</div>
+
+Do NOT use flexbox or any layout that moves controls.
+Every control MUST be position:absolute at exact x,y,w,h.
+
+=== FIX 6 - SAVE BUTTON MACRO WORKING ===
+
+When a Button with macro steps is clicked in Form View:
+
+The macro engine must:
+1. Collect form data: { [ctrl.props.controlSource]: formData[ctrl.id] }
+   For each control that has controlSource set
+   
+2. For "save" action:
+   await supabase.from('app_data').insert({
+     workspace_id: workspaceId,
+     table_name: activePage.record_source,
+     data: collectedFormData,
+     created_at: new Date().toISOString()
+   })
+
+3. For "goto" action:
+   Find the page with matching name/slug
+   Switch to that page (setActivePageId)
+
+4. For "toast" action:
+   Show toast notification
+
+5. For "newrec" action:
+   Clear all formData state
+
+=== FIX 7 - TABLE DESIGNER SAVE AND LOAD ===
+
+Table Designer must:
+1. Load fields when table is clicked from nav pane
+2. Allow adding/editing fields
+3. Save button works: UPSERT to workspace_tables
+4. Datasheet view shows real data from app_data
+
+When table is clicked in nav pane:
+- Fetch: SELECT * FROM workspace_tables WHERE id = tableId
+- Parse fields JSONB
+- Show in design grid
+
+When Save Table clicked:
+- Collect all field rows
+- Build fields array
+- UPSERT workspace_tables SET fields = array WHERE id = tableId
+- Show "Saved!" toast
+
+=== FIX 8 - PUBLISHED APP (/app/[slug]) ===
+
+The published app at /app/[slug] must work for clients.
+
+When client opens the URL:
+1. Load workspace by slug (no auth needed)
+2. Load all pages for this workspace
+3. Show sidebar with workspace brand name and pages list
+4. Show first page (is_home = true OR first page)
+
+Each page renders its controls interactively:
+- TextBox: real input
+- Button: runs macros
+- ComboBox: real select
+- DataTable: loads real data from app_data
+
+The published app must look CLEAN and PROFESSIONAL.
+No NexBase branding visible to client.
+Only workspace brand_name, brand_color, brand_logo.
+
+Sidebar: workspace brand color as bg
+Nav items: page name with icon
+Active page highlighted
+
+=== FIX 9 - CREATING FORMS AND TABLES FROM NAV PANE ===
+
+The + button next to Forms in nav pane must work:
+Click + → show dialog → enter name → select type → select table → Create
+After create: open new form in designer immediately
+
+The + button next to Tables must work:
+Click + → show input → enter name → Create
+After create: open table designer immediately
+
+=== FIX 10 - AUTO-SAVE ONLY ON MOVE/RESIZE ===
+
+Auto-save must NOT fire when user is typing in property sheet.
+Only auto-save when:
+- Control mouseup after drag (moved)
+- Control mouseup after resize
+- Control added
+- Control deleted
+
+Remove any debounced save that fires on property changes.
+Property changes only save on:
+- Input onBlur
+- Manual Save button
+
+=== AFTER ALL DONE ===
+
+git add -A
+git commit -m "Phase 18 Full end to end functionality"
+git push origin main

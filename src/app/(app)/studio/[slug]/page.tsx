@@ -1058,7 +1058,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     const defaults: any = {
       Label: { caption: 'Label', color: '#374151', fontSize: 13, bg: 'transparent' },
       Heading: { caption: 'Heading', color: '#0f172a', fontSize: 24, fontWeight: 'bold', bg: 'transparent' },
-      TextBox: { placeholder: 'Type here...', color: '#1e293b', bg: '#ffffff', fontSize: 13 },
+      TextBox: { placeholder: 'Type here...', color: '#1e293b', bg: '#ffffff', fontSize: 13, border: '1px solid #e2e8f0' },
       Button: { caption: 'Button', bg: '#4f46e5', color: '#ffffff', fontSize: 13 },
       ComboBox: { placeholder: 'Select...', color: '#374151', bg: '#ffffff', fontSize: 13, options: '' },
       CheckBox: { caption: 'Checkbox', color: '#374151', bg: 'transparent', checked: false },
@@ -1067,15 +1067,15 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
       DataTable: { caption: 'Table', columns: '' },
       Chart: { caption: 'Chart Title', chartType: 'bar' },
       Subform: { sourceObject: '', linkMasterFields: '', linkChildFields: '' },
-      Card: { caption: 'Card Title' },
+      Card: { caption: 'Card Title', bg: '#ffffff', color: '#0f172a' },
       TabPanel: { tabs: 'Tab 1,Tab 2,Tab 3' },
       Modal: { caption: 'Modal Title' },
-      Badge: { caption: 'Badge', bg: '#4f46e5', color: '#ffffff' },
+      Badge: { caption: 'Badge', bg: '#eff6ff', color: '#4f46e5' },
       Image: { src: '', alt: 'Image' },
       ProgressBar: { value: 65, max: 100 },
       NavigationButtons: {},
       StatusBar: { text: 'Ready' },
-      Divider: {},
+      Divider: { bg: '#e2e8f0', color: '#e2e8f0' },
       Lookup: { placeholder: 'Search...', rowSource: '' },
     }
     return defaults[type] || {}
@@ -2516,6 +2516,15 @@ function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: a
 // FIX 8: Form View Component
 function FormView({ controls, formProps, formData, setFormData, records, currentRecordIndex, setCurrentRecordIndex, workspace, tables, pageId }: any) {
   const supabase = createClient()
+  const [toasts, setToasts] = useState<any[]>([])
+
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info') => {
+    const id = crypto.randomUUID()
+    setToasts((prev: any[]) => [...prev, { id, message, type }])
+    setTimeout(() => {
+      setToasts((prev: any[]) => prev.filter((t: any) => t.id !== id))
+    }, 3000)
+  }
 
   function handleInputChange(controlSource: string, value: any) {
     setFormData({ ...formData, [controlSource]: value })
@@ -2531,14 +2540,28 @@ function FormView({ controls, formProps, formData, setFormData, records, current
 
     if (currentRecord?.id) {
       await supabase.from('app_data').update({ data: formData }).eq('id', currentRecord.id)
-      alert('Record updated!')
+      showToast('Record updated!', 'success')
     } else {
       await supabase.from('app_data').insert({
         workspace_id: workspace.id,
         table_name: table.slug,
         data: formData,
       })
-      alert('Record saved!')
+      showToast('Record saved!', 'success')
+    }
+  }
+
+  async function handleButtonClick(ctrl: any) {
+    if (ctrl.macro_steps && ctrl.macro_steps.length > 0) {
+      const { runMacro } = await import('@/lib/macroEngine')
+      await runMacro(ctrl.macro_steps, {
+        formData,
+        setFormData,
+        workspaceId: workspace.id,
+        showToast,
+      })
+    } else if (ctrl.props?.caption?.toLowerCase() === 'save') {
+      await handleSave()
     }
   }
 
@@ -2566,7 +2589,13 @@ function FormView({ controls, formProps, formData, setFormData, records, current
     : 500
 
   return (
-    <div style={{ flex: 1, background: '#f3f4f6', overflow: 'auto', padding: 40 }}>
+    <div style={{ flex: 1, background: '#f3f4f6', overflow: 'auto', padding: 40, position: 'relative' }}>
+      {/* Toast notifications */}
+      {toasts.map((toast: any) => (
+        <div key={toast.id} style={{ position: 'fixed', top: 20, right: 20, background: toast.type === 'success' ? '#10b981' : toast.type === 'error' ? '#ef4444' : '#3b82f6', color: '#fff', padding: '12px 20px', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 9999 }}>
+          {toast.message}
+        </div>
+      ))}
       {/* Form canvas with exact same positioning as design view */}
       <div style={{
         width: canvasWidth,
@@ -2589,7 +2618,7 @@ function FormView({ controls, formProps, formData, setFormData, records, current
               height: ctrl.h,
             }}
           >
-            <RenderLiveControl ctrl={ctrl} formData={formData} onChange={handleInputChange} onSave={handleSave} />
+            <RenderLiveControl ctrl={ctrl} formData={formData} onChange={handleInputChange} onButtonClick={() => handleButtonClick(ctrl)} />
           </div>
         ))}
       </div>
@@ -2610,7 +2639,7 @@ function FormView({ controls, formProps, formData, setFormData, records, current
 }
 
 // Live Control Renderer
-function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
+function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
   const props = ctrl.props || {}
   const value = props.controlSource ? formData[props.controlSource] : (formData[ctrl.id] || props.value || '')
 
@@ -2765,7 +2794,7 @@ function RenderLiveControl({ ctrl, formData, onChange, onSave }: any) {
   if (ctrl.type === 'Button') {
     return (
       <button
-        onClick={props.caption?.toLowerCase() === 'save' ? onSave : undefined}
+        onClick={onButtonClick}
         style={{
           width: '100%',
           height: '100%',

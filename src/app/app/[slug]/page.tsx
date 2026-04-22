@@ -160,33 +160,35 @@ export default function PublishedAppPage() {
   }
 
   const renderControl = (ctrl: any) => {
+    const props = ctrl.props || {}
+    const controlSource = props.controlSource || ctrl.fieldKey
     const base: React.CSSProperties = {
       width: ctrl.w,
       height: ctrl.h,
-      borderRadius: ctrl.radius,
-      fontSize: ctrl.fontSize,
-      color: ctrl.color,
+      borderRadius: ctrl.radius || props.radius,
+      fontSize: ctrl.fontSize || props.fontSize,
+      color: ctrl.color || props.color,
       fontFamily: 'inherit',
     }
 
     if (ctrl.type === 'Heading') {
-      return <div style={{ ...base, display: 'flex', alignItems: 'center', fontWeight: 800 }}>{ctrl.caption}</div>
+      return <div style={{ ...base, display: 'flex', alignItems: 'center', fontWeight: 800 }}>{props.caption || ctrl.caption}</div>
     }
 
     if (ctrl.type === 'Label') {
-      return <div style={{ ...base, display: 'flex', alignItems: 'center' }}>{ctrl.caption}</div>
+      return <div style={{ ...base, display: 'flex', alignItems: 'center' }}>{props.caption || ctrl.caption}</div>
     }
 
     if (ctrl.type === 'TextBox') {
       return (
         <input
           type="text"
-          placeholder={ctrl.placeholder}
-          value={formData[ctrl.fieldKey] || ''}
-          onChange={(e) => setFormData((prev) => ({ ...prev, [ctrl.fieldKey]: e.target.value }))}
+          placeholder={props.placeholder || ctrl.placeholder}
+          value={formData[controlSource] || ''}
+          onChange={(e) => setFormData((prev) => ({ ...prev, [controlSource]: e.target.value }))}
           style={{
             ...base,
-            background: ctrl.bg,
+            background: props.bg || ctrl.bg,
             border: '1.5px solid #e2e8f0',
             padding: '0 12px',
             outline: 'none',
@@ -204,7 +206,7 @@ export default function PublishedAppPage() {
           onClick={() => handleButtonClick(ctrl)}
           style={{
             ...base,
-            background: ctrl.bg,
+            background: props.bg || ctrl.bg,
             border: 'none',
             display: 'flex',
             alignItems: 'center',
@@ -212,37 +214,37 @@ export default function PublishedAppPage() {
             fontWeight: 700,
             cursor: 'pointer',
             transition: 'all 0.2s',
-            boxShadow: `0 4px 14px ${ctrl.bg}55`,
+            boxShadow: `0 4px 14px ${props.bg || ctrl.bg}55`,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-2px)'
-            e.currentTarget.style.boxShadow = `0 6px 20px ${ctrl.bg}77`
+            e.currentTarget.style.boxShadow = `0 6px 20px ${props.bg || ctrl.bg}77`
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = `0 4px 14px ${ctrl.bg}55`
+            e.currentTarget.style.boxShadow = `0 4px 14px ${props.bg || ctrl.bg}55`
           }}
         >
-          {ctrl.caption}
+          {props.caption || ctrl.caption}
         </button>
       )
     }
 
     if (ctrl.type === 'ComboBox') {
-      const options = (ctrl.placeholder || 'Option 1,Option 2,Option 3').split(',')
+      const options = (props.options || ctrl.placeholder || 'Option 1,Option 2,Option 3').split(',')
       return (
         <select
-          value={formData[ctrl.fieldKey] || ''}
-          onChange={(e) => setFormData((prev) => ({ ...prev, [ctrl.fieldKey]: e.target.value }))}
+          value={formData[controlSource] || ''}
+          onChange={(e) => setFormData((prev) => ({ ...prev, [controlSource]: e.target.value }))}
           style={{
             ...base,
-            background: ctrl.bg,
+            background: props.bg || ctrl.bg,
             border: '1.5px solid #e2e8f0',
             padding: '0 12px',
             outline: 'none',
           }}
         >
-          <option value="">Select...</option>
+          <option value="">{props.placeholder || 'Select...'}</option>
           {options.map((opt: string, i: number) => (
             <option key={i} value={opt.trim()}>
               {opt.trim()}
@@ -257,11 +259,11 @@ export default function PublishedAppPage() {
         <label style={{ ...base, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
           <input
             type="checkbox"
-            checked={formData[ctrl.fieldKey] || false}
-            onChange={(e) => setFormData((prev) => ({ ...prev, [ctrl.fieldKey]: e.target.checked }))}
+            checked={formData[controlSource] || false}
+            onChange={(e) => setFormData((prev) => ({ ...prev, [controlSource]: e.target.checked }))}
             style={{ width: 20, height: 20 }}
           />
-          <span>{ctrl.caption}</span>
+          <span>{props.caption || ctrl.caption}</span>
         </label>
       )
     }
@@ -270,11 +272,11 @@ export default function PublishedAppPage() {
       return (
         <input
           type="date"
-          value={formData[ctrl.fieldKey] || ''}
-          onChange={(e) => setFormData((prev) => ({ ...prev, [ctrl.fieldKey]: e.target.value }))}
+          value={formData[controlSource] || ''}
+          onChange={(e) => setFormData((prev) => ({ ...prev, [controlSource]: e.target.value }))}
           style={{
             ...base,
-            background: ctrl.bg,
+            background: props.bg || ctrl.bg,
             border: '1.5px solid #e2e8f0',
             padding: '0 12px',
             outline: 'none',
@@ -287,11 +289,11 @@ export default function PublishedAppPage() {
       return (
         <input
           type="number"
-          value={formData[ctrl.fieldKey] || ctrl.value || 0}
-          onChange={(e) => setFormData((prev) => ({ ...prev, [ctrl.fieldKey]: Number(e.target.value) }))}
+          value={formData[controlSource] || props.value || ctrl.value || 0}
+          onChange={(e) => setFormData((prev) => ({ ...prev, [controlSource]: Number(e.target.value) }))}
           style={{
             ...base,
-            background: ctrl.bg,
+            background: props.bg || ctrl.bg,
             border: '1.5px solid #e2e8f0',
             padding: '0 12px',
             textAlign: 'right',
@@ -302,7 +304,7 @@ export default function PublishedAppPage() {
     }
 
     if (ctrl.type === 'ProgressBar') {
-      const pct = formData[ctrl.fieldKey] || ctrl.value || 0
+      const pct = formData[controlSource] || props.value || ctrl.value || 0
       return (
         <div
           style={{
@@ -339,17 +341,17 @@ export default function PublishedAppPage() {
         <div
           style={{
             ...base,
-            background: ctrl.bg,
+            background: props.bg || ctrl.bg,
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
             padding: '0 12px',
             fontWeight: 600,
-            border: `1.5px solid ${ctrl.color}44`,
+            border: `1.5px solid ${props.color || ctrl.color}44`,
           }}
         >
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: ctrl.color, marginRight: 6 }} />
-          {ctrl.caption}
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: props.color || ctrl.color, marginRight: 6 }} />
+          {props.caption || ctrl.caption}
         </div>
       )
     }
@@ -359,14 +361,15 @@ export default function PublishedAppPage() {
         <div
           style={{
             ...base,
-            background: ctrl.bg,
+            background: props.bg || ctrl.bg,
+            color: props.color || ctrl.color,
             border: '1px solid #e2e8f0',
             boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
             padding: '14px 16px',
           }}
         >
           <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 12, color: '#94a3b8', textTransform: 'uppercase' }}>
-            {ctrl.caption}
+            {props.caption || ctrl.caption}
           </div>
           <div style={{ height: 1, background: '#f1f5f9', marginBottom: 10 }} />
           <div style={{ fontSize: 12, color: '#cbd5e1' }}>Content area</div>
@@ -377,7 +380,7 @@ export default function PublishedAppPage() {
     if (ctrl.type === 'Divider') {
       return (
         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}>
-          <div style={{ width: '100%', height: 2, background: ctrl.bg || '#e2e8f0' }} />
+          <div style={{ width: '100%', height: 2, background: props.bg || ctrl.bg || '#e2e8f0' }} />
         </div>
       )
     }
@@ -405,7 +408,7 @@ export default function PublishedAppPage() {
               width: ctrl.w,
               height: ctrl.h,
               background: '#fff',
-              borderRadius: ctrl.radius,
+              borderRadius: props.radius || ctrl.radius,
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
@@ -414,8 +417,8 @@ export default function PublishedAppPage() {
           >
             <div
               style={{
-                background: ctrl.bg,
-                color: ctrl.color,
+                background: props.bg || ctrl.bg,
+                color: props.color || ctrl.color,
                 padding: '10px 12px',
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -423,7 +426,7 @@ export default function PublishedAppPage() {
                 fontWeight: 600,
               }}
             >
-              <span>{ctrl.caption}</span>
+              <span>{props.caption || ctrl.caption}</span>
               <button
                 onClick={() => setVisibleModal(null)}
                 style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 20 }}
