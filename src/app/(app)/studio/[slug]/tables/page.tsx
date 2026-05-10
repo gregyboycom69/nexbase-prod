@@ -71,6 +71,7 @@ export default function TableDesignerPage() {
   const [datasheetData, setDatasheetData] = useState<any[]>([])
   const [activePropertyTab, setActivePropertyTab] = useState<'general' | 'lookup'>('general')
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoadingTable, setIsLoadingTable] = useState(false) // FIX 19.2: Add loading state
 
   useEffect(() => {
     loadWorkspace()
@@ -124,11 +125,15 @@ export default function TableDesignerPage() {
     setTables(data || [])
   }
 
+  // FIX 19.2: Added loading state to prevent blank screen race condition
   async function loadTable(tableId: string) {
     console.log('📊 Loading table:', tableId)
+    setIsLoadingTable(true)
+
     const table = tables.find((t) => t.id === tableId)
     if (!table) {
       console.warn('⚠️ Table not found:', tableId)
+      setIsLoadingTable(false)
       return
     }
 
@@ -154,6 +159,8 @@ export default function TableDesignerPage() {
     if (loadedFields.length > 0) {
       setSelectedFieldId(loadedFields[0].id)
     }
+
+    setIsLoadingTable(false)
   }
 
   async function loadDatasheetData() {
@@ -608,6 +615,16 @@ export default function TableDesignerPage() {
 
             {view === 'design' ? (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {/* FIX 19.2: Show loading state */}
+                {isLoadingTable ? (
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
+                      <div style={{ fontSize: 14, color: '#8890b8' }}>Loading table fields...</div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
                 {/* Field Grid */}
                 <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
                   <div
@@ -1005,6 +1022,8 @@ export default function TableDesignerPage() {
                     )}
                   </div>
                 </div>
+                </>
+                )}
               </div>
             ) : (
               // Datasheet View
