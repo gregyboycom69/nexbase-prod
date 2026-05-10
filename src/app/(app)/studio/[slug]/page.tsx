@@ -280,7 +280,23 @@ export default function StudioPage() {
   // FIX 3: Create form dialog
   async function handleNewObject(type: string) {
     if (type === 'table') {
-      router.push(`/studio/${slug}/tables`)
+      const name = prompt('Enter table name:')
+      if (!name || !workspace) return
+
+      const { data, error } = await supabase.from('workspace_tables').insert({
+        workspace_id: workspace.id,
+        name,
+        fields: [
+          { name: 'id', type: 'AutoNumber', caption: 'ID', required: true }
+        ]
+      }).select().single()
+
+      if (!error && data) {
+        await loadAllObjects(workspace.id)
+        handleOpenObject('table', data.id, data.name)
+      } else if (error) {
+        alert('Failed to create table: ' + error.message)
+      }
     } else if (type === 'form') {
       setShowCreateFormDialog(true)
     } else if (type === 'query') {
