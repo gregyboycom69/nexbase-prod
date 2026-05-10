@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import NavPane from '@/components/studio/NavPane'
 import CtrlRender from '@/components/controls/CtrlRender'
 import Toast, { ToastMessage } from '@/components/Toast'
+import { theme } from '@/lib/theme' // FIX 19.5: Import centralized theme
 
 // UUID generator for control IDs
 const generateId = () => crypto.randomUUID()
@@ -79,6 +80,63 @@ const CONTROL_TYPES = [
   { name: 'Image', icon: '🖼', group: 'LAYOUT' },
   { name: 'StatusBar', icon: '▬', group: 'LAYOUT' },
 ]
+
+// FIX 19.6: Control color sanitization helpers
+const BAD_COLORS = [
+  '#7f1d1d', '#991b1b', '#450a0a', '#1f1d1d',
+  '#2d1d1d', '#3d1d1d', '#181818', '#000000'
+].map(c => c.toLowerCase());
+
+const isBadColor = (color: string | undefined) => {
+  if (!color) return false;
+  return BAD_COLORS.includes(color.toLowerCase());
+};
+
+const getControlDefaultBg = (type: string) => {
+  const defaults: Record<string, string> = {
+    TextBox: theme.controls.textBoxBg,
+    Label: 'transparent',
+    Heading: 'transparent',
+    Button: theme.controls.buttonBg,
+    ComboBox: theme.controls.comboBg,
+    CheckBox: 'transparent',
+    DatePicker: theme.controls.textBoxBg,
+    NumberBox: theme.controls.textBoxBg,
+    Badge: theme.controls.badgeBg,
+    Card: theme.controls.cardBg,
+    Divider: theme.controls.dividerColor,
+  };
+  return defaults[type] || theme.bg.card;
+};
+
+const getControlDefaultColor = (type: string) => {
+  const defaults: Record<string, string> = {
+    TextBox: theme.controls.textBoxText,
+    Label: theme.controls.labelText,
+    Heading: theme.controls.headingText,
+    Button: theme.controls.buttonText,
+    ComboBox: theme.controls.comboText,
+    CheckBox: theme.controls.checkboxText,
+    DatePicker: theme.controls.textBoxText,
+    NumberBox: theme.controls.textBoxText,
+    Badge: theme.controls.badgeText,
+    Card: theme.controls.cardText,
+  };
+  return defaults[type] || theme.text.primary;
+};
+
+const sanitizeControl = (ctrl: Control) => {
+  const sanitized = { ...ctrl, props: { ...ctrl.props } };
+
+  if (isBadColor(sanitized.props?.bg)) {
+    sanitized.props.bg = getControlDefaultBg(ctrl.type);
+  }
+  if (isBadColor(sanitized.props?.color)) {
+    sanitized.props.color = getControlDefaultColor(ctrl.type);
+  }
+
+  return sanitized;
+};
 
 export default function StudioPage() {
   const params = useParams()
@@ -2144,7 +2202,7 @@ function ControlWrapper({ control, selected, onSelect, onUpdate, onContextMenu }
         boxSizing: 'border-box',
       }}
     >
-      <CtrlRender ctrl={{ ...control, ...control.props }} />
+      <CtrlRender ctrl={{ ...sanitizeControl(control), ...sanitizeControl(control).props }} />
       {selected && (
         <>
           {[
