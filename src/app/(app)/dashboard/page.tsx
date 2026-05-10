@@ -62,6 +62,14 @@ export default async function DashboardPage() {
     }
   }
 
+  // FIX 19.3: Dynamic bar color based on usage ratio
+  const getBarColor = (count: number, limit: number) => {
+    const ratio = count / limit;
+    if (ratio >= 1) return 'bg-red-500';        // red - at/over limit
+    if (ratio >= 0.8) return 'bg-amber-500';    // yellow - near limit
+    return 'bg-green-500';                       // green - room to grow
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow-sm border-b border-gray-200">
@@ -183,9 +191,7 @@ export default async function DashboardPage() {
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
-                  className={`h-2 rounded-full transition-all ${
-                    workspaceLimit.current >= workspaceLimit.limit ? 'bg-red-500' : 'bg-primary-600'
-                  }`}
+                  className={`h-2 rounded-full transition-all ${getBarColor(workspaceLimit.current, workspaceLimit.limit)}`}
                   style={{
                     width: `${Math.min(
                       (workspaceLimit.current / (workspaceLimit.limit === 999 ? workspaceLimit.current + 1 : workspaceLimit.limit)) * 100,
@@ -206,9 +212,7 @@ export default async function DashboardPage() {
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
-                  className={`h-2 rounded-full transition-all ${
-                    totalPages >= limits.pages_limit && limits.pages_limit !== 999 ? 'bg-red-500' : 'bg-primary-600'
-                  }`}
+                  className={`h-2 rounded-full transition-all ${getBarColor(totalPages, limits.pages_limit === 999 ? 999 : limits.pages_limit)}`}
                   style={{
                     width: `${Math.min(
                       (totalPages / (limits.pages_limit === 999 ? totalPages + 1 : limits.pages_limit)) * 100,
@@ -229,9 +233,7 @@ export default async function DashboardPage() {
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
-                  className={`h-2 rounded-full transition-all ${
-                    totalRows >= limits.rows_limit && limits.rows_limit !== 9999999 ? 'bg-red-500' : 'bg-primary-600'
-                  }`}
+                  className={`h-2 rounded-full transition-all ${getBarColor(totalRows, limits.rows_limit === 9999999 ? 9999999 : limits.rows_limit)}`}
                   style={{
                     width: `${Math.min(
                       (totalRows / (limits.rows_limit === 9999999 ? totalRows + 1 : limits.rows_limit)) * 100,
