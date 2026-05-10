@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server'
 
 const BAD_COLORS = [
   '#7f1d1d', '#991b1b', '#450a0a', '#1f1d1d',
-  '#2d1d1d', '#3d1d1d', '#181818', '#000000'
+  '#2d1d1d', '#3d1d1d', '#181818', '#000000',
+  '#7f1818', '#8b1414', '#a01515'
 ]
 
 const DEFAULT_BG: Record<string, string> = {
@@ -31,7 +32,9 @@ const DEFAULT_COLOR: Record<string, string> = {
 }
 
 function isLightColor(hex: string): boolean {
+  if (!hex || hex === 'transparent') return true
   const c = hex.replace('#', '')
+  if (c.length !== 6) return false
   const r = parseInt(c.substr(0, 2), 16)
   const g = parseInt(c.substr(2, 2), 16)
   const b = parseInt(c.substr(4, 2), 16)
@@ -39,66 +42,151 @@ function isLightColor(hex: string): boolean {
   return brightness > 155
 }
 
-export async function GET() {
-  const supabase = await createClient()
+interface Control {
+  id?: string
+  type: string
+  props?: {
+    bg?: string
+    color?: string
+    [key: string]: unknown
+  }
+  [key: string]: unknown
+}
 
-  const { data: controls, error } = await supabase
-    .from('controls')
-    .select('id, type, props')
+function sanitizeControl(ctrl: Control): { control: Control; modified: boolean; messages: string[] } {
+  const messages: string[] = []
+  let modified = false
+  const newProps = { ...(ctrl.props || {}) }
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  // Fix bad background colors
+  if (BAD_COLORS.includes((newProps.bg || '').toLowerCase())) {
+    const oldBg = newProps.bg
+    newProps.bg = DEFAULT_BG[ctrl.type] || '#ffffff'
+    modified = true
+    messages.push(`Fixed bg ${oldBg} -> ${newProps.bg} for ${ctrl.type}`)
   }
 
-  let fixedCount = 0
+  // Fix bad text colors
+  if (BAD_COLORS.includes((newProps.color || '').toLowerCase())) {
+    const oldColor = newProps.color
+    newProps.color = DEFAULT_COLOR[ctrl.type] || '#1e293b'
+    modified = true
+    messages.push(`Fixed color ${oldColor} -> ${newProps.color} for ${ctrl.type}`)
+  }
+
+  // Fix button contrast
+  if (ctrl.type === 'Button') {
+    const bg = newProps.bg || '#4f46e5'
+    const isLightBg = isLightColor(bg)
+    if (isLightBg && (!newProps.color || newProps.color === '#ffffff')) {
+      newProps.color = '#1e293b'
+      modified = true
+      messages.push(`Fixed button contrast: dark text on light bg`)
+    }
+    if (!isLightBg && (!newProps.color || newProps.color === '#000000')) {
+      newProps.color = '#ffffff'
+      modified = true
+      messages.push(`Fixed button contrast: white text on dark bg`)
+    }
+  }
+
+  return {
+    control: { ...ctrl, props: newProps },
+    modified,
+    messages,
+  }
+}
+
+export async function GET() {
+  const supabase = await createClient()
   const results: string[] = []
+  let fixedControlsTable = 0
+  let fixedPagesJsonb = 0
+  let totalChecked = 0
 
-  for (const ctrl of controls || []) {
-    let modified = false
-    const newProps = { ...(ctrl.props || {}) }
+  // Strategy 1: Check controls table (if exists)
+  try {
+    const { data: controls, error: controlsError } = await supabase
+      .from('controls')
+      .select('id, type, props')
 
-    if (BAD_COLORS.includes((newProps.bg || '').toLowerCase())) {
-      newProps.bg = DEFAULT_BG[ctrl.type] || '#ffffff'
-      modified = true
-      results.push(`Fixed bad bg color for ${ctrl.type} control ${ctrl.id}`)
-    }
+    if (!controlsError && controls && controls.length > 0) {
+      results.push(`Found ${controls.length} controls in controls table`)
+      totalChecked += controls.length
 
-    if (BAD_COLORS.includes((newProps.color || '').toLowerCase())) {
-      newProps.color = DEFAULT_COLOR[ctrl.type] || '#1e293b'
-      modified = true
-      results.push(`Fixed bad text color for ${ctrl.type} control ${ctrl.id}`)
-    }
+      for (const ctrl of controls) {
+        const { control: newCtrl, modified, messages } = sanitizeControl(ctrl as Control)
+        if (modified) {
+          const { error: updateError } = await supabase
+            .from('controls')
+            .update({ props: newCtrl.props })
+            .eq('id', ctrl.id)
 
-    // Fix button contrast - if button has light bg, use dark text
-    if (ctrl.type === 'Button') {
-      const bg = newProps.bg || '#4f46e5'
-      const isLightBg = isLightColor(bg)
-      if (isLightBg && (!newProps.color || newProps.color === '#ffffff')) {
-        newProps.color = '#1e293b'
-        modified = true
-        results.push(`Fixed button contrast for control ${ctrl.id}`)
+          if (!updateError) {
+            fixedControlsTable++
+            results.push(`Fixed control ${ctrl.id}: ${messages.join(', ')}`)
+          } else {
+            results.push(`Failed control ${ctrl.id}: ${updateError.message}`)
+          }
+        }
       }
+    } else {
+      results.push(`No controls table or empty (${controlsError?.message || 'OK'})`)
     }
+  } catch (e) {
+    results.push(`Skipped controls table: ${(e as Error).message}`)
+  }
 
-    if (modified) {
-      const { error: updateError } = await supabase
-        .from('controls')
-        .update({ props: newProps })
-        .eq('id', ctrl.id)
+  // Strategy 2: Check pages.controls JSONB column
+  try {
+    const { data: pages, error: pagesError } = await supabase
+      .from('pages')
+      .select('id, controls')
 
-      if (!updateError) {
-        fixedCount++
-        results.push(`✓ Fixed control ${ctrl.id}`)
-      } else {
-        results.push(`✗ Failed to update control ${ctrl.id}: ${updateError.message}`)
+    if (!pagesError && pages) {
+      results.push(`Found ${pages.length} pages with controls JSONB`)
+
+      for (const page of pages) {
+        if (!page.controls || !Array.isArray(page.controls)) continue
+        totalChecked += page.controls.length
+
+        let pageModified = false
+        const newControls = page.controls.map((ctrl: Control) => {
+          const { control: newCtrl, modified, messages } = sanitizeControl(ctrl)
+          if (modified) {
+            pageModified = true
+            results.push(`Page ${page.id} ctrl ${ctrl.id || '?'}: ${messages.join(', ')}`)
+          }
+          return newCtrl
+        })
+
+        if (pageModified) {
+          const { error: updateError } = await supabase
+            .from('pages')
+            .update({ controls: newControls })
+            .eq('id', page.id)
+
+          if (!updateError) {
+            fixedPagesJsonb++
+            results.push(`Saved page ${page.id}`)
+          } else {
+            results.push(`Failed page ${page.id}: ${updateError.message}`)
+          }
+        }
       }
+    } else {
+      results.push(`No pages or error: ${pagesError?.message || 'OK'}`)
     }
+  } catch (e) {
+    results.push(`Skipped pages JSONB: ${(e as Error).message}`)
   }
 
   return NextResponse.json({
     success: true,
-    fixedCount,
-    totalControls: controls?.length || 0,
-    results
+    totalControlsChecked: totalChecked,
+    fixedInControlsTable: fixedControlsTable,
+    fixedInPagesJsonb: fixedPagesJsonb,
+    totalFixed: fixedControlsTable + fixedPagesJsonb,
+    results,
   })
 }
