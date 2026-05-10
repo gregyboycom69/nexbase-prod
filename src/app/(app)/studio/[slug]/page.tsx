@@ -283,9 +283,14 @@ export default function StudioPage() {
       const name = prompt('Enter table name:')
       if (!name || !workspace) return
 
+      const slug = name.toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+
       const { data, error } = await supabase.from('workspace_tables').insert({
         workspace_id: workspace.id,
         name,
+        slug,
         fields: [
           { name: 'id', type: 'AutoNumber', caption: 'ID', required: true }
         ]
