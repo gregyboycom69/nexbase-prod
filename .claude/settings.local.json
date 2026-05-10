@@ -21,7 +21,8 @@
       "Bash(wc:*)",
       "Bash(npx tsc:*)",
       "Bash(git config:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(curl:*)"
     ]
   }
 }

@@ -42,9 +42,9 @@ function isLightColor(hex: string): boolean {
 export async function GET() {
   const supabase = await createClient()
 
-  const { data: pages, error } = await supabase
-    .from('pages')
-    .select('id, controls')
+  const { data: controls, error } = await supabase
+    .from('controls')
+    .select('id, type, props')
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -53,11 +53,56 @@ export async function GET() {
   let fixedCount = 0
   const results: string[] = []
 
-  for (const page of pages || []) {
-    if (!page.controls || !Array.isArray(page.controls)) continue
-
+  for (const ctrl of controls || []) {
     let modified = false
-    const newControls = page.controls.map((ctrl: any) => {
+    const newProps = { ...(ctrl.props || {}) }
+
+    if (BAD_COLORS.includes((newProps.bg || '').toLowerCase())) {
+      newProps.bg = DEFAULT_BG[ctrl.type] || '#ffffff'
+      modified = true
+      results.push(`Fixed bad bg color for ${ctrl.type} control ${ctrl.id}`)
+    }
+
+    if (BAD_COLORS.includes((newProps.color || '').toLowerCase())) {
+      newProps.color = DEFAULT_COLOR[ctrl.type] || '#1e293b'
+      modified = true
+      results.push(`Fixed bad text color for ${ctrl.type} control ${ctrl.id}`)
+    }
+
+    // Fix button contrast - if button has light bg, use dark text
+    if (ctrl.type === 'Button') {
+      const bg = newProps.bg || '#4f46e5'
+      const isLightBg = isLightColor(bg)
+      if (isLightBg && (!newProps.color || newProps.color === '#ffffff')) {
+        newProps.color = '#1e293b'
+        modified = true
+        results.push(`Fixed button contrast for control ${ctrl.id}`)
+      }
+    }
+
+    if (modified) {
+      const { error: updateError } = await supabase
+        .from('controls')
+        .update({ props: newProps })
+        .eq('id', ctrl.id)
+
+      if (!updateError) {
+        fixedCount++
+        results.push(`✓ Fixed control ${ctrl.id}`)
+      } else {
+        results.push(`✗ Failed to update control ${ctrl.id}: ${updateError.message}`)
+      }
+    }
+  }
+
+  return NextResponse.json({
+    success: true,
+    fixedCount,
+    totalControls: controls?.length || 0,
+    results
+  })
+}
+
       const newProps = { ...(ctrl.props || {}) }
 
       if (BAD_COLORS.includes((newProps.bg || '').toLowerCase())) {
