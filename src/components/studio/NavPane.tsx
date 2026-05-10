@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Table, FileText, Search, Zap } from 'lucide-react'
 
 type NavPaneProps = {
   tables: any[]
@@ -129,7 +130,7 @@ export default function NavPane({
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-background-primary)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
-                    <span style={{ fontSize: 10 }}>▦</span>
+                    <Table size={14} style={{ flexShrink: 0 }} />
                     {table.name}
                   </div>
                 ))}
@@ -199,7 +200,7 @@ export default function NavPane({
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-background-primary)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
-                    <span style={{ fontSize: 10 }}>◻</span>
+                    <FileText size={14} style={{ flexShrink: 0 }} />
                     {form.name || form.title || form.slug}
                   </div>
                 ))}
@@ -269,7 +270,7 @@ export default function NavPane({
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-background-primary)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
-                    <span style={{ fontSize: 10 }}>⊕</span>
+                    <Search size={14} style={{ flexShrink: 0 }} />
                     {query.name}
                   </div>
                 ))}
@@ -339,7 +340,7 @@ export default function NavPane({
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-background-primary)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
-                    <span style={{ fontSize: 10 }}>⚡</span>
+                    <Zap size={14} style={{ flexShrink: 0 }} />
                     {macro.name}
                   </div>
                 ))}

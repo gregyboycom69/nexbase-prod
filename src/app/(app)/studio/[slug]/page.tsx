@@ -8,6 +8,7 @@ import CtrlRender from '@/components/controls/CtrlRender'
 import Toast, { ToastMessage } from '@/components/Toast'
 import { theme } from '@/lib/theme' // FIX 19.5: Import centralized theme
 import TableDesignerInline from '@/components/TableDesignerInline' // FIX 19.11.1: Inline table designer
+import { Table, FileText, Search, Zap } from 'lucide-react'
 
 // UUID generator for control IDs
 const generateId = () => crypto.randomUUID()
@@ -137,6 +138,17 @@ const sanitizeControl = (ctrl: Control) => {
   }
 
   return sanitized;
+};
+
+// Get icon for tab type
+const getTabIcon = (type: string) => {
+  switch (type) {
+    case 'table': return <Table size={14} style={{ flexShrink: 0 }} />
+    case 'form': return <FileText size={14} style={{ flexShrink: 0 }} />
+    case 'query': return <Search size={14} style={{ flexShrink: 0 }} />
+    case 'macro': return <Zap size={14} style={{ flexShrink: 0 }} />
+    default: return null
+  }
 };
 
 // FIX 19.10.4: Auto-calculate contrast text color for buttons
@@ -442,6 +454,7 @@ export default function StudioPage() {
                       maxWidth: 200,
                     }}
                   >
+                    {getTabIcon(tab.type)}
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {tab.name}
                     </span>
