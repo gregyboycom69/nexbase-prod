@@ -2775,29 +2775,94 @@ function FormView({ controls, formProps, formData, setFormData, records, current
     setFormData({ ...formData, [controlSource]: value })
   }
 
+  // FIX 20.4.2: Wire up Save button
   async function handleSave() {
-    if (!formProps.recordSource || !workspace) return
+    console.log('handleSave called', { formData, formProps, currentRecordIndex })
+
+    if (!formProps.recordSource || !workspace) {
+      alert('No record source configured')
+      return
+    }
 
     const table = tables.find((t: any) => t.name === formProps.recordSource)
-    if (!table) return
+    if (!table) {
+      alert('Table not found: ' + formProps.recordSource)
+      return
+    }
 
-    const currentRecord = records[currentRecordIndex]
+    // Check if we're updating an existing record
+    const currentRecord = currentRecordIndex >= 0 ? records[currentRecordIndex] : null
 
     if (currentRecord?.id) {
-      await supabase.from('app_data').update({ data: formData }).eq('id', currentRecord.id)
-      showToast('Record updated!', 'success')
+      // Update existing record
+      const { error } = await supabase.from('app_data').update({ data: formData }).eq('id', currentRecord.id)
+      if (error) {
+        showToast('Save failed: ' + error.message, 'error')
+        console.error('Update error:', error)
+      } else {
+        showToast('Record updated!', 'success')
+      }
     } else {
-      await supabase.from('app_data').insert({
+      // Insert new record
+      const { data, error } = await supabase.from('app_data').insert({
         workspace_id: workspace.id,
         table_name: table.slug,
         data: formData,
-      })
-      showToast('Record saved!', 'success')
+      }).select('id').single()
+
+      console.log('Insert result:', { data, error })
+
+      if (error) {
+        showToast('Save failed: ' + error.message, 'error')
+        console.error('Insert error:', error)
+      } else {
+        showToast('Record saved!', 'success')
+      }
+    }
+  }
+
+  // FIX 20.4.3: Handle New button
+  function handleNew() {
+    if (Object.keys(formData).length > 0 && currentRecordIndex === -1) {
+      if (!confirm('Discard unsaved changes?')) return
+    }
+    setFormData({})
+    setCurrentRecordIndex(-1)
+  }
+
+  // FIX 20.4.4: Handle Delete button
+  async function handleDelete() {
+    const currentRecord = records[currentRecordIndex]
+    if (!currentRecord?.id) {
+      alert('No record loaded to delete')
+      return
+    }
+
+    if (!confirm('Delete this record?')) return
+
+    const { error } = await supabase
+      .from('app_data')
+      .delete()
+      .eq('id', currentRecord.id)
+
+    if (error) {
+      showToast('Delete failed: ' + error.message, 'error')
+    } else {
+      setFormData({})
+      setCurrentRecordIndex(-1)
+      showToast('Record deleted', 'success')
     }
   }
 
   async function handleButtonClick(ctrl: any) {
-    if (ctrl.macro_steps && ctrl.macro_steps.length > 0) {
+    // FIX 20.4.2, 20.4.3, 20.4.4: Handle NavigationButtons actions
+    if (ctrl.action === 'save') {
+      await handleSave()
+    } else if (ctrl.action === 'new') {
+      handleNew()
+    } else if (ctrl.action === 'delete') {
+      await handleDelete()
+    } else if (ctrl.macro_steps && ctrl.macro_steps.length > 0) {
       const { runMacro } = await import('@/lib/macroEngine')
       await runMacro(ctrl.macro_steps, {
         formData,
@@ -3055,6 +3120,92 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
       >
         {props.caption || 'Button'}
       </button>
+    )
+  }
+
+  // FIX 20.4.1: Proper rendering for SectionHeader
+  if (ctrl.type === 'SectionHeader') {
+    return (
+      <div style={{
+        width: '100%',
+        height: '100%',
+        margin: '24px 0 12px 0',
+        paddingBottom: 8,
+        borderBottom: '1px solid #e2e8f0',
+      }}>
+        {props.title && (
+          <h3 style={{
+            margin: 0,
+            fontSize: 14,
+            fontWeight: 600,
+            color: '#475569',
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+          }}>
+            {props.title}
+          </h3>
+        )}
+      </div>
+    )
+  }
+
+  // FIX 20.4.1: Proper rendering for NavigationButtons
+  if (ctrl.type === 'NavigationButtons') {
+    return (
+      <div style={{
+        display: 'flex',
+        gap: 8,
+        width: '100%',
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+      }}>
+        <button
+          onClick={() => onButtonClick?.({ action: 'save' })}
+          style={{
+            padding: '6px 16px',
+            background: '#4f46e5',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: 6,
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: 'pointer',
+          }}
+        >
+          Save
+        </button>
+        <button
+          onClick={() => onButtonClick?.({ action: 'new' })}
+          style={{
+            padding: '6px 16px',
+            background: '#10b981',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: 6,
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: 'pointer',
+          }}
+        >
+          New
+        </button>
+        <button
+          onClick={() => onButtonClick?.({ action: 'delete' })}
+          style={{
+            padding: '6px 16px',
+            background: '#ef4444',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: 6,
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: 'pointer',
+          }}
+        >
+          Delete
+        </button>
+      </div>
     )
   }
 

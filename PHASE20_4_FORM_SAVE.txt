@@ -1,0 +1,268 @@
+NexBase - Phase 20.4 - Fix Form Save and Hide Control Labels
+Project: C:\Users\gregy\Projects\07_Next GS
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL INSTRUCTIONS FOR CLAUDE CODE
+═══════════════════════════════════════════════════════════════════
+
+DO NOT SKIP. Real bugs reported by user testing.
+Single-line commit messages. No co-author trailers.
+Test locally before push.
+
+═══════════════════════════════════════════════════════════════════
+USER REPORTED BUGS (FROM REAL USAGE)
+═══════════════════════════════════════════════════════════════════
+
+User created Borrowers table, switched to Form View, tried to 
+add a borrower record. Found these bugs:
+
+1. Form Save button does not save data to app_data table
+2. Control type labels showing as visible text in form:
+   - "NavigationButtons" appears at top
+   - "SectionHeader" appears between sections
+3. New / Delete buttons not wired up
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.4.1 - HIDE CONTROL TYPE LABELS IN RUNTIME
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+The form designer shows labels like "NavigationButtons" and 
+"SectionHeader" as helpful indicators of which control type is 
+which. But these should ONLY show in DESIGN mode, not in the 
+actual runtime/preview form.
+
+FILE: Look for the form runtime renderer. Likely:
+- src/app/(app)/studio/[slug]/page.tsx (form preview)
+- src/app/app/[slug]/page.tsx (published app)
+- Or a FormView/FormRenderer component
+
+In the renderer, find where ctrl.type === 'NavigationButtons' 
+or ctrl.type === 'SectionHeader' is rendered.
+
+Currently might be doing something like:
+<div>{ctrl.type}</div>
+
+Or showing the type as a label.
+
+CHANGE:
+- For NavigationButtons: render the actual buttons (Save, New, 
+  Delete, navigation arrows) without showing the word 
+  "NavigationButtons"
+- For SectionHeader: render an actual section divider 
+  (a horizontal line + optional title) without showing the 
+  word "SectionHeader"
+
+Example for SectionHeader:
+{ctrl.type === 'SectionHeader' && (
+  <div style={{
+    margin: '24px 0 12px 0',
+    paddingBottom: 8,
+    borderBottom: '1px solid #e2e8f0',
+  }}>
+    {ctrl.props?.title && (
+      <h3 style={{
+        margin: 0,
+        fontSize: 14,
+        fontWeight: 600,
+        color: '#475569',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+      }}>
+        {ctrl.props.title}
+      </h3>
+    )}
+  </div>
+)}
+
+For NavigationButtons:
+{ctrl.type === 'NavigationButtons' && (
+  <div style={{
+    display: 'flex',
+    gap: 8,
+    margin: '24px 0',
+    justifyContent: 'flex-end',
+  }}>
+    <button onClick={handleSave} style={{...saveButtonStyle}}>Save</button>
+    <button onClick={handleNew} style={{...newButtonStyle}}>New</button>
+    <button onClick={handleDelete} style={{...deleteButtonStyle}}>Delete</button>
+  </div>
+)}
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.4.2 - WIRE UP SAVE BUTTON
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+User typed values in form fields (name, status, loan_amount, etc.)
+and clicked Save. Nothing happened. No save to database.
+
+The form needs to:
+1. Collect all field values into an object
+2. Insert into app_data table with proper structure
+3. Show success/error feedback
+
+In the form runtime component, add state for form values:
+
+const [formValues, setFormValues] = useState<Record<string, unknown>>({})
+const [saving, setSaving] = useState(false)
+const [savedRecordId, setSavedRecordId] = useState<string | null>(null)
+
+When TextBox/NumberBox/DatePicker/etc. change value, update 
+formValues:
+
+<input
+  value={formValues[ctrl.props?.fieldName] || ''}
+  onChange={e => setFormValues({
+    ...formValues,
+    [ctrl.props?.fieldName]: e.target.value
+  })}
+/>
+
+The fieldName should be the bound field from the table 
+(name, phone, loan_amount, etc.)
+
+When Save clicked:
+
+const handleSave = async () => {
+  setSaving(true)
+  
+  // Determine the bound table name from the form
+  // (form is auto-generated from a table with same name)
+  const tableName = activePage?.name || formName
+  
+  if (savedRecordId) {
+    // Update existing
+    const { error } = await supabase
+      .from('app_data')
+      .update({ data: formValues })
+      .eq('id', savedRecordId)
+    
+    if (error) {
+      alert('Save failed: ' + error.message)
+    } else {
+      alert('Saved!')
+    }
+  } else {
+    // Insert new
+    const { data, error } = await supabase
+      .from('app_data')
+      .insert({
+        workspace_id: workspaceId,
+        table_name: tableName,
+        data: formValues,
+      })
+      .select('id')
+      .single()
+    
+    if (error) {
+      alert('Save failed: ' + error.message)
+    } else {
+      setSavedRecordId(data.id)
+      alert('Saved!')
+    }
+  }
+  
+  setSaving(false)
+}
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.4.3 - WIRE UP NEW BUTTON
+═══════════════════════════════════════════════════════════════════
+
+New button = clear form for adding another record.
+
+const handleNew = () => {
+  if (Object.keys(formValues).length > 0 && !savedRecordId) {
+    if (!confirm('Discard unsaved changes?')) return
+  }
+  setFormValues({})
+  setSavedRecordId(null)
+}
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.4.4 - WIRE UP DELETE BUTTON
+═══════════════════════════════════════════════════════════════════
+
+Delete button = delete the currently displayed record.
+
+const handleDelete = async () => {
+  if (!savedRecordId) {
+    alert('No record loaded to delete')
+    return
+  }
+  
+  if (!confirm('Delete this record?')) return
+  
+  const { error } = await supabase
+    .from('app_data')
+    .delete()
+    .eq('id', savedRecordId)
+  
+  if (error) {
+    alert('Delete failed: ' + error.message)
+  } else {
+    setFormValues({})
+    setSavedRecordId(null)
+    alert('Deleted')
+  }
+}
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.4.5 - FIELD BINDING
+═══════════════════════════════════════════════════════════════════
+
+Currently the form may render textboxes without proper 
+field binding. Each input needs to know which field of the 
+table it represents.
+
+When auto-generating form from table, each control should have:
+ctrl.props.fieldName = the field name from the table
+
+Verify in the auto-generation code:
+- name field -> ctrl.props.fieldName = 'name'
+- phone field -> ctrl.props.fieldName = 'phone'
+- loan_amount field -> ctrl.props.fieldName = 'loan_amount'
+
+If missing, add this binding in the form generation logic.
+
+═══════════════════════════════════════════════════════════════════
+TESTING CHECKLIST (USER WILL DO)
+═══════════════════════════════════════════════════════════════════
+
+After deploy, on https://nexbase-inky.vercel.app:
+
+[ ] Navigate to Borrowers form
+[ ] No "NavigationButtons" text visible
+[ ] No "SectionHeader" text visible (just dividers)
+[ ] Type in name field
+[ ] Type in other fields
+[ ] Click Save - see "Saved!" alert
+[ ] Switch to Datasheet view of Borrowers table
+[ ] See the new row added
+[ ] Switch back to form
+[ ] Click New - form clears
+[ ] Type new values, Save - new row added
+[ ] Refresh page - data persists
+
+═══════════════════════════════════════════════════════════════════
+GIT COMMIT
+═══════════════════════════════════════════════════════════════════
+
+git add -A
+git commit -m "Phase 20.4: Wire up form Save/New/Delete and hide control labels"
+git push origin main
+
+Single line. No co-author trailers.
+
+═══════════════════════════════════════════════════════════════════
+DONE CRITERIA
+═══════════════════════════════════════════════════════════════════
+
+[ ] No control type labels visible in runtime form
+[ ] Save button persists data to app_data
+[ ] New button clears form
+[ ] Delete button removes record (when loaded)
+[ ] Field bindings work (input -> formValues -> save)
+[ ] Visual feedback on save (alert or toast)
+[ ] Tested on live site
