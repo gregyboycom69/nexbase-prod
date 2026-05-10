@@ -9,7 +9,7 @@ type NavPaneProps = {
   forms: any[]
   macros: any[]
   activeFilter: 'all' | 'tables' | 'queries' | 'forms' | 'macros'
-  onOpenObject: (type: string, id: string, name: string) => void
+  onOpenObject: (type: string, id: string, name: string, tableView?: 'design' | 'datasheet') => void
   onNewObject: (type: string) => void
   onDeleteObject: (type: string, id: string) => void
 }
@@ -115,7 +115,11 @@ export default function NavPane({
                 filteredTables.map((table) => (
                   <div
                     key={table.id}
-                    onDoubleClick={() => onOpenObject('table', table.id, table.name)}
+                    onClick={() => onOpenObject('table', table.id, table.name, 'design')}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation()
+                      onOpenObject('table', table.id, table.name, 'datasheet')
+                    }}
                     onContextMenu={(e) => handleContextMenu(e, 'table', table.id, table.name)}
                     style={{
                       padding: '6px 12px 6px 20px',

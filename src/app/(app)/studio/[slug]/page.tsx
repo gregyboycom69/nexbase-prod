@@ -8,6 +8,7 @@ import CtrlRender from '@/components/controls/CtrlRender'
 import Toast, { ToastMessage } from '@/components/Toast'
 import { theme } from '@/lib/theme' // FIX 19.5: Import centralized theme
 import TableDesignerInline from '@/components/TableDesignerInline' // FIX 19.11.1: Inline table designer
+import DatasheetView from '@/components/DatasheetView' // FIX 20.1.2: Datasheet view component
 import { Table, FileText, Search, Zap } from 'lucide-react'
 
 // UUID generator for control IDs
@@ -182,6 +183,7 @@ export default function StudioPage() {
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<'all' | 'tables' | 'queries' | 'forms' | 'macros'>('all')
   const [showCreateFormDialog, setShowCreateFormDialog] = useState(false)
+  const [tableViewMode, setTableViewMode] = useState<'design' | 'datasheet'>('design')
 
   useEffect(() => {
     loadWorkspace()
@@ -235,13 +237,23 @@ export default function StudioPage() {
   }, [searchParams, tables])
 
   // FIX 2: Handle opening objects (especially forms)
-  function handleOpenObject(type: string, id: string, name: string) {
+  // FIX 20.1.4: Added optional tableView parameter for double-click datasheet
+  function handleOpenObject(type: string, id: string, name: string, tableView?: 'design' | 'datasheet') {
     const baseType = type.replace('-design', '')
     const view = type.includes('-design') ? 'design' : (baseType === 'form' ? 'design' : 'data')
+
+    // FIX 20.1.4: Set table view mode if specified
+    if (baseType === 'table' && tableView) {
+      setTableViewMode(tableView)
+    }
 
     const existingTab = tabs.find(t => t.objectId === id && t.type === baseType as any)
     if (existingTab) {
       setActiveTabId(existingTab.id)
+      // FIX 20.1.4: Also set view mode when switching to existing tab
+      if (baseType === 'table' && tableView) {
+        setTableViewMode(tableView)
+      }
       return
     }
 
@@ -484,13 +496,63 @@ export default function StudioPage() {
                     onReload={() => loadAllObjects(workspace.id)}
                   />
                 )}
-                {activeTab && activeTab.type === 'table' && (
-                  <TableDesignerInline
-                    workspaceId={workspace.id}
-                    tableId={activeTab.objectId}
-                    tableName={activeTab.name}
-                  />
-                )}
+                {activeTab && activeTab.type === 'table' && (() => {
+                  const tableData = tables.find(t => t.id === activeTab.objectId)
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                      <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <button
+                          onClick={() => setTableViewMode('design')}
+                          onMouseEnter={(e) => { if (tableViewMode !== 'design') e.currentTarget.style.background = '#e2e8f0' }}
+                          onMouseLeave={(e) => { if (tableViewMode !== 'design') e.currentTarget.style.background = '#f1f5f9' }}
+                          style={{
+                            background: tableViewMode === 'design' ? '#4f46e5' : '#f1f5f9',
+                            color: tableViewMode === 'design' ? '#ffffff' : '#64748b',
+                            border: '1px solid #e2e8f0',
+                            padding: '8px 16px',
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            fontWeight: 500,
+                          }}
+                        >
+                          Design View
+                        </button>
+                        <button
+                          onClick={() => setTableViewMode('datasheet')}
+                          onMouseEnter={(e) => { if (tableViewMode !== 'datasheet') e.currentTarget.style.background = '#e2e8f0' }}
+                          onMouseLeave={(e) => { if (tableViewMode !== 'datasheet') e.currentTarget.style.background = '#f1f5f9' }}
+                          style={{
+                            background: tableViewMode === 'datasheet' ? '#4f46e5' : '#f1f5f9',
+                            color: tableViewMode === 'datasheet' ? '#ffffff' : '#64748b',
+                            border: '1px solid #e2e8f0',
+                            padding: '8px 16px',
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            fontWeight: 500,
+                          }}
+                        >
+                          Datasheet
+                        </button>
+                      </div>
+                      {tableViewMode === 'design' && (
+                        <TableDesignerInline
+                          workspaceId={workspace.id}
+                          tableId={activeTab.objectId}
+                          tableName={activeTab.name}
+                        />
+                      )}
+                      {tableViewMode === 'datasheet' && tableData && (
+                        <DatasheetView
+                          workspaceId={workspace.id}
+                          tableName={activeTab.name}
+                          fields={tableData.fields || []}
+                        />
+                      )}
+                    </div>
+                  )
+                })()}
                 {activeTab && activeTab.type !== 'form' && activeTab.type !== 'table' && (
                   <div style={{ padding: 40, color: '#64748b', textAlign: 'center' }}>
                     {activeTab.type} - {activeTab.name}
