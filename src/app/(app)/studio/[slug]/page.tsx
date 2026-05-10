@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import NavPane from '@/components/studio/NavPane'
 import CtrlRender from '@/components/controls/CtrlRender'
@@ -157,6 +157,7 @@ const getContrastText = (bgHex: string | undefined) => {
 export default function StudioPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const slug = params.slug as string
   const supabase = createClient()
 
@@ -197,6 +198,29 @@ export default function StudioPage() {
     const { data: macrosData } = await supabase.from('workspace_macros').select('*').eq('workspace_id', workspaceId).order('name')
     setMacros(macrosData || [])
   }
+
+  // FIX 19.12.2: Auto-select first form or table when workspace loads
+  useEffect(() => {
+    if (tabs.length > 0) return
+    if (forms.length > 0) {
+      const firstForm = forms[0]
+      handleOpenObject('form-design', firstForm.id, firstForm.name || firstForm.slug)
+    } else if (tables.length > 0) {
+      const firstTable = tables[0]
+      handleOpenObject('table', firstTable.id, firstTable.name)
+    }
+  }, [forms, tables, tabs.length])
+
+  // FIX 19.12.4: Handle activeTable query param from redirects
+  useEffect(() => {
+    const queryActiveTable = searchParams.get('activeTable')
+    if (!queryActiveTable || !tables.length) return
+
+    const targetTable = tables.find(t => t.id === queryActiveTable)
+    if (targetTable) {
+      handleOpenObject('table', targetTable.id, targetTable.name)
+    }
+  }, [searchParams, tables])
 
   // FIX 2: Handle opening objects (especially forms)
   function handleOpenObject(type: string, id: string, name: string) {
@@ -388,20 +412,15 @@ export default function StudioPage() {
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--color-background-tertiary)' }}>
           {tabs.length === 0 ? (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 24 }}>
-              <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--color-text-primary)' }}>Welcome to {workspace?.name}</div>
-              <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 16 }}>Get started:</div>
-              <div style={{ display: 'flex', gap: 16 }}>
-                <button onClick={() => handleNewObject('table')} style={{ padding: '12px 24px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-                  📊 Create a Table
-                </button>
-                <button onClick={() => handleNewObject('form')} style={{ padding: '12px 24px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-                  📄 Create a Form
-                </button>
-                <button onClick={() => handleNewObject('query')} style={{ padding: '12px 24px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-                  🔍 Create a Query
-                </button>
-              </div>
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#64748b',
+              fontSize: 14,
+            }}>
+              Click + next to TABLES or FORMS in sidebar to get started
             </div>
           ) : (
             <>

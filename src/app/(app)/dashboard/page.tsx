@@ -261,7 +261,7 @@ export default async function DashboardPage() {
             {workspaces.map((workspace: Workspace) => (
               <Link
                 key={workspace.id}
-                href={`/workspace/${workspace.slug}`}
+                href={`/studio/${workspace.slug}`}
                 className="block bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 border border-gray-200"
               >
                 <div className="flex items-start justify-between mb-4">
