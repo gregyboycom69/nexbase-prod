@@ -9,6 +9,21 @@ import { runMacro } from '@/lib/macroEngine'
 // UUID generator for toast IDs
 const generateId = () => crypto.randomUUID()
 
+// FIX 19.11.3: Auto-calculate contrast text color for buttons
+function getContrastText(bgHex: string | undefined): string {
+  if (!bgHex || bgHex === 'transparent') return '#1e293b';
+
+  const c = bgHex.replace('#', '');
+  if (c.length !== 6) return '#ffffff';
+
+  const r = parseInt(c.substr(0, 2), 16);
+  const g = parseInt(c.substr(2, 2), 16);
+  const b = parseInt(c.substr(4, 2), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+  return brightness > 155 ? '#1e293b' : '#ffffff';
+}
+
 export default function PublishedAppPage() {
   const params = useParams()
   const router = useRouter()
@@ -201,12 +216,14 @@ export default function PublishedAppPage() {
     }
 
     if (ctrl.type === 'Button') {
+      const bgColor = props.bg || ctrl.bg;
       return (
         <button
           onClick={() => handleButtonClick(ctrl)}
           style={{
             ...base,
-            background: props.bg || ctrl.bg,
+            background: bgColor,
+            color: props.color || ctrl.color || getContrastText(bgColor),
             border: 'none',
             display: 'flex',
             alignItems: 'center',
@@ -214,7 +231,7 @@ export default function PublishedAppPage() {
             fontWeight: 700,
             cursor: 'pointer',
             transition: 'all 0.2s',
-            boxShadow: `0 4px 14px ${props.bg || ctrl.bg}55`,
+            boxShadow: `0 4px 14px ${bgColor}55`,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-2px)'
