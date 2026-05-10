@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { theme } from '@/lib/theme' // FIX 19.10.3: Import centralized theme
 
 // UUID generator for field IDs
 const generateId = () => crypto.randomUUID()
