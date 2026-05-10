@@ -129,15 +129,6 @@ export default function DatasheetView({
 
     if (!validateNewRow()) return
 
-    // FIX 20.2.2: Get current user for RLS policies
-    const { data: { user } } = await supabase.auth.getUser()
-    console.log('Current user:', user?.id)
-
-    if (!user) {
-      alert('Not logged in')
-      return
-    }
-
     setSavingNewRow(true)
     const { data, error } = await supabase
       .from('app_data')
@@ -145,7 +136,6 @@ export default function DatasheetView({
         workspace_id: workspaceId,
         table_name: tableName,
         data: newRowData,
-        user_id: user.id,
       })
       .select('id, data, created_at')
       .single()
