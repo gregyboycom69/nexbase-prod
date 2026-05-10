@@ -7,6 +7,7 @@ import NavPane from '@/components/studio/NavPane'
 import CtrlRender from '@/components/controls/CtrlRender'
 import Toast, { ToastMessage } from '@/components/Toast'
 import { theme } from '@/lib/theme' // FIX 19.5: Import centralized theme
+import TableDesignerInline from '@/components/TableDesignerInline' // FIX 19.11.1: Inline table designer
 
 // UUID generator for control IDs
 const generateId = () => crypto.randomUUID()
@@ -451,7 +452,14 @@ export default function StudioPage() {
                     onReload={() => loadAllObjects(workspace.id)}
                   />
                 )}
-                {activeTab && activeTab.type !== 'form' && (
+                {activeTab && activeTab.type === 'table' && (
+                  <TableDesignerInline
+                    workspaceId={workspace.id}
+                    tableId={activeTab.objectId}
+                    tableName={activeTab.name}
+                  />
+                )}
+                {activeTab && activeTab.type !== 'form' && activeTab.type !== 'table' && (
                   <div style={{ padding: 40, color: '#64748b', textAlign: 'center' }}>
                     {activeTab.type} - {activeTab.name}
                   </div>
