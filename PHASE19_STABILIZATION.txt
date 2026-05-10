@@ -1,0 +1,1050 @@
+NexBase - Phase 19 - Stabilization Sprint
+Project: C:\Users\gregy\Projects\07_Next GS
+GitHub: gregyboycom69/nexbase-prod
+Vercel: nexbase-inky.vercel.app
+Supabase: sweurfszajcmwkwuecwl
+
+═══════════════════════════════════════════════════════════════════
+GOAL OF PHASE 19
+═══════════════════════════════════════════════════════════════════
+
+Make NexBase v1 STABLE and SHIPPABLE.
+
+NO new features. NO redesign. ONLY fix what is broken.
+
+After this phase, NexBase v1 must work end-to-end:
+Login → Create workspace → Create table → Add fields →
+Create form → Bind form to table → Drop controls → Bind to fields →
+Save data → View in published app.
+
+DO NOT START PHASE 20 UNTIL ALL OF PHASE 19 IS COMPLETE.
+
+═══════════════════════════════════════════════════════════════════
+EXECUTION ORDER
+═══════════════════════════════════════════════════════════════════
+
+Execute fixes in this exact order. After each fix:
+1. Test the fix locally (npm run dev)
+2. Commit and push to git
+3. Wait for Vercel deploy
+4. Test on live site
+5. Move to next fix only if previous one works
+
+═══════════════════════════════════════════════════════════════════
+PRIORITY 1 - CRITICAL BUGS (DO THESE FIRST)
+═══════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────
+FIX 19.1 - PROPERTY SHEET TYPING LAG
+────────────────────────────────────────────────────────────────────
+
+PROBLEM:
+Typing in property sheet inputs is laggy. Each keystroke
+triggers a Supabase save, which causes characters to be lost
+or delayed when typing.
+
+FILE: src/app/(app)/studio/[slug]/page.tsx
+(also check src/components/PropertySheet.tsx if it exists)
+
+SOLUTION:
+Change ALL text inputs and textareas in Property Sheet to
+save on BLUR only, not on every change.
+
+For EACH text input/textarea in Property Sheet:
+
+CURRENT (BROKEN):
+<input
+  value={ctrl.props?.label || ''}
+  onChange={e => updateCtrlProp('label', e.target.value)}
+/>
+
+CHANGE TO:
+<input
+  defaultValue={ctrl.props?.label || ''}
+  onBlur={e => {
+    if (e.target.value !== ctrl.props?.label) {
+      updateCtrlProp('label', e.target.value);
+    }
+  }}
+  key={`${ctrl.id}-label`}
+/>
+
+KEY POINTS:
+- Use defaultValue (not value) for uncontrolled input
+- Use onBlur (not onChange) so save happens on click-away
+- Add unique key prop to force re-render when control changes
+- Only save if value actually changed (prevents redundant saves)
+
+For dropdowns and select elements, KEEP onChange
+(they don't have typing lag).
+
+For checkboxes and toggles, KEEP onChange.
+
+TEST CRITERIA:
+- Type "Customer Full Name" continuously without lag
+- Click somewhere else → input value is saved
+- Click on different control → previous value still saved
+- No visible delay between keystrokes
+
+────────────────────────────────────────────────────────────────────
+FIX 19.2 - TABLE DESIGNER BLANK SCREEN
+────────────────────────────────────────────────────────────────────
+
+PROBLEM:
+When clicking a table tab from sidebar, sometimes the canvas
+shows blank with just "table - test" text. Sometimes shows
+fields. Inconsistent behavior.
+
+CAUSE:
+Race condition. Component renders before table fields are
+loaded from Supabase. No loading state.
+
+FILE: src/app/(app)/studio/[slug]/page.tsx
+
+SOLUTION:
+Add proper loading state and useEffect to fetch fields.
+
+ADD STATE:
+const [tableFields, setTableFields] = useState([]);
+const [loadingTable, setLoadingTable] = useState(false);
+const [tableId, setTableId] = useState(null);
+
+ADD EFFECT (runs when activePage changes):
+useEffect(() => {
+  if (activePage?.type !== 'table') {
+    setTableFields([]);
+    setTableId(null);
+    return;
+  }
+
+  const loadTable = async () => {
+    setLoadingTable(true);
+    const { data, error } = await supabase
+      .from('workspace_tables')
+      .select('id, fields')
+      .eq('workspace_id', workspaceId)
+      .eq('name', activePage.name)
+      .maybeSingle();
+
+    if (data) {
+      setTableId(data.id);
+      setTableFields(Array.isArray(data.fields) ? data.fields : []);
+    } else {
+      setTableId(null);
+      setTableFields([]);
+    }
+    setLoadingTable(false);
+  };
+
+  loadTable();
+}, [activePage?.id, workspaceId]);
+
+REPLACE table render section with:
+{activePage?.type === 'table' && (
+  <div style={{ padding: 24 }}>
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16
+    }}>
+      <h2 style={{ margin: 0, color: '#0f172a' }}>
+        Table: {activePage.name}
+      </h2>
+      <button
+        onClick={saveTableFields}
+        style={{
+          background: '#4f46e5',
+          color: '#fff',
+          padding: '8px 16px',
+          borderRadius: 8,
+          border: 'none',
+          cursor: 'pointer'
+        }}
+      >
+        💾 Save Table
+      </button>
+    </div>
+
+    {loadingTable ? (
+      <p style={{ color: '#64748b' }}>Loading fields...</p>
+    ) : tableFields.length === 0 ? (
+      <div style={{
+        padding: 40,
+        textAlign: 'center',
+        background: '#f8fafc',
+        borderRadius: 12,
+        border: '1px dashed #e2e8f0'
+      }}>
+        <p style={{ color: '#64748b', marginBottom: 16 }}>
+          No fields yet. Add your first field below.
+        </p>
+        <button
+          onClick={addNewField}
+          style={{
+            background: '#4f46e5',
+            color: '#fff',
+            padding: '10px 20px',
+            borderRadius: 8,
+            border: 'none',
+            cursor: 'pointer'
+          }}
+        >
+          + Add Field
+        </button>
+      </div>
+    ) : (
+      <div style={{
+        background: '#fff',
+        border: '1px solid #e2e8f0',
+        borderRadius: 12,
+        overflow: 'hidden'
+      }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead style={{ background: '#f8fafc' }}>
+            <tr>
+              <th style={{ padding: 12, textAlign: 'left' }}>Field Name</th>
+              <th style={{ padding: 12, textAlign: 'left' }}>Type</th>
+              <th style={{ padding: 12, textAlign: 'left' }}>Caption</th>
+              <th style={{ padding: 12, textAlign: 'left' }}>Required</th>
+              <th style={{ padding: 12 }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {tableFields.map((field, i) => (
+              <tr key={i} style={{ borderTop: '1px solid #f1f5f9' }}>
+                <td style={{ padding: 8 }}>
+                  <input
+                    defaultValue={field.name}
+                    onBlur={e => updateField(i, 'name', e.target.value)}
+                    style={{ width: '100%', padding: 6, border: '1px solid #e2e8f0', borderRadius: 4 }}
+                  />
+                </td>
+                <td style={{ padding: 8 }}>
+                  <select
+                    value={field.type}
+                    onChange={e => updateField(i, 'type', e.target.value)}
+                    style={{ width: '100%', padding: 6, border: '1px solid #e2e8f0', borderRadius: 4 }}
+                  >
+                    <option value="text">Text</option>
+                    <option value="number">Number</option>
+                    <option value="date">Date</option>
+                    <option value="bool">Yes/No</option>
+                    <option value="email">Email</option>
+                    <option value="phone">Phone</option>
+                  </select>
+                </td>
+                <td style={{ padding: 8 }}>
+                  <input
+                    defaultValue={field.caption || ''}
+                    onBlur={e => updateField(i, 'caption', e.target.value)}
+                    style={{ width: '100%', padding: 6, border: '1px solid #e2e8f0', borderRadius: 4 }}
+                  />
+                </td>
+                <td style={{ padding: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={field.required || false}
+                    onChange={e => updateField(i, 'required', e.target.checked)}
+                  />
+                </td>
+                <td style={{ padding: 8 }}>
+                  <button
+                    onClick={() => deleteField(i)}
+                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                  >
+                    🗑️
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div style={{ padding: 12, borderTop: '1px solid #f1f5f9' }}>
+          <button
+            onClick={addNewField}
+            style={{
+              background: 'transparent',
+              color: '#4f46e5',
+              border: '1px dashed #4f46e5',
+              padding: '8px 16px',
+              borderRadius: 8,
+              cursor: 'pointer'
+            }}
+          >
+            + Add Field
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+)}
+
+ADD HELPER FUNCTIONS:
+const addNewField = () => {
+  setTableFields([
+    ...tableFields,
+    { name: 'new_field', type: 'text', caption: 'New Field', required: false }
+  ]);
+};
+
+const updateField = (index, key, value) => {
+  const updated = [...tableFields];
+  updated[index] = { ...updated[index], [key]: value };
+  setTableFields(updated);
+};
+
+const deleteField = (index) => {
+  if (!confirm('Delete this field?')) return;
+  setTableFields(tableFields.filter((_, i) => i !== index));
+};
+
+const saveTableFields = async () => {
+  if (!tableId) {
+    alert('Table not loaded');
+    return;
+  }
+  const { error } = await supabase
+    .from('workspace_tables')
+    .update({ fields: tableFields })
+    .eq('id', tableId);
+
+  if (error) {
+    alert('Save failed: ' + error.message);
+  } else {
+    alert('Saved!');
+  }
+};
+
+TEST CRITERIA:
+- Click any table from sidebar → fields show (or empty state)
+- Never blank (always shows loading or content)
+- Add field → appears immediately
+- Type field name → no lag
+- Click Save → success message
+- Refresh page → fields still there
+
+────────────────────────────────────────────────────────────────────
+FIX 19.3 - DASHBOARD WORKSPACE COUNT BUG
+────────────────────────────────────────────────────────────────────
+
+PROBLEM:
+Dashboard shows "Workspaces 0/0" with red bar even when
+workspaces exist. Counts are wrong.
+
+FILE: src/app/(app)/dashboard/page.tsx
+
+SOLUTION:
+Fix the workspace count query and display logic.
+
+REPLACE the count fetch with:
+const { data: { user } } = await supabase.auth.getUser();
+const { data: workspaces } = await supabase
+  .from('workspaces')
+  .select('id')
+  .eq('owner_id', user.id);
+
+const workspaceCount = workspaces?.length || 0;
+
+FETCH USER PLAN:
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('plan')
+  .eq('id', user.id)
+  .maybeSingle();
+
+const userPlan = profile?.plan || 'free';
+
+DEFINE LIMITS:
+const LIMITS = {
+  free: { workspaces: 1, pages: 5, dataRows: 1000 },
+  pro: { workspaces: 10, pages: 100, dataRows: 50000 },
+  enterprise: { workspaces: 999, pages: 999, dataRows: 999999 }
+};
+
+const limits = LIMITS[userPlan] || LIMITS.free;
+
+DYNAMIC BAR COLOR:
+const getBarColor = (count, limit) => {
+  const ratio = count / limit;
+  if (ratio >= 1) return '#ef4444';        // red - at/over limit
+  if (ratio >= 0.8) return '#f59e0b';      // yellow - near limit
+  return '#10b981';                         // green - room to grow
+};
+
+UPDATE THE PROGRESS BARS:
+<div>
+  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+    <span>Workspaces</span>
+    <span>{workspaceCount} / {limits.workspaces}</span>
+  </div>
+  <div style={{
+    background: '#f1f5f9',
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden'
+  }}>
+    <div style={{
+      background: getBarColor(workspaceCount, limits.workspaces),
+      height: '100%',
+      width: `${Math.min(100, (workspaceCount / limits.workspaces) * 100)}%`,
+      transition: 'width 0.3s'
+    }} />
+  </div>
+</div>
+
+REPEAT for Pages and Data Rows progress bars.
+
+TEST CRITERIA:
+- Dashboard shows correct count (1/1 if you have 1 workspace)
+- Bar is green when under 80% of limit
+- Bar is yellow at 80-100% of limit
+- Bar is red at limit
+- Counts update when creating new workspace
+
+═══════════════════════════════════════════════════════════════════
+PRIORITY 2 - THEME CONSISTENCY
+═══════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────
+FIX 19.4 - DEFINE COLOR SYSTEM ONCE
+────────────────────────────────────────────────────────────────────
+
+CREATE FILE: src/lib/theme.ts
+
+CONTENT:
+export const theme = {
+  bg: {
+    page: '#f8fafc',
+    card: '#ffffff',
+    panel: '#f1f5f9',
+    hover: '#f1f5f9',
+    canvas: '#ffffff',
+  },
+
+  text: {
+    primary: '#0f172a',
+    secondary: '#374151',
+    muted: '#64748b',
+    disabled: '#94a3b8',
+    inverse: '#ffffff',
+  },
+
+  border: {
+    light: '#f1f5f9',
+    default: '#e2e8f0',
+    strong: '#cbd5e1',
+  },
+
+  brand: {
+    primary: '#4f46e5',
+    primaryHover: '#4338ca',
+    primaryLight: '#eef2ff',
+    primaryText: '#ffffff',
+    secondary: '#6366f1',
+  },
+
+  status: {
+    success: '#10b981',
+    successLight: '#d1fae5',
+    warning: '#f59e0b',
+    warningLight: '#fef3c7',
+    danger: '#ef4444',
+    dangerLight: '#fee2e2',
+    info: '#3b82f6',
+    infoLight: '#dbeafe',
+  },
+
+  controls: {
+    textBoxBg: '#ffffff',
+    textBoxText: '#1e293b',
+    textBoxBorder: '#e2e8f0',
+    textBoxBorderFocus: '#4f46e5',
+    labelText: '#374151',
+    headingText: '#0f172a',
+    buttonBg: '#4f46e5',
+    buttonText: '#ffffff',
+    buttonHover: '#4338ca',
+    comboBg: '#ffffff',
+    comboText: '#374151',
+    checkboxText: '#374151',
+    badgeBg: '#eff6ff',
+    badgeText: '#4f46e5',
+    cardBg: '#ffffff',
+    cardText: '#0f172a',
+    dividerColor: '#e2e8f0',
+  },
+
+  shadow: {
+    sm: '0 1px 2px rgba(0,0,0,0.04)',
+    md: '0 4px 8px rgba(0,0,0,0.06)',
+    lg: '0 10px 20px rgba(0,0,0,0.08)',
+  },
+
+  radius: {
+    sm: 4,
+    md: 8,
+    lg: 12,
+    xl: 16,
+  },
+};
+
+export type Theme = typeof theme;
+
+────────────────────────────────────────────────────────────────────
+FIX 19.5 - APPLY LIGHT THEME TO STUDIO
+────────────────────────────────────────────────────────────────────
+
+FILE: src/app/(app)/studio/[slug]/page.tsx
+
+ADD IMPORT AT TOP:
+import { theme } from '@/lib/theme';
+
+FIND AND REPLACE these hardcoded dark colors:
+'#13141f' → theme.bg.page
+'#1e2035' → theme.bg.card
+'#252840' → theme.bg.panel
+'#0f1117' → theme.bg.card
+'#0b0c14' → theme.bg.page
+'#1a1d2e' → theme.bg.page
+'#181a28' → theme.bg.card
+'#7480a8' → theme.text.muted
+'#c8d0f0' → theme.text.primary
+'#4a5070' → theme.text.disabled
+'#2a2d44' → theme.border.default
+'#3a3d54' → theme.border.strong
+
+LAYOUT REGIONS:
+
+Top bar:
+- background: theme.bg.card (#ffffff)
+- borderBottom: `1px solid ${theme.border.light}`
+- color: theme.text.primary
+
+Left sidebar (Tables/Forms/Queries/Macros):
+- background: theme.bg.panel (#f8fafc)
+- borderRight: `1px solid ${theme.border.light}`
+- color: theme.text.secondary
+
+Sidebar items:
+- color: theme.text.secondary
+- hoverBg: theme.bg.hover
+- activeColor: theme.brand.primary
+- activeBg: theme.brand.primaryLight
+
+Main canvas area:
+- background: theme.bg.panel (#f1f5f9)
+- padding: 24
+
+Form canvas (where controls are placed):
+- background: theme.bg.canvas (#ffffff)
+- border: `0.5px solid ${theme.border.default}`
+- borderRadius: theme.radius.lg
+
+Right Property Sheet:
+- background: theme.bg.card (#ffffff)
+- borderLeft: `1px solid ${theme.border.light}`
+- color: theme.text.primary
+
+Property Sheet tabs:
+- inactiveColor: theme.text.muted
+- activeColor: theme.brand.primary
+- activeBorderBottom: `2px solid ${theme.brand.primary}`
+
+Property labels:
+- color: theme.text.muted
+- fontSize: 11
+
+Property inputs:
+- background: 'transparent'
+- color: theme.text.primary
+- borderBottom: `1px solid ${theme.border.default}`
+
+Section headers (FORMAT, DATA, EVENT):
+- background: theme.bg.panel
+- color: theme.brand.primary
+- fontSize: 9
+- textTransform: 'uppercase'
+
+────────────────────────────────────────────────────────────────────
+FIX 19.6 - FIX CONTROL DEFAULT COLORS
+────────────────────────────────────────────────────────────────────
+
+PROBLEM:
+TextBoxes and other controls render with dark red/maroon
+background. Old controls saved with bg:'#7f1d1d' or similar.
+
+FILE: src/app/(app)/studio/[slug]/page.tsx
+(or wherever renderControl function is)
+
+ADD HELPER FUNCTIONS at top of file (after imports):
+
+import { theme } from '@/lib/theme';
+
+const BAD_COLORS = [
+  '#7f1d1d', '#991b1b', '#450a0a', '#1f1d1d',
+  '#2d1d1d', '#3d1d1d', '#181818', '#000000'
+].map(c => c.toLowerCase());
+
+const isBadColor = (color) => {
+  if (!color) return false;
+  return BAD_COLORS.includes(color.toLowerCase());
+};
+
+const getControlDefaultBg = (type) => {
+  const defaults = {
+    TextBox: theme.controls.textBoxBg,
+    Label: 'transparent',
+    Heading: 'transparent',
+    Button: theme.controls.buttonBg,
+    ComboBox: theme.controls.comboBg,
+    CheckBox: 'transparent',
+    DatePicker: theme.controls.textBoxBg,
+    NumberBox: theme.controls.textBoxBg,
+    Badge: theme.controls.badgeBg,
+    Card: theme.controls.cardBg,
+    Divider: theme.controls.dividerColor,
+  };
+  return defaults[type] || theme.bg.card;
+};
+
+const getControlDefaultColor = (type) => {
+  const defaults = {
+    TextBox: theme.controls.textBoxText,
+    Label: theme.controls.labelText,
+    Heading: theme.controls.headingText,
+    Button: theme.controls.buttonText,
+    ComboBox: theme.controls.comboText,
+    CheckBox: theme.controls.checkboxText,
+    DatePicker: theme.controls.textBoxText,
+    NumberBox: theme.controls.textBoxText,
+    Badge: theme.controls.badgeText,
+    Card: theme.controls.cardText,
+  };
+  return defaults[type] || theme.text.primary;
+};
+
+const sanitizeControl = (ctrl) => {
+  const sanitized = { ...ctrl, props: { ...ctrl.props } };
+
+  if (isBadColor(sanitized.props?.bg)) {
+    sanitized.props.bg = getControlDefaultBg(ctrl.type);
+  }
+  if (isBadColor(sanitized.props?.color)) {
+    sanitized.props.color = getControlDefaultColor(ctrl.type);
+  }
+
+  return sanitized;
+};
+
+USE the sanitize function in renderControl:
+
+function renderControl(rawCtrl) {
+  const ctrl = sanitizeControl(rawCtrl);
+  const bg = ctrl.props?.bg || getControlDefaultBg(ctrl.type);
+  const color = ctrl.props?.color || getControlDefaultColor(ctrl.type);
+
+  // ... rest of render logic uses bg and color ...
+}
+
+TEST CRITERIA:
+- All TextBoxes show white background, dark text
+- All Buttons show indigo background, white text
+- No more dark red/maroon controls
+- Existing controls fixed automatically when rendered
+
+═══════════════════════════════════════════════════════════════════
+PRIORITY 3 - END TO END FLOW
+═══════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────
+FIX 19.7 - FORM TO TABLE BINDING (RECORD SOURCE)
+────────────────────────────────────────────────────────────────────
+
+PROBLEM:
+Forms can't bind to tables. No "Record Source" dropdown
+in the form's property sheet.
+
+FILE: src/app/(app)/studio/[slug]/page.tsx
+
+ADD STATE for all workspace tables:
+const [workspaceTables, setWorkspaceTables] = useState([]);
+
+ADD EFFECT to fetch tables:
+useEffect(() => {
+  if (!workspaceId) return;
+  const fetchTables = async () => {
+    const { data } = await supabase
+      .from('workspace_tables')
+      .select('id, name, fields')
+      .eq('workspace_id', workspaceId);
+    setWorkspaceTables(data || []);
+  };
+  fetchTables();
+}, [workspaceId, activePage?.id]);
+
+GET BOUND TABLE based on active form's record_source:
+const getBoundTable = () => {
+  if (!activePage?.record_source) return null;
+  return workspaceTables.find(t => t.name === activePage.record_source);
+};
+
+const boundTable = getBoundTable();
+const boundFields = boundTable?.fields || [];
+
+IN PROPERTY SHEET, when no control is selected (form selected):
+
+DATA tab content:
+{!selectedCtrl && activePage?.type === 'form' && (
+  <div>
+    <div style={{ marginBottom: 12 }}>
+      <label style={{
+        display: 'block',
+        fontSize: 11,
+        color: theme.text.muted,
+        marginBottom: 4
+      }}>
+        Record Source
+      </label>
+      <select
+        value={activePage?.record_source || ''}
+        onChange={async e => {
+          const newSource = e.target.value;
+          await supabase
+            .from('pages')
+            .update({ record_source: newSource })
+            .eq('id', activePage.id);
+          setActivePage({ ...activePage, record_source: newSource });
+        }}
+        style={{
+          width: '100%',
+          padding: 6,
+          border: `1px solid ${theme.border.default}`,
+          borderRadius: 4,
+          background: 'transparent',
+          color: theme.text.primary
+        }}
+      >
+        <option value="">(none)</option>
+        {workspaceTables.map(t => (
+          <option key={t.id} value={t.name}>{t.name}</option>
+        ))}
+      </select>
+    </div>
+  </div>
+)}
+
+WHEN A CONTROL IS SELECTED, show Control Source:
+
+DATA tab content for selected control:
+{selectedCtrl && (
+  <div>
+    {['TextBox', 'NumberBox', 'DatePicker', 'CheckBox', 'ComboBox'].includes(selectedCtrl.type) && (
+      <div style={{ marginBottom: 12 }}>
+        <label style={{
+          display: 'block',
+          fontSize: 11,
+          color: theme.text.muted,
+          marginBottom: 4
+        }}>
+          Control Source
+        </label>
+        <select
+          value={selectedCtrl.props?.controlSource || ''}
+          onChange={e => updateCtrlProp('controlSource', e.target.value)}
+          style={{
+            width: '100%',
+            padding: 6,
+            border: `1px solid ${theme.border.default}`,
+            borderRadius: 4
+          }}
+        >
+          <option value="">(unbound)</option>
+          {boundFields.map(f => (
+            <option key={f.name} value={f.name}>
+              {f.caption || f.name} ({f.type})
+            </option>
+          ))}
+        </select>
+        {!activePage?.record_source && (
+          <p style={{ fontSize: 10, color: theme.status.warning, marginTop: 4 }}>
+            Set form Record Source first
+          </p>
+        )}
+      </div>
+    )}
+  </div>
+)}
+
+TEST CRITERIA:
+- Click empty area of form → Property Sheet shows form properties
+- DATA tab shows "Record Source" dropdown
+- Select a table → saves to pages table
+- Click a TextBox control → Property Sheet shows control properties
+- DATA tab shows "Control Source" dropdown with table fields
+- Select a field → saves to control's controlSource prop
+
+────────────────────────────────────────────────────────────────────
+FIX 19.8 - SAVE BUTTON MACRO ENGINE
+────────────────────────────────────────────────────────────────────
+
+PROBLEM:
+Save buttons don't actually save form data to database.
+
+FILE: src/app/(app)/studio/[slug]/page.tsx
+(or wherever Form View / preview rendering is)
+
+ADD STATE for form data:
+const [formData, setFormData] = useState({});
+
+WHEN INPUT CHANGES IN FORM VIEW:
+const handleControlInput = (ctrlId, value) => {
+  setFormData(prev => ({ ...prev, [ctrlId]: value }));
+};
+
+MACRO ENGINE FUNCTION:
+const runMacro = async (button, allControls) => {
+  if (!button.props?.macroSteps) return;
+
+  for (const step of button.props.macroSteps) {
+    if (step.action === 'save') {
+      // Collect form data from controls with controlSource
+      const dataToSave = {};
+      allControls.forEach(ctrl => {
+        const source = ctrl.props?.controlSource;
+        if (source) {
+          dataToSave[source] = formData[ctrl.id] ?? null;
+        }
+      });
+
+      const { error } = await supabase
+        .from('app_data')
+        .insert({
+          workspace_id: workspaceId,
+          table_name: activePage.record_source,
+          data: dataToSave,
+          created_at: new Date().toISOString()
+        });
+
+      if (error) {
+        alert('Save failed: ' + error.message);
+        return;
+      }
+      alert('Saved!');
+    }
+
+    if (step.action === 'goto') {
+      const targetPage = pages.find(p => p.name === step.target || p.slug === step.target);
+      if (targetPage) {
+        setActivePageId(targetPage.id);
+      }
+    }
+
+    if (step.action === 'toast') {
+      alert(step.message || 'Done');
+    }
+
+    if (step.action === 'newrec') {
+      setFormData({});
+    }
+  }
+};
+
+WHEN BUTTON CLICKED IN FORM VIEW:
+<button
+  onClick={() => runMacro(ctrl, controls)}
+  style={{
+    background: ctrl.props?.bg || theme.controls.buttonBg,
+    color: ctrl.props?.color || theme.controls.buttonText,
+    padding: '8px 16px',
+    border: 'none',
+    borderRadius: theme.radius.md,
+    cursor: 'pointer'
+  }}
+>
+  {ctrl.props?.label || 'Button'}
+</button>
+
+TEST CRITERIA:
+- Create form bound to a table
+- Add TextBox bound to a field
+- Add Save button with action 'save'
+- Switch to Form View
+- Type in TextBox
+- Click Save → "Saved!" message
+- Check Supabase app_data table → new row inserted
+- Verify data column has correct field values
+
+────────────────────────────────────────────────────────────────────
+FIX 19.9 - PUBLISHED APP /app/[slug]
+────────────────────────────────────────────────────────────────────
+
+PROBLEM:
+End-users can't access published apps.
+
+FILE: src/app/app/[slug]/page.tsx
+
+This is the public-facing app for end-users. No auth required.
+
+PAGE STRUCTURE:
+1. Load workspace by slug (no auth check)
+2. Load all pages for workspace
+3. Show home page first (or first page)
+4. Render controls interactively
+5. Handle macros for buttons
+
+REQUIREMENTS:
+- No NexBase branding visible
+- Show only workspace.brand_name and brand_logo
+- Sidebar uses workspace.brand_color as background
+- All controls render interactively
+- Forms save to app_data correctly
+
+DATA FETCHING:
+const { data: workspace } = await supabase
+  .from('workspaces')
+  .select('*')
+  .eq('slug', slug)
+  .single();
+
+const { data: pages } = await supabase
+  .from('pages')
+  .select('*')
+  .eq('workspace_id', workspace.id);
+
+const homePage = pages?.find(p => p.is_home) || pages?.[0];
+
+LAYOUT:
+<div style={{ display: 'flex', height: '100vh' }}>
+  <aside style={{
+    width: 240,
+    background: workspace.brand_color || theme.brand.primary,
+    color: theme.text.inverse,
+    padding: 16
+  }}>
+    <h1>{workspace.brand_name || workspace.name}</h1>
+    <nav>
+      {pages.map(p => (
+        <a
+          key={p.id}
+          onClick={() => setActivePage(p)}
+          style={{
+            display: 'block',
+            padding: 8,
+            color: theme.text.inverse,
+            cursor: 'pointer',
+            background: activePage?.id === p.id ? 'rgba(255,255,255,0.15)' : 'transparent',
+            borderRadius: 4
+          }}
+        >
+          {p.name}
+        </a>
+      ))}
+    </nav>
+  </aside>
+
+  <main style={{ flex: 1, padding: 24, background: theme.bg.page, overflow: 'auto' }}>
+    {activePage?.controls?.map(ctrl => (
+      <div key={ctrl.id} style={{
+        position: 'absolute',
+        left: ctrl.x,
+        top: ctrl.y,
+        width: ctrl.w,
+        height: ctrl.h
+      }}>
+        {renderInteractiveControl(ctrl)}
+      </div>
+    ))}
+  </main>
+</div>
+
+TEST CRITERIA:
+- Open /app/ggg in incognito (no auth)
+- Workspace loads
+- See workspace brand name (not "NexBase")
+- Click a page in sidebar → switches
+- Fill a form, click Save → data saved
+- Refresh → still works
+
+═══════════════════════════════════════════════════════════════════
+TESTING CHECKLIST - RUN AFTER EACH FIX
+═══════════════════════════════════════════════════════════════════
+
+After each fix, run this 5-minute test:
+
+[ ] Login works
+[ ] Dashboard loads with correct workspace count
+[ ] Click "ggg" workspace → opens
+[ ] Click "test" table tab → shows fields (never blank)
+[ ] Add new field → appears, no typing lag
+[ ] Save table → success message
+[ ] Refresh page → fields persist
+[ ] Click "Home" form tab → loads
+[ ] Click empty form area → property sheet shows form props
+[ ] Set Record Source → saves
+[ ] Drop a TextBox onto form → no lag typing label
+[ ] Click TextBox → property sheet shows control props
+[ ] Set Control Source → saves
+[ ] Drop a Save button
+[ ] Switch to Form View tab
+[ ] Type in TextBox → no lag
+[ ] Click Save → success
+[ ] Check Supabase app_data → row exists
+[ ] Click Publish → /app/ggg loads in new tab
+[ ] No NexBase branding on /app/ggg
+[ ] Logout → redirected to login
+
+═══════════════════════════════════════════════════════════════════
+GIT WORKFLOW (REPEAT AFTER EACH FIX)
+═══════════════════════════════════════════════════════════════════
+
+cd "C:\Users\gregy\Projects\07_Next GS"
+
+# After completing a fix:
+git add -A
+git status                          # review what changed
+git commit -m "Phase 19.X: [short description]"
+git push origin main
+
+# Vercel auto-deploys on push. Wait 30 seconds.
+# Then test on https://nexbase-inky.vercel.app
+
+# If something breaks:
+git revert HEAD
+git push origin main
+
+═══════════════════════════════════════════════════════════════════
+DONE CRITERIA - PHASE 19 SHIPS WHEN
+═══════════════════════════════════════════════════════════════════
+
+[ ] Property sheet typing has zero lag (Fix 19.1)
+[ ] Table designer never goes blank (Fix 19.2)
+[ ] Dashboard shows correct counts and colors (Fix 19.3)
+[ ] Theme system defined and applied (Fix 19.4, 19.5)
+[ ] No dark red controls (Fix 19.6)
+[ ] Form binding works (Fix 19.7)
+[ ] Save button saves data (Fix 19.8)
+[ ] Published app works for end-users (Fix 19.9)
+[ ] Full end-to-end test passes 3 times in a row
+[ ] Code committed and deployed to Vercel
+[ ] NexBase v1.0 ready to show ONE real user
+
+═══════════════════════════════════════════════════════════════════
+TIMEBOX
+═══════════════════════════════════════════════════════════════════
+
+Week 1: FIXES 19.1, 19.2, 19.3 (critical bugs)
+Week 2: FIXES 19.4, 19.5, 19.6 (theme system)
+Week 3: FIXES 19.7, 19.8, 19.9 (end-to-end flow)
+
+If a fix takes more than 2 days, STOP and ask Claude for help.
+DO NOT spiral into new redesigns or restarts.
+
+═══════════════════════════════════════════════════════════════════
+PHASE 20 IS NOT ALLOWED UNTIL PHASE 19 IS 100% COMPLETE
+═══════════════════════════════════════════════════════════════════
+
+After Phase 19 ships, take a 1-week break.
+Then plan Phase 20 with NEW features (templates, mobile, etc).
+
+But NOT before. Discipline first. Features later.

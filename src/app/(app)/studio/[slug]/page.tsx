@@ -2248,13 +2248,13 @@ function PropertySheet({ selectedControl, formProps, propertyTab, setPropertyTab
 function ControlProperties({ control, tab, tables, queries, macros, recordSourceFields, onUpdate, onUpdateGeometry, onDelete, onSave }: any) {
   const props = control.props || {}
 
-  // Property Row Component
+  // Property Row Component - FIX 19.1: Changed text/number inputs to use onBlur with change detection
   function PropRow({ label, value, onChange, type = 'text', options = [], onBlur }: any) {
     return (
       <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: '1px solid #f1f5f9', minHeight: 24, alignItems: 'center', padding: '0 8px' }}>
         <span style={{ fontSize: 11, color: '#64748b', fontFamily: "'JetBrains Mono', monospace" }}>{label}</span>
         {type === 'select' ? (
-          <select value={value} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ background: 'transparent', color: '#1e293b', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px', cursor: 'pointer' }}>
+          <select value={value} onChange={(e) => onChange(e.target.value)} style={{ background: 'transparent', color: '#1e293b', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px', cursor: 'pointer' }}>
             {options.map((opt: any) => (
               typeof opt === 'string' ?
                 <option key={opt} value={opt}>{opt}</option> :
@@ -2262,11 +2262,34 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
             ))}
           </select>
         ) : type === 'color' ? (
-          <input type="color" value={value || '#ffffff'} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ width: '100%', height: 20, background: 'transparent', border: 'none' }} />
+          <input type="color" value={value || '#ffffff'} onChange={(e) => onChange(e.target.value)} style={{ width: '100%', height: 20, background: 'transparent', border: 'none' }} />
         ) : type === 'number' ? (
-          <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} onBlur={onBlur} style={{ background: 'transparent', color: '#1e293b', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px' }} />
+          <input
+            type="number"
+            defaultValue={value}
+            onBlur={(e) => {
+              const newValue = Number(e.target.value)
+              if (newValue !== value) {
+                onChange(newValue)
+                onBlur?.()
+              }
+            }}
+            key={`${label}-${value}`}
+            style={{ background: 'transparent', color: '#1e293b', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px' }}
+          />
         ) : (
-          <input type="text" value={value || ''} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} style={{ background: 'transparent', color: '#1e293b', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px' }} />
+          <input
+            type="text"
+            defaultValue={value || ''}
+            onBlur={(e) => {
+              if (e.target.value !== (value || '')) {
+                onChange(e.target.value)
+                onBlur?.()
+              }
+            }}
+            key={`${label}-${value}`}
+            style={{ background: 'transparent', color: '#1e293b', border: 'none', fontSize: 11, width: '100%', padding: '2px 4px' }}
+          />
         )}
       </div>
     )
@@ -2438,7 +2461,7 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
   return null
 }
 
-// FIX 5: Form Properties
+// FIX 5: Form Properties - FIX 19.1: Changed text inputs to use onBlur with change detection
 function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: any) {
   function PropRow({ label, value, onChange, type = 'text', options = [] }: any) {
     return (
@@ -2458,7 +2481,17 @@ function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: a
             <option>No</option>
           </select>
         ) : (
-          <input type="text" value={value} onChange={(e) => onChange(e.target.value)} style={{ width: '100%', background: '#ffffff', color: '#1e293b', border: 'none', fontSize: 10, padding: '2px 4px' }} />
+          <input
+            type="text"
+            defaultValue={value}
+            onBlur={(e) => {
+              if (e.target.value !== value) {
+                onChange(e.target.value)
+              }
+            }}
+            key={`${label}-${value}`}
+            style={{ width: '100%', background: '#ffffff', color: '#1e293b', border: 'none', fontSize: 10, padding: '2px 4px' }}
+          />
         )}
       </div>
     )
