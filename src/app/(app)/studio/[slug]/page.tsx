@@ -138,6 +138,21 @@ const sanitizeControl = (ctrl: Control) => {
   return sanitized;
 };
 
+// FIX 19.10.4: Auto-calculate contrast text color for buttons
+const getContrastText = (bgHex: string | undefined) => {
+  if (!bgHex || bgHex === 'transparent') return '#1e293b';
+
+  const c = bgHex.replace('#', '');
+  if (c.length !== 6) return '#ffffff';
+
+  const r = parseInt(c.substr(0, 2), 16);
+  const g = parseInt(c.substr(2, 2), 16);
+  const b = parseInt(c.substr(4, 2), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+  return brightness > 155 ? '#1e293b' : '#ffffff';
+};
+
 export default function StudioPage() {
   const params = useParams()
   const router = useRouter()
@@ -2883,14 +2898,15 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
   }
 
   if (ctrl.type === 'Button') {
+    const bgColor = props.bg || '#4f46e5';
     return (
       <button
         onClick={onButtonClick}
         style={{
           width: '100%',
           height: '100%',
-          background: props.bg || '#4f46e5',
-          color: props.color || '#ffffff',
+          background: bgColor,
+          color: props.color || getContrastText(bgColor),
           border: 'none',
           borderRadius: props.radius !== undefined ? props.radius : 8,
           fontSize: props.fontSize || 14,

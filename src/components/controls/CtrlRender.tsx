@@ -1,5 +1,20 @@
 import React from 'react'
 
+// FIX 19.10.4: Auto-calculate contrast text color for buttons
+function getContrastText(bgHex: string | undefined): string {
+  if (!bgHex || bgHex === 'transparent') return '#1e293b';
+
+  const c = bgHex.replace('#', '');
+  if (c.length !== 6) return '#ffffff';
+
+  const r = parseInt(c.substr(0, 2), 16);
+  const g = parseInt(c.substr(2, 2), 16);
+  const b = parseInt(c.substr(4, 2), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+  return brightness > 155 ? '#1e293b' : '#ffffff';
+}
+
 type CtrlProps = {
   id: string
   type: string
@@ -122,13 +137,14 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
       onClick?.()
     }
 
+    const bgColor = ctrl.bg || '#4f46e5';
     return (
       <button
         onClick={handleClick}
         style={{
           ...base,
-          background: ctrl.bg || '#4f46e5',
-          color: ctrl.color || '#ffffff',
+          background: bgColor,
+          color: ctrl.color || getContrastText(bgColor),
           borderRadius: ctrl.radius !== undefined ? ctrl.radius : 'var(--border-radius-md)',
           fontSize: ctrl.fontSize || 12,
           display: 'flex',
