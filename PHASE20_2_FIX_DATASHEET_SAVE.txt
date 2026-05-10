@@ -1,0 +1,230 @@
+NexBase - Phase 20.2 - Fix Datasheet Save Bugs
+Project: C:\Users\gregy\Projects\07_Next GS
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL INSTRUCTIONS FOR CLAUDE CODE
+═══════════════════════════════════════════════════════════════════
+
+DO NOT SKIP. These are real bugs reported by user testing.
+NO Co-Authored-By trailers.
+Single-line commit messages.
+Test locally before pushing.
+
+═══════════════════════════════════════════════════════════════════
+REAL BUGS REPORTED BY USER
+═══════════════════════════════════════════════════════════════════
+
+User tested datasheet view on https://nexbase-inky.vercel.app
+Bugs found:
+1. Adding new row does not work
+2. Editing existing cell does not save
+
+These are real production bugs - must be fixed.
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.2.1 - DEBUG: ADD CONSOLE LOGS FIRST
+═══════════════════════════════════════════════════════════════════
+
+FILE: src/components/DatasheetView.tsx
+
+Before fixing blindly, add console.log to find exactly where 
+it fails.
+
+In saveNewRow function, add logs:
+
+const saveNewRow = async () => {
+  console.log('saveNewRow called with:', newRowData)
+  console.log('workspaceId:', workspaceId)
+  console.log('tableName:', tableName)
+  
+  setSavingNewRow(true)
+  const { data, error } = await supabase
+    .from('app_data')
+    .insert({
+      workspace_id: workspaceId,
+      table_name: tableName,
+      data: newRowData,
+    })
+    .select('id, data, created_at')
+    .single()
+  
+  console.log('Insert result:', { data, error })
+  
+  if (!error && data) {
+    setRows([data as DataRow, ...rows])
+    setNewRowData({})
+  } else if (error) {
+    alert('Save failed: ' + error.message)
+  }
+  setSavingNewRow(false)
+}
+
+Same for saveCell function:
+
+const saveCell = async () => {
+  console.log('saveCell called:', { editingCell, editValue })
+  
+  if (!editingCell) return
+  const row = rows.find(r => r.id === editingCell.rowId)
+  if (!row) return
+  
+  const newData = { ...row.data, [editingCell.field]: editValue }
+  console.log('Updating row with:', newData)
+  
+  const { error } = await supabase
+    .from('app_data')
+    .update({ data: newData })
+    .eq('id', row.id)
+  
+  console.log('Update result:', { error })
+  
+  if (!error) {
+    setRows(rows.map(r => r.id === row.id ? { ...r, data: newData } : r))
+  } else {
+    alert('Save failed: ' + error.message)
+  }
+  setEditingCell(null)
+  setEditValue('')
+}
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.2.2 - LIKELY ROOT CAUSE: RLS POLICIES
+═══════════════════════════════════════════════════════════════════
+
+The most likely reason saves fail silently:
+Row Level Security (RLS) policies on app_data table block 
+inserts/updates because the policy expects user_id but 
+the insert doesn't include it.
+
+CHECK Supabase dashboard:
+1. Go to https://supabase.com/dashboard/project/sweurfszajcmwkwuecwl
+2. Click "Authentication" -> "Policies"
+3. Find "app_data" table
+4. Check what policies exist
+
+If policy requires user_id, update insert to include it:
+
+const { data: { user } } = await supabase.auth.getUser()
+if (!user) {
+  alert('Not logged in')
+  return
+}
+
+const { data, error } = await supabase
+  .from('app_data')
+  .insert({
+    workspace_id: workspaceId,
+    table_name: tableName,
+    data: newRowData,
+    user_id: user.id,  // ADD THIS if RLS needs it
+    created_by: user.id,  // OR THIS
+  })
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.2.3 - VERIFY app_data TABLE STRUCTURE
+═══════════════════════════════════════════════════════════════════
+
+Run this SQL in Supabase SQL Editor to see actual schema:
+
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
+WHERE table_name = 'app_data';
+
+Common required fields might be:
+- id (auto)
+- workspace_id (uuid)
+- table_name (text)
+- data (jsonb)
+- created_at (timestamp)
+- updated_at (timestamp)
+- user_id (uuid) - might be required
+- created_by (uuid) - might be required
+
+Make sure insert includes ALL required fields.
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.2.4 - HANDLE PRIMARY KEY FIELD VALIDATION
+═══════════════════════════════════════════════════════════════════
+
+The "test" table has 'id' field as AutoNumber (Primary Key).
+Currently the datasheet hides this field (correct), but the 
+insert might fail if some required validation is missing.
+
+In DatasheetView, when saving new row:
+- AutoNumber fields should NOT be in newRowData
+- Required fields (other than auto) should be validated
+- Show error if required field missing
+
+Add validation:
+
+const validateNewRow = () => {
+  const required = fields.filter(f => 
+    f.required && f.type !== 'AutoNumber' && f.name !== 'id'
+  )
+  for (const field of required) {
+    if (!newRowData[field.name]) {
+      alert(`${field.caption || field.name} is required`)
+      return false
+    }
+  }
+  return true
+}
+
+const saveNewRow = async () => {
+  if (!validateNewRow()) return
+  // ... rest of save logic
+}
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.2.5 - VISUAL FEEDBACK
+═══════════════════════════════════════════════════════════════════
+
+User couldn't tell if save succeeded or failed.
+Add visual feedback.
+
+After successful save:
+- Brief green flash on the row
+- Toast notification "Saved!"
+
+After failed save:
+- Red border on field
+- Error message shown
+
+Simple toast component or just use alert() for now.
+
+═══════════════════════════════════════════════════════════════════
+TESTING (USER WILL DO)
+═══════════════════════════════════════════════════════════════════
+
+After deploy, user opens browser console (F12) and tries:
+
+[ ] Add new row - check console.log output
+[ ] If error shown - paste it back
+[ ] If no error but row not appearing - check database directly
+[ ] Edit existing cell - check console.log output
+[ ] If error shown - paste it back
+
+The console logs will tell us exactly what's wrong.
+
+═══════════════════════════════════════════════════════════════════
+GIT COMMIT
+═══════════════════════════════════════════════════════════════════
+
+git add -A
+git commit -m "Phase 20.2: Debug and fix datasheet save operations"
+git push origin main
+
+Single line. No co-author trailers.
+
+═══════════════════════════════════════════════════════════════════
+DONE CRITERIA
+═══════════════════════════════════════════════════════════════════
+
+[ ] Console logs added for debugging
+[ ] User can see in browser console what is happening
+[ ] If RLS issue, fixed with proper user_id
+[ ] If validation issue, fixed with validation function
+[ ] User can successfully add a new row
+[ ] User can successfully edit an existing cell
+[ ] Visual feedback shown on success/failure
+[ ] Tested on live site

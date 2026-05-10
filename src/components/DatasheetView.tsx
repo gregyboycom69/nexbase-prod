@@ -60,20 +60,26 @@ export default function DatasheetView({
   }
 
   const saveCell = async () => {
-    if (!editingCell) return
+    console.log('saveCell called:', { editingCell, editValue })
 
+    if (!editingCell) return
     const row = rows.find(r => r.id === editingCell.rowId)
     if (!row) return
 
     const newData = { ...row.data, [editingCell.field]: editValue }
+    console.log('Updating row with:', newData)
 
     const { error } = await supabase
       .from('app_data')
       .update({ data: newData })
       .eq('id', row.id)
 
+    console.log('Update result:', { error })
+
     if (!error) {
       setRows(rows.map(r => r.id === row.id ? { ...r, data: newData } : r))
+    } else {
+      alert('Save failed: ' + error.message)
     }
     setEditingCell(null)
     setEditValue('')
@@ -87,17 +93,51 @@ export default function DatasheetView({
   const deleteRow = async (rowId: string) => {
     if (!confirm('Delete this row?')) return
 
+    console.log('deleteRow called for:', rowId)
+
     const { error } = await supabase
       .from('app_data')
       .delete()
       .eq('id', rowId)
 
+    console.log('Delete result:', { error })
+
     if (!error) {
       setRows(rows.filter(r => r.id !== rowId))
+    } else {
+      alert('Delete failed: ' + error.message)
     }
   }
 
+  const validateNewRow = () => {
+    const required = fields.filter(f =>
+      f.required && f.type !== 'AutoNumber' && f.name !== 'id'
+    )
+    for (const field of required) {
+      if (!newRowData[field.name]) {
+        alert(`${field.caption || field.name} is required`)
+        return false
+      }
+    }
+    return true
+  }
+
   const saveNewRow = async () => {
+    console.log('saveNewRow called with:', newRowData)
+    console.log('workspaceId:', workspaceId)
+    console.log('tableName:', tableName)
+
+    if (!validateNewRow()) return
+
+    // FIX 20.2.2: Get current user for RLS policies
+    const { data: { user } } = await supabase.auth.getUser()
+    console.log('Current user:', user?.id)
+
+    if (!user) {
+      alert('Not logged in')
+      return
+    }
+
     setSavingNewRow(true)
     const { data, error } = await supabase
       .from('app_data')
@@ -105,13 +145,18 @@ export default function DatasheetView({
         workspace_id: workspaceId,
         table_name: tableName,
         data: newRowData,
+        user_id: user.id,
       })
       .select('id, data, created_at')
       .single()
 
+    console.log('Insert result:', { data, error })
+
     if (!error && data) {
       setRows([data as DataRow, ...rows])
       setNewRowData({})
+    } else if (error) {
+      alert('Save failed: ' + error.message)
     }
     setSavingNewRow(false)
   }
