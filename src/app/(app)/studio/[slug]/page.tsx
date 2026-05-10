@@ -1790,16 +1790,32 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#f1f5f9' }}>
       {/* FIX 1: Toolbar with prominent Save button */}
       <div style={{ background: '#f8fafc', borderBottom: '1px solid #f1f5f9', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={() => setView('design')} style={{ padding: '6px 12px', background: view === 'design' ? '#6366f1' : '#f1f5f9', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>
+        <button
+          onClick={() => setView('design')}
+          onMouseEnter={(e) => { if (view !== 'design') e.currentTarget.style.background = '#e2e8f0' }}
+          onMouseLeave={(e) => { if (view !== 'design') e.currentTarget.style.background = '#f1f5f9' }}
+          style={{ padding: '6px 12px', background: view === 'design' ? '#4f46e5' : '#f1f5f9', color: view === 'design' ? '#ffffff' : '#64748b', border: view === 'design' ? 'none' : '1px solid #e2e8f0', borderRadius: 4, fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>
           Design View
         </button>
-        <button onClick={() => setView('form')} style={{ padding: '6px 12px', background: view === 'form' ? '#6366f1' : '#f1f5f9', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>
+        <button
+          onClick={() => setView('form')}
+          onMouseEnter={(e) => { if (view !== 'form') e.currentTarget.style.background = '#e2e8f0' }}
+          onMouseLeave={(e) => { if (view !== 'form') e.currentTarget.style.background = '#f1f5f9' }}
+          style={{ padding: '6px 12px', background: view === 'form' ? '#4f46e5' : '#f1f5f9', color: view === 'form' ? '#ffffff' : '#64748b', border: view === 'form' ? 'none' : '1px solid #e2e8f0', borderRadius: 4, fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>
           Form View
         </button>
-        <button onClick={() => setView('datasheet')} style={{ padding: '6px 12px', background: view === 'datasheet' ? '#6366f1' : '#f1f5f9', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>
+        <button
+          onClick={() => setView('datasheet')}
+          onMouseEnter={(e) => { if (view !== 'datasheet') e.currentTarget.style.background = '#e2e8f0' }}
+          onMouseLeave={(e) => { if (view !== 'datasheet') e.currentTarget.style.background = '#f1f5f9' }}
+          style={{ padding: '6px 12px', background: view === 'datasheet' ? '#4f46e5' : '#f1f5f9', color: view === 'datasheet' ? '#ffffff' : '#64748b', border: view === 'datasheet' ? 'none' : '1px solid #e2e8f0', borderRadius: 4, fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>
           Datasheet
         </button>
-        <button onClick={() => setShowFieldList(!showFieldList)} style={{ padding: '6px 12px', background: showFieldList ? '#6366f1' : '#f1f5f9', color: '#fff', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>
+        <button
+          onClick={() => setShowFieldList(!showFieldList)}
+          onMouseEnter={(e) => { if (!showFieldList) e.currentTarget.style.background = '#e2e8f0' }}
+          onMouseLeave={(e) => { if (!showFieldList) e.currentTarget.style.background = '#f1f5f9' }}
+          style={{ padding: '6px 12px', background: showFieldList ? '#4f46e5' : '#f1f5f9', color: showFieldList ? '#ffffff' : '#64748b', border: showFieldList ? 'none' : '1px solid #e2e8f0', borderRadius: 4, fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>
           Field List
         </button>
         {formProps.recordSource && (
