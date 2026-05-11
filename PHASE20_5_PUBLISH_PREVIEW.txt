@@ -1,0 +1,219 @@
+NexBase - Phase 20.5 - Fix Publish, Duplicate Buttons, Add Preview
+Project: C:\Users\gregy\Projects\07_Next GS
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL INSTRUCTIONS FOR CLAUDE CODE
+═══════════════════════════════════════════════════════════════════
+
+DO NOT SKIP. Real bugs from user testing.
+Single-line commit messages. No co-author trailers.
+Test locally before push.
+
+═══════════════════════════════════════════════════════════════════
+USER REPORTED BUGS
+═══════════════════════════════════════════════════════════════════
+
+1. Publish button does nothing when clicked
+2. Form View shows duplicate Save/New/Delete buttons 
+   (one set at top, one at bottom - mirroring)
+3. No Preview button to test form as end-user without publishing
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.5.1 - PUBLISH BUTTON
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+User clicks Publish button in studio top right - nothing happens.
+No navigation, no API call, no visual feedback.
+
+INVESTIGATION:
+1. Find the Publish button in studio. Likely in:
+   - src/app/(app)/studio/[slug]/page.tsx
+   - Or src/components/studio/StudioHeader.tsx
+   
+2. Check what onClick does:
+   - Is it wired to a function?
+   - Does the function exist?
+   - Is there an API endpoint /api/publish?
+
+LIKELY FIX:
+The button needs to actually publish the workspace. This means:
+- Update workspaces table: set is_published = true (or similar)
+- Or copy current state to a "published_snapshot" 
+- Then navigate user to /app/[slug] to see published version
+
+Add publish handler:
+
+const handlePublish = async () => {
+  setPublishing(true)
+  
+  const { error } = await supabase
+    .from('workspaces')
+    .update({ 
+      is_published: true,
+      published_at: new Date().toISOString(),
+    })
+    .eq('id', workspaceId)
+  
+  if (error) {
+    alert('Publish failed: ' + error.message)
+  } else {
+    alert('Published! Opening live app...')
+    window.open(`/app/${slug}`, '_blank')
+  }
+  
+  setPublishing(false)
+}
+
+Wire to button:
+<button onClick={handlePublish} disabled={publishing}>
+  {publishing ? 'Publishing...' : 'Publish'}
+</button>
+
+If workspaces table doesn't have is_published column, add it 
+via Supabase migration:
+ALTER TABLE workspaces 
+ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS published_at TIMESTAMP;
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.5.2 - REMOVE DUPLICATE BUTTONS IN FORM VIEW
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+When viewing a form in "Form View" mode, there are TWO sets of 
+Save/New/Delete buttons:
+- One set at top of form (sticky?)
+- One set at bottom (from NavigationButtons control)
+
+This is confusing. Need only ONE set.
+
+INVESTIGATION:
+Look for where Form View renders. Find:
+- Are buttons hardcoded in form wrapper?
+- AND also rendered as NavigationButtons control?
+
+LIKELY CAUSES:
+A) Form wrapper has its own toolbar AND NavigationButtons exists
+B) Same buttons rendered twice in different places
+
+FIX:
+Keep buttons in ONE place only:
+- If form has NavigationButtons control, hide wrapper toolbar
+- If no NavigationButtons control, show wrapper toolbar
+- OR remove wrapper toolbar entirely, always use NavigationButtons
+
+Recommended: Always use NavigationButtons control (at bottom).
+Remove any top toolbar duplicate.
+
+In form view component:
+{!hasNavigationButtonsControl && (
+  <div className="form-toolbar">
+    <button>Save</button>
+    <button>New</button>
+    <button>Delete</button>
+  </div>
+)}
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.5.3 - ADD PREVIEW BUTTON
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+User has no way to test the form as an end-user would see it.
+They have to publish to test, which is not ideal during 
+development.
+
+SOLUTION:
+Add "Preview" button in studio toolbar near Save Form button.
+Clicking Preview opens form in new tab in preview mode 
+(without designer chrome, but without requiring publish).
+
+Add Preview link/button:
+
+<button
+  onClick={() => window.open(`/preview/${slug}?form=${activePage?.id}`, '_blank')}
+  style={{
+    background: '#10b981',
+    color: '#ffffff',
+    border: 'none',
+    padding: '8px 16px',
+    borderRadius: 8,
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 500,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+  }}
+>
+  👁 Preview
+</button>
+
+Create preview route:
+src/app/preview/[slug]/page.tsx
+
+Should render the form/app similar to /app/[slug] but:
+- Show "PREVIEW MODE" banner at top
+- Allow data interactions (save/load works)
+- Can be exited back to studio
+- Doesn't require workspace to be published
+
+Reuse the published app rendering logic but with preview banner:
+
+export default function PreviewPage({ params }) {
+  const { slug } = await params
+  return (
+    <div>
+      <div style={{
+        background: '#fef3c7',
+        color: '#92400e',
+        padding: 12,
+        textAlign: 'center',
+        borderBottom: '1px solid #fcd34d',
+      }}>
+        Preview Mode - Form behaves as users will see it
+        <button onClick={() => window.close()}>Close Preview</button>
+      </div>
+      {/* Render form same as published app */}
+      <PublishedAppView slug={slug} />
+    </div>
+  )
+}
+
+═══════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+After deploy:
+
+[ ] Click Publish button - sees alert/feedback
+[ ] Published app opens in new tab
+[ ] In Form View - only ONE set of Save/New/Delete buttons visible
+[ ] No duplicate buttons at top
+[ ] Preview button visible in studio toolbar
+[ ] Click Preview - opens new tab with preview mode
+[ ] Preview shows form without designer chrome
+[ ] Preview banner says "Preview Mode"
+[ ] Form save works in preview mode
+[ ] Data appears in datasheet after save
+
+═══════════════════════════════════════════════════════════════════
+GIT COMMIT
+═══════════════════════════════════════════════════════════════════
+
+git add -A
+git commit -m "Phase 20.5: Fix publish button, remove duplicate buttons, add preview"
+git push origin main
+
+Single line. No co-author trailers.
+
+═══════════════════════════════════════════════════════════════════
+DONE CRITERIA
+═══════════════════════════════════════════════════════════════════
+
+[ ] Publish button works and provides feedback
+[ ] Only one set of form action buttons visible
+[ ] Preview button exists and works
+[ ] Preview shows form without designer UI
+[ ] All tested on live site

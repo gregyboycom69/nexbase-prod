@@ -184,6 +184,7 @@ export default function StudioPage() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'tables' | 'queries' | 'forms' | 'macros'>('all')
   const [showCreateFormDialog, setShowCreateFormDialog] = useState(false)
   const [tableViewMode, setTableViewMode] = useState<'design' | 'datasheet'>('design')
+  const [publishing, setPublishing] = useState(false)
 
   useEffect(() => {
     loadWorkspace()
@@ -211,6 +212,33 @@ export default function StudioPage() {
 
     const { data: macrosData } = await supabase.from('workspace_macros').select('*').eq('workspace_id', workspaceId).order('name')
     setMacros(macrosData || [])
+  }
+
+  // FIX 20.5.1: Handle publish button
+  async function handlePublish() {
+    if (!workspace) return
+
+    setPublishing(true)
+
+    const { error } = await supabase
+      .from('workspaces')
+      .update({ published: true })
+      .eq('id', workspace.id)
+
+    setPublishing(false)
+
+    if (error) {
+      alert('Publish failed: ' + error.message)
+    } else {
+      setWorkspace({ ...workspace, published: true })
+      alert('Published! Opening live app...')
+      window.open(`/app/${slug}`, '_blank')
+    }
+  }
+
+  // FIX 20.5.3: Handle preview button
+  function handlePreview() {
+    window.open(`/preview/${slug}`, '_blank')
   }
 
   // FIX 19.12.2: Auto-select first form or table when workspace loads
@@ -421,24 +449,46 @@ export default function StudioPage() {
             <div style={{
               width: 7,
               height: 7,
-              background: '#94a3b8',
+              background: workspace?.published ? '#10b981' : '#94a3b8',
               borderRadius: '50%'
             }} />
             <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-              Draft
+              {workspace?.published ? 'Published' : 'Draft'}
             </span>
           </div>
-          <button style={{
-            padding: '5px 14px',
-            background: '#4f46e5',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 8,
-            fontSize: 12,
-            fontWeight: 500,
-            cursor: 'pointer'
-          }}>
-            Publish
+          <button
+            onClick={handlePreview}
+            style={{
+              padding: '5px 14px',
+              background: '#10b981',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            👁 Preview
+          </button>
+          <button
+            onClick={handlePublish}
+            disabled={publishing}
+            style={{
+              padding: '5px 14px',
+              background: publishing ? '#94a3b8' : '#4f46e5',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: publishing ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {publishing ? 'Publishing...' : 'Publish'}
           </button>
         </div>
       </div>
@@ -2898,6 +2948,9 @@ function FormView({ controls, formProps, formData, setFormData, records, current
     ? Math.max(...controls.map((c: Control) => c.y + c.h), 500) + 40
     : 500
 
+  // FIX 20.5.2: Check if there's a NavigationButtons control to avoid duplicates
+  const hasNavigationButtonsControl = controls.some((c: Control) => c.type === 'NavigationButtons')
+
   return (
     <div style={{ flex: 1, background: '#f3f4f6', overflow: 'auto', padding: 40, position: 'relative' }}>
       {/* Toast notifications */}
@@ -2933,8 +2986,8 @@ function FormView({ controls, formProps, formData, setFormData, records, current
         ))}
       </div>
 
-      {/* Navigation buttons below the form */}
-      {formProps.recordSource && formProps.navigationButtons && (
+      {/* FIX 20.5.2: Navigation buttons below the form - only show if no NavigationButtons control exists */}
+      {formProps.recordSource && formProps.navigationButtons && !hasNavigationButtonsControl && (
         <div style={{ maxWidth: canvasWidth, margin: '20px auto 0', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', background: '#fff', padding: '12px 20px', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
           <button onClick={() => handleNavigation('first')} style={{ padding: '6px 12px', background: '#f1f5f9', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>|◀</button>
           <button onClick={() => handleNavigation('prev')} style={{ padding: '6px 12px', background: '#f1f5f9', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>◀</button>
