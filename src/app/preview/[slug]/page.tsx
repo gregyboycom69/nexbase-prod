@@ -41,6 +41,8 @@ export default function PreviewAppPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [tableData, setTableData] = useState<any[]>([])
   const [currentRecordIndex, setCurrentRecordIndex] = useState(0)
+  const [currentRecordId, setCurrentRecordId] = useState<string | null>(null)
+  const [saveFeedback, setSaveFeedback] = useState<string | null>(null)
 
   useEffect(() => {
     loadWorkspace()
@@ -56,7 +58,8 @@ export default function PreviewAppPage() {
   useEffect(() => {
     // Update formData when currentRecordIndex changes
     if (tableData.length > 0 && currentRecordIndex >= 0 && currentRecordIndex < tableData.length) {
-      setFormData(tableData[currentRecordIndex])
+      setFormData(tableData[currentRecordIndex].data)
+      setCurrentRecordId(tableData[currentRecordIndex].id)
     }
   }, [currentRecordIndex, tableData])
 
@@ -104,6 +107,7 @@ export default function PreviewAppPage() {
       setTableData([])
       setCurrentRecordIndex(0)
       setFormData({})
+      setCurrentRecordId(null)
       return
     }
 
@@ -116,14 +120,15 @@ export default function PreviewAppPage() {
       .order('created_at', { ascending: true })
 
     if (data && data.length > 0) {
-      const records = data.map((row) => row.data)
-      setTableData(records)
+      setTableData(data)
       setCurrentRecordIndex(0)
-      setFormData(records[0])
+      setFormData(data[0].data)
+      setCurrentRecordId(data[0].id)
     } else {
       setTableData([])
       setCurrentRecordIndex(0)
       setFormData({})
+      setCurrentRecordId(null)
     }
   }
 
@@ -146,6 +151,7 @@ export default function PreviewAppPage() {
   const createNewRecord = () => {
     setFormData({})
     setCurrentRecordIndex(-1)
+    setCurrentRecordId(null)
   }
 
   const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info') => {
@@ -157,8 +163,103 @@ export default function PreviewAppPage() {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }
 
+  // FIX 20.6.2: Save action implementation
+  const handleSaveAction = async () => {
+    const activePage = pages.find((p) => p.id === activePageId)
+    if (!activePage?.record_source) {
+      showToast('No table configured for this form', 'error')
+      return
+    }
+
+    if (currentRecordId) {
+      // Update existing record
+      const { error } = await supabase
+        .from('app_data')
+        .update({ data: formData })
+        .eq('id', currentRecordId)
+
+      if (error) {
+        showToast('Save failed: ' + error.message, 'error')
+      } else {
+        setSaveFeedback('Saved!')
+        setTimeout(() => setSaveFeedback(null), 2000)
+        // Reload data to refresh the list
+        await loadPageData(activePageId!)
+      }
+    } else {
+      // Insert new record
+      const { data, error } = await supabase
+        .from('app_data')
+        .insert({
+          workspace_id: workspace.id,
+          table_name: activePage.record_source,
+          data: formData,
+        })
+        .select('id')
+        .single()
+
+      if (error) {
+        showToast('Save failed: ' + error.message, 'error')
+      } else {
+        setCurrentRecordId(data.id)
+        setSaveFeedback('Saved!')
+        setTimeout(() => setSaveFeedback(null), 2000)
+        // Reload data to refresh the list
+        await loadPageData(activePageId!)
+      }
+    }
+  }
+
+  // FIX 20.6.3: New action implementation
+  const handleNewAction = () => {
+    if (Object.keys(formData).length > 0 && !currentRecordId) {
+      if (!confirm('Discard unsaved changes?')) return
+    }
+    setFormData({})
+    setCurrentRecordId(null)
+    setCurrentRecordIndex(-1)
+    setSaveFeedback('New record')
+    setTimeout(() => setSaveFeedback(null), 2000)
+  }
+
+  // FIX 20.6.4: Delete action implementation
+  const handleDeleteAction = async () => {
+    if (!currentRecordId) {
+      showToast('No record loaded. Save first or load existing record.', 'warning')
+      return
+    }
+
+    if (!confirm('Delete this record? This cannot be undone.')) return
+
+    const { error } = await supabase
+      .from('app_data')
+      .delete()
+      .eq('id', currentRecordId)
+
+    if (error) {
+      showToast('Delete failed: ' + error.message, 'error')
+    } else {
+      setFormData({})
+      setCurrentRecordId(null)
+      setCurrentRecordIndex(-1)
+      setSaveFeedback('Deleted')
+      setTimeout(() => setSaveFeedback(null), 2000)
+      // Reload data to refresh the list
+      await loadPageData(activePageId!)
+    }
+  }
+
+  // FIX 20.6.1: Updated button click handler to support standard actions
   const handleButtonClick = async (ctrl: any) => {
-    if (ctrl.macro_steps && ctrl.macro_steps.length > 0) {
+    const action = ctrl.action
+
+    if (action === 'save') {
+      await handleSaveAction()
+    } else if (action === 'new') {
+      handleNewAction()
+    } else if (action === 'delete') {
+      await handleDeleteAction()
+    } else if (ctrl.macro_steps && ctrl.macro_steps.length > 0) {
       await runMacro(ctrl.macro_steps, {
         formData,
         setFormData,
@@ -398,6 +499,66 @@ export default function PreviewAppPage() {
       )
     }
 
+    // FIX 20.6.1: NavigationButtons control rendering with standard actions
+    if (ctrl.type === 'NavigationButtons') {
+      return (
+        <div style={{
+          display: 'flex',
+          gap: 8,
+          width: '100%',
+          height: '100%',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+        }}>
+          <button
+            onClick={() => handleButtonClick({ action: 'save' })}
+            style={{
+              padding: '6px 16px',
+              background: '#4f46e5',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            Save
+          </button>
+          <button
+            onClick={() => handleButtonClick({ action: 'new' })}
+            style={{
+              padding: '6px 16px',
+              background: '#10b981',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            New
+          </button>
+          <button
+            onClick={() => handleButtonClick({ action: 'delete' })}
+            style={{
+              padding: '6px 16px',
+              background: '#ef4444',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      )
+    }
+
     if (ctrl.type === 'Modal' && visibleModal === ctrl.id) {
       return (
         <div
@@ -572,6 +733,25 @@ export default function PreviewAppPage() {
     <div style={{ display: 'flex', height: '100vh', background: '#f3f4f6', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <Toast toasts={toasts} removeToast={removeToast} />
 
+      {/* FIX 20.6.6: Visual feedback for save actions */}
+      {saveFeedback && (
+        <div style={{
+          position: 'fixed',
+          top: 20,
+          right: 20,
+          background: '#10b981',
+          color: '#ffffff',
+          padding: '12px 20px',
+          borderRadius: 8,
+          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+          zIndex: 1000,
+          fontSize: 14,
+          fontWeight: 500,
+        }}>
+          ✓ {saveFeedback}
+        </div>
+      )}
+
       {/* Sidebar */}
       <div
         style={{
@@ -716,8 +896,14 @@ export default function PreviewAppPage() {
                 Last ▶|
               </button>
               <div style={{ width: 1, height: 24, background: '#e5e7eb', margin: '0 8px' }} />
-              <button onClick={createNewRecord} style={{ padding: '6px 14px', background: brandColor, color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                ➕ New Record
+              <button onClick={handleSaveAction} style={{ padding: '6px 14px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                💾 Save
+              </button>
+              <button onClick={createNewRecord} style={{ padding: '6px 14px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                ➕ New
+              </button>
+              <button onClick={handleDeleteAction} style={{ padding: '6px 14px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                🗑 Delete
               </button>
             </div>
           )}

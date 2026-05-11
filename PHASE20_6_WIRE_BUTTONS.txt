@@ -1,0 +1,294 @@
+NexBase - Phase 20.6 - Wire Up Form Action Buttons
+Project: C:\Users\gregy\Projects\07_Next GS
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL INSTRUCTIONS FOR CLAUDE CODE
+═══════════════════════════════════════════════════════════════════
+
+DO NOT SKIP. Real bugs from user testing.
+Single-line commit messages. No co-author trailers.
+Test locally before push.
+
+═══════════════════════════════════════════════════════════════════
+USER REPORTED ISSUE
+═══════════════════════════════════════════════════════════════════
+
+User tested Borrowers form in published app /app/ggg
+Datasheet works perfectly.
+But form buttons (Save, New, Delete) do nothing when clicked.
+
+Goal: Make standard CRUD buttons work in forms.
+Phase 1 of macro system - hardcoded standard actions.
+
+(Full macro wizard with custom actions comes later as separate 
+project, not in this phase.)
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.6.1 - SAVE BUTTON STANDARD ACTION
+═══════════════════════════════════════════════════════════════════
+
+When user clicks Save button in form:
+1. Collect all bound field values from form
+2. Insert into app_data table for that form's bound table
+3. Show success/error feedback
+4. Update internal currentRecordId for subsequent edits
+
+FILE: Wherever the form renders buttons (likely Form runtime 
+component). The button control needs to know it's a Save action.
+
+Approach: Add a "buttonAction" prop to Button controls.
+Standard values: 'save', 'new', 'delete', 'next', 'previous'
+
+When auto-generating NavigationButtons, set actions:
+- First button: { type: 'Button', props: { label: 'Save', buttonAction: 'save' }}
+- Second button: { type: 'Button', props: { label: 'New', buttonAction: 'new' }}
+- Third button: { type: 'Button', props: { label: 'Delete', buttonAction: 'delete' }}
+
+In form runtime, button onClick checks buttonAction:
+
+const handleButtonClick = async (ctrl) => {
+  const action = ctrl.props?.buttonAction
+  
+  if (action === 'save') {
+    await handleSaveAction()
+  } else if (action === 'new') {
+    handleNewAction()
+  } else if (action === 'delete') {
+    await handleDeleteAction()
+  } else if (action === 'next') {
+    handleNextRecord()
+  } else if (action === 'previous') {
+    handlePreviousRecord()
+  }
+}
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.6.2 - SAVE ACTION IMPLEMENTATION
+═══════════════════════════════════════════════════════════════════
+
+const handleSaveAction = async () => {
+  // Get form's bound table (form name should match table name 
+  // for auto-generated forms)
+  const tableName = activePage?.name || formName
+  
+  // Validate required fields
+  const requiredFields = fields.filter(f => 
+    f.required && f.type !== 'AutoNumber' && f.name !== 'id'
+  )
+  for (const field of requiredFields) {
+    if (!formValues[field.name]) {
+      alert(`${field.caption || field.name} is required`)
+      return
+    }
+  }
+  
+  if (currentRecordId) {
+    // Update existing record
+    const { error } = await supabase
+      .from('app_data')
+      .update({ data: formValues })
+      .eq('id', currentRecordId)
+    
+    if (error) {
+      alert('Save failed: ' + error.message)
+    } else {
+      // Brief visual feedback
+      setSaveFeedback('Saved!')
+      setTimeout(() => setSaveFeedback(null), 2000)
+    }
+  } else {
+    // Insert new record
+    const { data, error } = await supabase
+      .from('app_data')
+      .insert({
+        workspace_id: workspaceId,
+        table_name: tableName,
+        data: formValues,
+      })
+      .select('id')
+      .single()
+    
+    if (error) {
+      alert('Save failed: ' + error.message)
+    } else {
+      setCurrentRecordId(data.id)
+      setSaveFeedback('Saved!')
+      setTimeout(() => setSaveFeedback(null), 2000)
+    }
+  }
+}
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.6.3 - NEW ACTION IMPLEMENTATION
+═══════════════════════════════════════════════════════════════════
+
+const handleNewAction = () => {
+  // Confirm if unsaved changes
+  if (Object.keys(formValues).length > 0 && !currentRecordId) {
+    if (!confirm('Discard unsaved changes?')) return
+  }
+  
+  // Clear form
+  setFormValues({})
+  setCurrentRecordId(null)
+  setSaveFeedback('New record')
+  setTimeout(() => setSaveFeedback(null), 2000)
+}
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.6.4 - DELETE ACTION IMPLEMENTATION
+═══════════════════════════════════════════════════════════════════
+
+const handleDeleteAction = async () => {
+  if (!currentRecordId) {
+    alert('No record loaded. Save first or load existing record.')
+    return
+  }
+  
+  if (!confirm('Delete this record? This cannot be undone.')) return
+  
+  const { error } = await supabase
+    .from('app_data')
+    .delete()
+    .eq('id', currentRecordId)
+  
+  if (error) {
+    alert('Delete failed: ' + error.message)
+  } else {
+    setFormValues({})
+    setCurrentRecordId(null)
+    setSaveFeedback('Deleted')
+    setTimeout(() => setSaveFeedback(null), 2000)
+  }
+}
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.6.5 - FIELD INPUT BINDING
+═══════════════════════════════════════════════════════════════════
+
+Make sure form input controls update formValues state.
+
+For each TextBox/NumberBox/DatePicker etc. that binds to a field:
+
+<input
+  value={formValues[ctrl.props?.fieldName] || ''}
+  onChange={e => setFormValues({
+    ...formValues,
+    [ctrl.props?.fieldName]: e.target.value
+  })}
+  type={getInputType(ctrl.props?.fieldType)}
+  placeholder={ctrl.props?.placeholder || ''}
+/>
+
+Helper function:
+const getInputType = (fieldType: string) => {
+  switch (fieldType) {
+    case 'Number':
+    case 'Currency':
+      return 'number'
+    case 'Date/Time':
+      return 'date'
+    case 'Email':
+      return 'email'
+    case 'Phone':
+      return 'tel'
+    case 'URL':
+      return 'url'
+    default:
+      return 'text'
+  }
+}
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.6.6 - VISUAL FEEDBACK
+═══════════════════════════════════════════════════════════════════
+
+Add subtle save indicator to top of form:
+
+{saveFeedback && (
+  <div style={{
+    position: 'fixed',
+    top: 20,
+    right: 20,
+    background: '#10b981',
+    color: '#ffffff',
+    padding: '12px 20px',
+    borderRadius: 8,
+    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+    zIndex: 1000,
+    fontSize: 14,
+    fontWeight: 500,
+  }}>
+    ✓ {saveFeedback}
+  </div>
+)}
+
+═══════════════════════════════════════════════════════════════════
+FIX 20.6.7 - REMOVE DUPLICATE NAVIGATION BUTTONS (IF EXISTS)
+═══════════════════════════════════════════════════════════════════
+
+If user reports duplicate buttons - the auto-generated form 
+may have NavigationButtons control PLUS the form wrapper also 
+renders buttons.
+
+Check: src/components/form/FormRenderer.tsx (or similar)
+Look for any hardcoded button bar AT FORM LEVEL.
+Remove it - rely only on NavigationButtons control.
+
+═══════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+After deploy, on https://nexbase-inky.vercel.app/app/ggg:
+
+[ ] Open Borrowers form in published app
+[ ] Type values: name="Maria Santos", phone="+639123456789", 
+    loan_amount=5000, start_date=today, status="active"
+[ ] Click Save - see green "Saved!" notification
+[ ] Switch to Studio, click Borrowers table, view Datasheet
+[ ] See "Maria Santos" record in datasheet
+[ ] Go back to /app/ggg form
+[ ] Click New - form clears
+[ ] Add another record - Pedro Cruz
+[ ] Save - sees feedback
+[ ] Switch to Datasheet - both records visible
+[ ] Required field validation works (empty name shows alert)
+
+═══════════════════════════════════════════════════════════════════
+GIT COMMIT
+═══════════════════════════════════════════════════════════════════
+
+git add -A
+git commit -m "Phase 20.6: Wire up form action buttons (Save/New/Delete)"
+git push origin main
+
+Single line. No co-author trailers.
+
+═══════════════════════════════════════════════════════════════════
+DONE CRITERIA
+═══════════════════════════════════════════════════════════════════
+
+[ ] Save button persists data to app_data
+[ ] New button clears form
+[ ] Delete button removes record
+[ ] Visual feedback on each action
+[ ] Required field validation
+[ ] No duplicate buttons in form view
+[ ] Field input binding works
+[ ] Tested with REAL data on live site
+[ ] User can complete Borrower entry workflow
+
+═══════════════════════════════════════════════════════════════════
+FUTURE NOTE (NOT IN THIS PHASE)
+═══════════════════════════════════════════════════════════════════
+
+This is Phase 1 of buttons - standard hardcoded actions.
+
+Phase 2 (future, separate project): Macro Wizard
+- UI to configure custom button actions
+- Action library (save, delete, search, navigate, validate)
+- Conditions and branching
+- Bind macros to buttons
+- ~20-40 hours of work
+
+For now, standard CRUD actions cover 90% of use cases.
