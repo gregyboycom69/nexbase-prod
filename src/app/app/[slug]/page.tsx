@@ -848,37 +848,6 @@ export default function PublishedAppPage() {
               </div>
             )}
           </div>
-
-          {/* Navigation Bar - MS Access Style */}
-          {activePage?.record_source && (
-            <div style={{ background: '#fff', borderRadius: 8, padding: '8px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button onClick={goToFirstRecord} disabled={currentRecordIndex <= 0} style={{ padding: '6px 12px', background: currentRecordIndex <= 0 ? '#f3f4f6' : '#fff', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 12, cursor: currentRecordIndex <= 0 ? 'default' : 'pointer', color: currentRecordIndex <= 0 ? '#9ca3af' : '#1f2937' }}>
-                |◀ First
-              </button>
-              <button onClick={goToPreviousRecord} disabled={currentRecordIndex <= 0} style={{ padding: '6px 12px', background: currentRecordIndex <= 0 ? '#f3f4f6' : '#fff', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 12, cursor: currentRecordIndex <= 0 ? 'default' : 'pointer', color: currentRecordIndex <= 0 ? '#9ca3af' : '#1f2937' }}>
-                ◀ Previous
-              </button>
-              <div style={{ padding: '6px 12px', background: '#f9fafb', borderRadius: 6, fontSize: 12, color: '#6b7280', fontWeight: 600 }}>
-                {tableData.length > 0 ? (currentRecordIndex + 1) : 0} of {tableData.length}
-              </div>
-              <button onClick={goToNextRecord} disabled={currentRecordIndex >= tableData.length - 1} style={{ padding: '6px 12px', background: currentRecordIndex >= tableData.length - 1 ? '#f3f4f6' : '#fff', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 12, cursor: currentRecordIndex >= tableData.length - 1 ? 'default' : 'pointer', color: currentRecordIndex >= tableData.length - 1 ? '#9ca3af' : '#1f2937' }}>
-                Next ▶
-              </button>
-              <button onClick={goToLastRecord} disabled={currentRecordIndex >= tableData.length - 1} style={{ padding: '6px 12px', background: currentRecordIndex >= tableData.length - 1 ? '#f3f4f6' : '#fff', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 12, cursor: currentRecordIndex >= tableData.length - 1 ? 'default' : 'pointer', color: currentRecordIndex >= tableData.length - 1 ? '#9ca3af' : '#1f2937' }}>
-                Last ▶|
-              </button>
-              <div style={{ width: 1, height: 24, background: '#e5e7eb', margin: '0 8px' }} />
-              <button onClick={handleSaveAction} style={{ padding: '6px 14px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                💾 Save
-              </button>
-              <button onClick={createNewRecord} style={{ padding: '6px 14px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                ➕ New
-              </button>
-              <button onClick={handleDeleteAction} style={{ padding: '6px 14px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                🗑 Delete
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

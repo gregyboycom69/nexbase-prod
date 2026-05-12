@@ -753,7 +753,7 @@ function GenerateFormDialog({ onClose, onGenerate }: any) {
   const [includeSaveButton, setIncludeSaveButton] = useState(true)
   const [includeClearButton, setIncludeClearButton] = useState(true)
   const [includeDeleteButton, setIncludeDeleteButton] = useState(false)
-  const [includeNavBar, setIncludeNavBar] = useState(true)
+  const [includeNavBar, setIncludeNavBar] = useState(false)
   const [includeFormTitle, setIncludeFormTitle] = useState(true)
   const [includeSectionDividers, setIncludeSectionDividers] = useState(true)
 
@@ -1093,7 +1093,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     }
   }, [view, formProps.recordSource])
 
-  // FIX 1: Save all controls to Supabase
+  // FIX 20.12: Save all controls with DELETE-THEN-INSERT to prevent zombie controls
   async function saveAllControls(showSuccessToast = false) {
     console.log('💾 Saving all controls...', controls.length)
     console.log('currentPageId:', pageId)
@@ -1106,11 +1106,24 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
       return
     }
 
-    // Use UPSERT to save all controls
+    // Step 1: Delete ALL existing controls for this page (prevents zombie controls)
+    const { error: deleteError } = await supabase
+      .from('controls')
+      .delete()
+      .eq('page_id', pageId)
+
+    if (deleteError) {
+      console.error('❌ Delete error:', deleteError)
+      showToast('Save failed: ' + deleteError.message, 'error')
+      setSaveStatus('unsaved')
+      return
+    }
+
+    // Step 2: Insert ONLY controls in current state array
     if (controls.length > 0) {
-      const { error } = await supabase
+      const { error: insertError } = await supabase
         .from('controls')
-        .upsert(
+        .insert(
           controls.map((ctrl, index) => ({
             id: ctrl.id,
             page_id: pageId,
@@ -1123,26 +1136,23 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
             props: ctrl.props || {},
             macro_steps: ctrl.props?.steps || [],
             display_order: index,
-          })),
-          { onConflict: 'id' }
+          }))
         )
 
-      if (error) {
-        console.error('❌ Save error:', error)
-        showToast('Save failed: ' + error.message, 'error')
+      if (insertError) {
+        console.error('❌ Insert error:', insertError)
+        showToast('Save failed: ' + insertError.message, 'error')
         setSaveStatus('unsaved')
       } else {
         console.log('✅ All controls saved successfully')
-        // Only show success toast if manually saved (button click), not auto-save
         if (showSuccessToast) {
           showToast('Saved!', 'success')
         }
         setSaveStatus('saved')
-        // Keep "Saved ✓" indicator visible for 2 seconds
         setTimeout(() => setSaveStatus('saved'), 2000)
       }
     } else {
-      console.log('✅ No controls to save')
+      console.log('✅ No controls to save (all deleted)')
       setSaveStatus('saved')
     }
   }
@@ -3176,7 +3186,7 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
     )
   }
 
-  // FIX 20.4.1: Proper rendering for SectionHeader
+  // FIX 20.12: Proper rendering for SectionHeader with caption/title support
   if (ctrl.type === 'SectionHeader') {
     return (
       <div style={{
@@ -3186,7 +3196,7 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
         paddingBottom: 8,
         borderBottom: '1px solid #e2e8f0',
       }}>
-        {props.title && (
+        {(props.caption || props.title) && (
           <h3 style={{
             margin: 0,
             fontSize: 14,
@@ -3195,7 +3205,7 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
             textTransform: 'uppercase',
             letterSpacing: 0.5,
           }}>
-            {props.title}
+            {props.caption || props.title}
           </h3>
         )}
       </div>
