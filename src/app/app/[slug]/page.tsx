@@ -253,9 +253,14 @@ export default function PublishedAppPage() {
     }
   }
 
-  // FIX 20.6.1: Updated button click handler to support standard actions
+  // FIX 21.2: Button click handler with all standard actions
   const handleButtonClick = async (ctrl: any) => {
-    const action = ctrl.action
+    const action = ctrl.props?.action || ctrl.action || 'none'
+
+    if (action === 'none') {
+      showToast('This button has no action. Set Action property in designer.', 'warning')
+      return
+    }
 
     if (action === 'save') {
       await handleSaveAction()
@@ -263,15 +268,25 @@ export default function PublishedAppPage() {
       handleNewAction()
     } else if (action === 'delete') {
       await handleDeleteAction()
-    } else if (ctrl.macro_steps && ctrl.macro_steps.length > 0) {
-      await runMacro(ctrl.macro_steps, {
-        formData,
-        setFormData,
-        workspaceId: workspace.id,
-        showToast,
-        showModal: (id) => setVisibleModal(id),
-        hideModal: () => setVisibleModal(null),
-      })
+    } else if (action === 'first') {
+      if (tableData.length > 0) {
+        setCurrentRecordIndex(0)
+      }
+    } else if (action === 'previous') {
+      if (currentRecordIndex > 0) {
+        setCurrentRecordIndex(currentRecordIndex - 1)
+      }
+    } else if (action === 'next') {
+      if (currentRecordIndex < tableData.length - 1) {
+        setCurrentRecordIndex(currentRecordIndex + 1)
+      }
+    } else if (action === 'last') {
+      if (tableData.length > 0) {
+        setCurrentRecordIndex(tableData.length - 1)
+      }
+    } else if (action === 'refresh') {
+      await loadPageData(activePageId!)
+      showToast('Data refreshed', 'success')
     }
   }
 
@@ -343,7 +358,7 @@ export default function PublishedAppPage() {
             e.currentTarget.style.boxShadow = `0 4px 14px ${props.bg || ctrl.bg}55`
           }}
         >
-          {props.caption || ctrl.caption}
+          {props.label || props.caption || ctrl.caption || 'Button'}
         </button>
       )
     }

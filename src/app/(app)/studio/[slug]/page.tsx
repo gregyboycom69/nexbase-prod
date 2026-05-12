@@ -2683,6 +2683,8 @@ function ControlProperties({ control, tab, tables, queries, macros, recordSource
 
         {control.type === 'Button' && (
           <>
+            <PropRow label="Label" value={props.label || props.caption || 'Button'} onChange={(v: string) => onUpdate(control.id, 'label', v)} onBlur={onSave} />
+            <PropRow label="Action" value={props.action || 'none'} onChange={(v: string) => onUpdate(control.id, 'action', v)} type="select" options={['none', 'save', 'new', 'delete', 'first', 'previous', 'next', 'last', 'refresh']} onBlur={onSave} />
             <PropRow label="Default" value={props.isDefault ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'isDefault', v === 'Yes')} type="select" options={['Yes', 'No']} onBlur={onSave} />
             <PropRow label="Cancel" value={props.isCancel ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'isCancel', v === 'Yes')} type="select" options={['Yes', 'No']} onBlur={onSave} />
           </>
@@ -2915,23 +2917,45 @@ function FormView({ controls, formProps, formData, setFormData, records, current
   }
 
   async function handleButtonClick(ctrl: any) {
-    // FIX 20.4.2, 20.4.3, 20.4.4: Handle NavigationButtons actions
-    if (ctrl.action === 'save') {
+    // FIX 21: Button click handler with all standard actions (studio form view)
+    const action = ctrl.props?.action || ctrl.action || 'none'
+
+    if (action === 'none') {
+      showToast('This button has no action. Set Action property in designer.', 'warning')
+      return
+    }
+
+    if (action === 'save') {
       await handleSave()
-    } else if (ctrl.action === 'new') {
+    } else if (action === 'new') {
       handleNew()
-    } else if (ctrl.action === 'delete') {
+    } else if (action === 'delete') {
       await handleDelete()
-    } else if (ctrl.macro_steps && ctrl.macro_steps.length > 0) {
-      const { runMacro } = await import('@/lib/macroEngine')
-      await runMacro(ctrl.macro_steps, {
-        formData,
-        setFormData,
-        workspaceId: workspace.id,
-        showToast,
-      })
-    } else if (ctrl.props?.caption?.toLowerCase() === 'save') {
-      await handleSave()
+    } else if (action === 'first') {
+      if (records.length > 0) {
+        setCurrentRecordIndex(0)
+        setFormData(records[0].data)
+      }
+    } else if (action === 'previous') {
+      if (currentRecordIndex > 0) {
+        const newIndex = currentRecordIndex - 1
+        setCurrentRecordIndex(newIndex)
+        setFormData(records[newIndex].data)
+      }
+    } else if (action === 'next') {
+      if (currentRecordIndex < records.length - 1) {
+        const newIndex = currentRecordIndex + 1
+        setCurrentRecordIndex(newIndex)
+        setFormData(records[newIndex].data)
+      }
+    } else if (action === 'last') {
+      if (records.length > 0) {
+        const lastIndex = records.length - 1
+        setCurrentRecordIndex(lastIndex)
+        setFormData(records[lastIndex].data)
+      }
+    } else if (action === 'refresh') {
+      showToast('Refresh works in published app. Switch views to reload data here.', 'info')
     }
   }
 
@@ -3181,7 +3205,7 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
           cursor: 'pointer',
         }}
       >
-        {props.caption || 'Button'}
+        {props.label || props.caption || 'Button'}
       </button>
     )
   }

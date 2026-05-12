@@ -1,0 +1,234 @@
+NexBase - Phase 21 - Configurable Button Actions
+Project: C:\Users\gregy\Projects\07_Next GS
+
+═══════════════════════════════════════════════════════════════════
+CONTEXT
+═══════════════════════════════════════════════════════════════════
+
+In Phase 20.13 (Property Sheet toggle fix), user disabled the 
+auto-injected NavigationButtons by setting "Navigation Buttons: No" 
+on the form property.
+
+This removed the duplicate buttons issue, but now forms have NO 
+buttons. Users need to design their own buttons via the Button 
+control from toolbox.
+
+But currently, when you drag a Button, it does NOTHING when clicked.
+
+GOAL: Make Button controls configurable with standard actions.
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL RULES
+═══════════════════════════════════════════════════════════════════
+
+- DO NOT add custom JavaScript or eval() - security risk
+- DO NOT add complex macro engine - too big for one phase
+- DO NOT touch form auto-generation logic - just button rendering
+- Single-line commit messages
+- No co-author trailers
+- Test locally before push
+
+═══════════════════════════════════════════════════════════════════
+FIX 21.1 - ADD ACTION PROPERTY TO BUTTON CONTROL
+═══════════════════════════════════════════════════════════════════
+
+In the Property Sheet, when a Button is selected, show an 
+"Action" dropdown with these options:
+
+  - none (default)
+  - save
+  - new
+  - delete
+  - first
+  - previous
+  - next
+  - last
+  - refresh
+
+Find where Button properties are configured in:
+src/components/PropertySheet.tsx (or similar)
+
+Add this property field:
+
+<PropRow 
+  label="Action" 
+  value={ctrl.props?.action || 'none'} 
+  onChange={(v) => onUpdate('action', v)}
+  type="select"
+  options={[
+    { value: 'none', label: 'No action' },
+    { value: 'save', label: 'Save Record' },
+    { value: 'new', label: 'New Record' },
+    { value: 'delete', label: 'Delete Record' },
+    { value: 'first', label: 'First Record' },
+    { value: 'previous', label: 'Previous Record' },
+    { value: 'next', label: 'Next Record' },
+    { value: 'last', label: 'Last Record' },
+    { value: 'refresh', label: 'Refresh Data' },
+  ]}
+/>
+
+Also add a "Label" property if not present:
+<PropRow 
+  label="Label" 
+  value={ctrl.props?.label || 'Button'} 
+  onChange={(v) => onUpdate('label', v)}
+  type="text"
+/>
+
+═══════════════════════════════════════════════════════════════════
+FIX 21.2 - WIRE BUTTON ACTIONS IN PUBLISHED APP
+═══════════════════════════════════════════════════════════════════
+
+In src/app/app/[slug]/page.tsx
+
+The handleButtonClick function should handle all 9 action types.
+Look around line 250-270 where this exists.
+
+Update the function to handle all actions:
+
+const handleButtonClick = async (ctrl: any) => {
+  const action = ctrl.props?.action || 'none'
+  
+  if (action === 'none') {
+    showToast('This button has no action. Set Action property in designer.', 'warning')
+    return
+  }
+  
+  if (action === 'save') {
+    await handleSaveAction()
+  } else if (action === 'new') {
+    handleNewAction()
+  } else if (action === 'delete') {
+    await handleDeleteAction()
+  } else if (action === 'first') {
+    setCurrentRecordIndex(0)
+    loadRecordIntoForm(0)
+  } else if (action === 'previous') {
+    if (currentRecordIndex > 0) {
+      const newIndex = currentRecordIndex - 1
+      setCurrentRecordIndex(newIndex)
+      loadRecordIntoForm(newIndex)
+    }
+  } else if (action === 'next') {
+    if (currentRecordIndex < tableData.length - 1) {
+      const newIndex = currentRecordIndex + 1
+      setCurrentRecordIndex(newIndex)
+      loadRecordIntoForm(newIndex)
+    }
+  } else if (action === 'last') {
+    const lastIndex = tableData.length - 1
+    if (lastIndex >= 0) {
+      setCurrentRecordIndex(lastIndex)
+      loadRecordIntoForm(lastIndex)
+    }
+  } else if (action === 'refresh') {
+    await loadPageData(activePageId!)
+    showToast('Data refreshed', 'success')
+  }
+}
+
+Make sure loadRecordIntoForm function exists - it loads a 
+record's data into the form fields for editing.
+
+═══════════════════════════════════════════════════════════════════
+FIX 21.3 - RENDER BUTTON WITH PROPER LABEL
+═══════════════════════════════════════════════════════════════════
+
+When rendering a Button control, show the label from props:
+
+In src/app/app/[slug]/page.tsx (button rendering):
+
+if (ctrl.type === 'Button') {
+  return (
+    <button
+      onClick={() => handleButtonClick(ctrl)}
+      style={{
+        padding: '8px 16px',
+        background: ctrl.props?.bg || '#4f46e5',
+        color: ctrl.props?.color || '#ffffff',
+        border: 'none',
+        borderRadius: 6,
+        cursor: 'pointer',
+        fontSize: 14,
+        fontWeight: 500,
+      }}
+    >
+      {ctrl.props?.label || 'Button'}
+    </button>
+  )
+}
+
+Same for /preview/[slug]/page.tsx and studio Form View mode.
+
+═══════════════════════════════════════════════════════════════════
+FIX 21.4 - SAME ACTIONS IN PREVIEW
+═══════════════════════════════════════════════════════════════════
+
+Apply the same handleButtonClick logic to:
+src/app/preview/[slug]/page.tsx
+
+Should work identically to published app.
+
+═══════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+User will test:
+
+[ ] Open studio - Borrowers form
+[ ] Drag Button from toolbox into form
+[ ] Click on the Button to select it
+[ ] Property Sheet shows "Action" dropdown
+[ ] Property Sheet shows "Label" text input
+[ ] Set Label to "Save Record"
+[ ] Set Action to "Save"
+[ ] Click Save Form
+[ ] Drag another Button
+[ ] Set Label to "New" and Action to "New"
+[ ] Drag another Button
+[ ] Set Label to "Delete" and Action to "Delete"
+[ ] Drag 4 more buttons for: First, Previous, Next, Last
+[ ] Save Form
+[ ] Visit /app/ggg
+[ ] Form shows 7 buttons with proper labels
+[ ] Fill in name, click "Save Record" - record saves
+[ ] Click "New" - form clears
+[ ] Fill another record, save
+[ ] Click "Previous" - loads previous record
+[ ] Click "Next" - loads next record
+[ ] Click "Last" - jumps to last
+[ ] Click "Delete" - removes record after confirm
+
+═══════════════════════════════════════════════════════════════════
+GIT COMMIT
+═══════════════════════════════════════════════════════════════════
+
+git add -A
+git commit -m "Phase 21: Configurable button actions with standard CRUD operations"
+git push origin main
+
+Single line. No co-author trailers.
+
+═══════════════════════════════════════════════════════════════════
+DONE CRITERIA
+═══════════════════════════════════════════════════════════════════
+
+[ ] Button control has Action property in Property Sheet
+[ ] Action dropdown has 9 options (none + 8 actions)
+[ ] Button control has editable Label property
+[ ] Clicking button executes the chosen action
+[ ] All 8 actions work correctly
+[ ] Tested on live published app
+[ ] User can build a fully functional form with buttons
+
+═══════════════════════════════════════════════════════════════════
+FUTURE (NOT IN THIS PHASE)
+═══════════════════════════════════════════════════════════════════
+
+Phase 22+: Search action (requires search UI design)
+Phase 23+: Custom actions (filter, navigate to other form, print)
+Phase 24+: Macro builder UI (multi-step actions)
+Phase 25+: Conditional logic (if X then Y)
+
+DO NOT add these in Phase 21. Just the 8 standard actions.
