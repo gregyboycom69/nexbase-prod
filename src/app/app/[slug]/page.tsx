@@ -43,6 +43,8 @@ export default function PublishedAppPage() {
   const [currentRecordIndex, setCurrentRecordIndex] = useState(0)
   const [currentRecordId, setCurrentRecordId] = useState<string | null>(null)
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null)
+  const [showPopup, setShowPopup] = useState(false)
+  const [popupPageId, setPopupPageId] = useState<string | null>(null)
 
   useEffect(() => {
     loadWorkspace()
@@ -287,6 +289,23 @@ export default function PublishedAppPage() {
     } else if (action === 'refresh') {
       await loadPageData(activePageId!)
       showToast('Data refreshed', 'success')
+    } else if (action === 'openForm') {
+      const targetFormSlug = ctrl.props?.targetForm
+      if (!targetFormSlug) {
+        showToast('No target form configured for this button', 'warning')
+        return
+      }
+
+      // Find the popup form by slug
+      const targetForm = pages.find((p: any) => p.slug === targetFormSlug)
+      if (!targetForm) {
+        showToast(`Form "${targetFormSlug}" not found`, 'error')
+        return
+      }
+
+      // Set state to show the popup form
+      setPopupPageId(targetForm.id)
+      setShowPopup(true)
     }
   }
 
@@ -791,7 +810,7 @@ export default function PublishedAppPage() {
         </div>
 
         <div style={{ flex: 1, padding: '12px 0', overflow: 'auto' }}>
-          {pages.map((page) => (
+          {pages.filter(page => page.form_type !== 'popup').map((page) => (
             <button
               key={page.id}
               onClick={() => setActivePageId(page.id)}
@@ -933,6 +952,172 @@ export default function PublishedAppPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Popup overlay triggered by button action */}
+      {showPopup && popupPageId && (
+        <PopupFormOverlay
+          pageId={popupPageId}
+          workspace={workspace}
+          pages={pages}
+          onClose={() => {
+            setShowPopup(false)
+            setPopupPageId(null)
+            // Refresh main page data after popup closes
+            if (activePageId) {
+              loadPageData(activePageId)
+            }
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// Popup Form Overlay Component
+function PopupFormOverlay({ pageId, workspace, pages, onClose }: any) {
+  const supabase = createClient()
+  const [controls, setControls] = useState<any[]>([])
+  const [formData, setFormData] = useState<Record<string, any>>({})
+  const [loading, setLoading] = useState(true)
+
+  const popupPage = pages.find((p: any) => p.id === pageId)
+
+  useEffect(() => {
+    loadPopupControls()
+  }, [pageId])
+
+  const loadPopupControls = async () => {
+    const { data } = await supabase
+      .from('controls')
+      .select('*')
+      .eq('page_id', pageId)
+      .order('created_at', { ascending: true })
+
+    setControls(data || [])
+    setLoading(false)
+  }
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData({ ...formData, [field]: value })
+  }
+
+  const handleSave = async () => {
+    if (!popupPage?.record_source) return
+
+    const { error } = await supabase
+      .from('app_data')
+      .insert({
+        workspace_id: workspace.id,
+        table_name: popupPage.record_source,
+        data: formData,
+      })
+
+    if (error) {
+      alert('Save failed: ' + error.message)
+    } else {
+      onClose() // Close popup after save
+    }
+  }
+
+  const renderControl = (ctrl: any) => {
+    const props = ctrl.props || {}
+    const controlSource = props.controlSource || ctrl.fieldKey
+
+    if (ctrl.type === 'Label') {
+      return <div style={{ display: 'flex', alignItems: 'center', fontSize: props.fontSize || 13, fontWeight: props.bold ? 700 : 400, fontStyle: props.italic ? 'italic' : 'normal', color: props.color || '#374151' }}>{props.caption || 'Label'}</div>
+    }
+
+    if (ctrl.type === 'TextBox') {
+      return (
+        <input
+          type="text"
+          placeholder={props.placeholder}
+          value={formData[controlSource] || ''}
+          onChange={(e) => handleInputChange(controlSource, e.target.value)}
+          style={{ width: ctrl.w, height: ctrl.h, padding: '0 12px', border: '1.5px solid #e2e8f0', borderRadius: 6, fontSize: props.fontSize || 14, outline: 'none' }}
+        />
+      )
+    }
+
+    if (ctrl.type === 'Button') {
+      const isS aveButton = props.action === 'save'
+      return (
+        <button
+          onClick={isS aveButton ? handleSave : undefined}
+          style={{ width: ctrl.w, height: ctrl.h, background: props.bg || '#4f46e5', color: '#fff', border: 'none', borderRadius: 6, fontSize: props.fontSize || 14, cursor: 'pointer', fontWeight: 500 }}
+        >
+          {props.caption || 'Button'}
+        </button>
+      )
+    }
+
+    return <div style={{ fontSize: 11, color: '#9ca3af' }}>{ctrl.type}</div>
+  }
+
+  if (loading) return null
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 2000,
+        padding: 24,
+      }}
+    >
+      <div
+        style={{
+          background: '#ffffff',
+          borderRadius: 12,
+          padding: 32,
+          maxWidth: 600,
+          width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.25)',
+          position: 'relative',
+          minHeight: 400,
+        }}
+      >
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            background: 'transparent',
+            border: 'none',
+            fontSize: 24,
+            cursor: 'pointer',
+            color: '#64748b',
+            lineHeight: 1,
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          ×
+        </button>
+
+        {/* Form content */}
+        {controls.map((ctrl) => (
+          <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+            {renderControl(ctrl)}
+          </div>
+        ))}
+        {controls.length === 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: '#9ca3af', fontSize: 14 }}>
+            No controls on this form
+          </div>
+        )}
       </div>
     </div>
   )
