@@ -22,7 +22,9 @@
       "Bash(npx tsc:*)",
       "Bash(git config:*)",
       "Bash(npx tsx:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git diff:*)",
+      "Bash(git reset:*)"
     ]
   }
 }

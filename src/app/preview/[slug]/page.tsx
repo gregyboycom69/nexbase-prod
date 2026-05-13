@@ -83,7 +83,13 @@ export default function PreviewAppPage() {
 
     if (pgs && pgs.length > 0) {
       setPages(pgs)
-      setActivePageId(pgs[0].id)
+      // Filter out popup forms for initial page load
+      const regularPages = pgs.filter(p => p.form_type !== 'popup')
+      if (regularPages.length > 0) {
+        setActivePageId(regularPages[0].id)
+      } else if (pgs.length > 0) {
+        setActivePageId(pgs[0].id)
+      }
     }
 
     setLoading(false)

@@ -1,0 +1,213 @@
+NexBase - Phase 22.8 - Popup Bug Fixes
+Project: C:\Users\gregy\Projects\07_Next GS
+
+═══════════════════════════════════════════════════════════════════
+CONTEXT
+═══════════════════════════════════════════════════════════════════
+
+Phase 22.6 implemented popup forms successfully but has 2 bugs:
+
+1. POPUP AUTO-OPENS ON PAGE LOAD
+   - User visits /app/ggg
+   - Popup form appears IMMEDIATELY without user action
+   - Should only appear when button with action='openForm' is clicked
+   - User should see main form (Borrowers) first
+
+2. X CLOSE BUTTON DOESN'T WORK
+   - Modal has X button in top right
+   - Clicking X does nothing
+   - User cannot dismiss the popup
+   - Must refresh page as workaround
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════
+
+DO NOT add other features. ONLY these 2 specific fixes.
+Single-line commit messages. No co-author trailers.
+
+CRITICAL: Run `npm run build` LOCALLY before pushing.
+The last popup phase had a typo "isS aveButton" that broke 
+production build. Verify no syntax errors before commit.
+
+═══════════════════════════════════════════════════════════════════
+FIX 22.8.1 - POPUP SHOULD NOT AUTO-OPEN
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+When user visits /app/ggg, the popup form appears automatically.
+
+ROOT CAUSE LIKELY:
+The published app probably loads the FIRST page from forms[] 
+including popup forms. If first form is popup_type, modal opens.
+
+OR: The state showPopup might initialize to true.
+
+OR: The activePageId might point to a popup form by default.
+
+INVESTIGATE:
+src/app/app/[slug]/page.tsx
+
+Look for:
+- Initial state of showPopup
+- Logic that sets activePageId on mount
+- useEffect that opens popup
+
+FIX:
+1. Make sure showPopup state starts as false:
+   const [showPopup, setShowPopup] = useState(false)
+
+2. Filter out popup forms when setting initial active page:
+   const regularForms = forms.filter(f => f.form_type !== 'popup')
+   const firstForm = regularForms[0]
+   if (firstForm) setActivePageId(firstForm.id)
+
+3. NEVER auto-show popups on page load.
+   Popup state should ONLY change when:
+   - User clicks button with action='openForm'
+   - User explicitly navigates to popup form URL
+
+4. If page initially loads a popup form (edge case),
+   redirect to first regular form instead.
+
+═══════════════════════════════════════════════════════════════════
+FIX 22.8.2 - X CLOSE BUTTON FUNCTIONALITY
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+The X button in top right of modal doesn't close the popup.
+
+INVESTIGATE:
+Find popup modal rendering in:
+src/app/app/[slug]/page.tsx
+src/app/preview/[slug]/page.tsx
+
+Look for the X button. It should look like:
+<button onClick={...}>×</button>
+
+Common bugs:
+A. onClick handler missing
+B. onClick uses wrong state setter
+C. Button is rendered behind another element (z-index issue)
+D. Event propagation stopped somewhere
+
+FIX:
+Ensure X button properly closes popup:
+
+<button
+  onClick={(e) => {
+    e.stopPropagation()
+    setShowPopup(false)
+    setPopupFormSlug(null)
+  }}
+  style={{
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    background: 'transparent',
+    border: 'none',
+    fontSize: 24,
+    cursor: 'pointer',
+    color: '#64748b',
+    zIndex: 10001,  // Higher than modal content
+    width: 32,
+    height: 32,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+  }}
+  onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+  onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+  aria-label="Close"
+>
+  ×
+</button>
+
+Also add ESC key handler to close:
+
+useEffect(() => {
+  const handleEsc = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && showPopup) {
+      setShowPopup(false)
+      setPopupFormSlug(null)
+    }
+  }
+  window.addEventListener('keydown', handleEsc)
+  return () => window.removeEventListener('keydown', handleEsc)
+}, [showPopup])
+
+Also: clicking the dark backdrop should close popup:
+
+<div 
+  onClick={(e) => {
+    if (e.target === e.currentTarget) {
+      setShowPopup(false)
+      setPopupFormSlug(null)
+    }
+  }}
+  style={{ position: 'fixed', inset: 0, ... }}
+>
+  <div onClick={(e) => e.stopPropagation()}>
+    {/* Modal content - clicking here doesn't close */}
+  </div>
+</div>
+
+═══════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+AUTO-OPEN BUG:
+[ ] Visit /app/ggg in fresh incognito tab
+[ ] Borrowers form loads (NOT popup)
+[ ] No modal overlay appears automatically
+[ ] No backdrop visible
+
+CLOSE BUTTON:
+[ ] Have a button with Action='openForm', Target='pop'
+[ ] Click that button
+[ ] Popup modal appears
+[ ] Click X button in top right
+[ ] Modal closes
+[ ] Returns to Borrowers form
+[ ] Press ESC after opening popup
+[ ] Modal closes via ESC
+[ ] Click dark backdrop (outside modal)
+[ ] Modal closes
+
+═══════════════════════════════════════════════════════════════════
+GIT COMMIT
+═══════════════════════════════════════════════════════════════════
+
+CRITICAL: Test locally first:
+cd "C:\Users\gregy\Projects\07_Next GS"
+npm run build
+
+If build succeeds (no syntax errors):
+git add -A
+git commit -m "Phase 22.8: Fix popup auto-open on load and X close button functionality"
+git push origin main
+
+If build fails: review errors, fix, retry. DO NOT push broken code.
+
+═══════════════════════════════════════════════════════════════════
+DONE CRITERIA
+═══════════════════════════════════════════════════════════════════
+
+[ ] Popup does NOT auto-open on /app/ggg
+[ ] X button closes popup
+[ ] ESC key closes popup
+[ ] Click backdrop closes popup
+[ ] Click inside modal does NOT close (so user can interact)
+[ ] No build errors
+[ ] All tested on live site
+
+═══════════════════════════════════════════════════════════════════
+NOT IN THIS PHASE
+═══════════════════════════════════════════════════════════════════
+
+- Phase 22.7 redundant property cleanup (separate phase)
+- Branding system (Phase 23)
+- New features
+
+Just these 2 popup bugs.

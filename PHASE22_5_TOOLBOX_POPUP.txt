@@ -1,0 +1,275 @@
+NexBase - Phase 22.5 - Fix Toolbox Scroll + Popup Forms
+Project: C:\Users\gregy\Projects\07_Next GS
+
+═══════════════════════════════════════════════════════════════════
+CONTEXT
+═══════════════════════════════════════════════════════════════════
+
+Phase 22 successfully fixed 4 out of 5 bugs:
+✅ Label color in Design View - WORKS
+✅ Italic property - WORKS
+✅ Other properties tab - WORKS
+✅ Canvas scrolling - WORKS
+❌ Toolbox scrolling - STILL BROKEN
+
+Plus a NEW issue discovered:
+❌ Form type "popup" exists in create form dropdown but doesn't 
+   actually render as popup/modal when used
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════
+
+DO NOT add other features. ONLY fix these 2 specific bugs.
+Single-line commit messages. No co-author trailers.
+Test locally before push.
+
+═══════════════════════════════════════════════════════════════════
+FIX 22.5.1 - TOOLBOX SCROLLING
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+The toolbox panel on left side of form designer contains:
+- BASIC group: Select, Label, Heading, TextBox, Button
+- INPUTS group: ComboBox, CheckBox, DatePicker, NumberBox
+- More groups below (LAYOUT, ADVANCED, etc.)
+
+User can see only the top items. Cannot scroll to reach 
+controls below. Toolbox does not have working overflow scroll.
+
+INVESTIGATE:
+src/app/(app)/studio/[slug]/page.tsx
+
+Find the container that renders the toolbox. It uses CONTROL_TYPES 
+array. Look for the parent div that wraps these controls.
+
+The container probably looks like:
+<div style={{ width: 80, background: '#fff', ... }}>
+  {CONTROL_TYPES.map(ctrl => (
+    <div>{ctrl.name}</div>
+  ))}
+</div>
+
+FIX:
+Add overflow scrolling to the toolbox container:
+
+<div style={{ 
+  width: 80, 
+  background: '#fff',
+  height: '100%',                    // KEY: fixed height
+  overflowY: 'auto',                  // KEY: enable scroll
+  overflowX: 'hidden',
+  scrollbarWidth: 'thin',             // Firefox thin scrollbar
+  paddingRight: 2,                    // Space for scrollbar
+}}>
+  {CONTROL_TYPES.map(...)}
+</div>
+
+Make sure parent container does NOT have overflow: hidden 
+preventing the scroll.
+
+Also add webkit scrollbar styling for Chrome/Edge:
+
+style={{
+  // ... existing
+}}
+className="toolbox-scroll"
+
+Then in a style tag or global CSS:
+.toolbox-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.toolbox-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+.toolbox-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+TEST:
+1. Open form designer
+2. Look at toolbox on left
+3. Try scrolling inside it
+4. See ALL controls (BASIC, INPUTS, LAYOUT, ADVANCED, etc.)
+
+═══════════════════════════════════════════════════════════════════
+FIX 22.5.2 - POPUP/MODAL FORM RENDERING
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+When creating a new form, user can select "Popup / Modal" as 
+form_type. The option exists in the dropdown:
+
+<option value="popup">Popup / Modal - opens as dialog over another form</option>
+
+BUT when the form is published with form_type='popup', it doesn't 
+render as a popup. It just shows as a normal full-page form.
+
+INVESTIGATE:
+The form_type is stored in pages table (probably page.form_type 
+or page.type or similar column).
+
+Need to check:
+- src/app/app/[slug]/page.tsx - published app renderer
+- src/app/preview/[slug]/page.tsx - preview renderer
+
+Look at how forms are rendered. Currently probably renders all 
+forms as full-page regardless of form_type.
+
+FIX:
+Check form_type and render accordingly.
+
+In src/app/app/[slug]/page.tsx, before rendering form content:
+
+const formType = activePage?.form_type || 'single'
+
+if (formType === 'popup' || formType === 'modal') {
+  // Render as modal overlay
+  return (
+    <>
+      {/* Background/parent form context */}
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: 24,
+      }}>
+        <div style={{
+          background: '#ffffff',
+          borderRadius: 12,
+          padding: 32,
+          maxWidth: 600,
+          width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.25)',
+          position: 'relative',
+        }}>
+          {/* Close button */}
+          <button
+            onClick={() => {
+              // Close popup - go back to previous form/dashboard
+              window.history.back()
+            }}
+            style={{
+              position: 'absolute',
+              top: 16,
+              right: 16,
+              background: 'transparent',
+              border: 'none',
+              fontSize: 24,
+              cursor: 'pointer',
+              color: '#64748b',
+            }}
+          >
+            ×
+          </button>
+          
+          {/* Form content */}
+          {renderFormContent()}
+        </div>
+      </div>
+    </>
+  )
+}
+
+// Otherwise render normally
+return renderFormContent()
+
+Apply SAME logic in:
+- src/app/preview/[slug]/page.tsx
+- src/app/(app)/studio/[slug]/page.tsx (Form View mode)
+
+═══════════════════════════════════════════════════════════════════
+FIX 22.5.3 - VERIFY FORM_TYPE IS SAVED
+═══════════════════════════════════════════════════════════════════
+
+When user creates a form with form_type='popup', verify it's 
+actually saved to the database.
+
+Check the create form function:
+- Does it save form_type field?
+- Is it in the INSERT statement?
+
+In src/app/(app)/studio/[slug]/page.tsx, find where forms are created:
+
+const { data, error } = await supabase
+  .from('pages')
+  .insert({
+    workspace_id: workspace.id,
+    name: formName,
+    slug: formSlug,
+    record_source: bindToTable || null,
+    published: false,
+    form_type: formType,          // <- ADD if missing
+  })
+
+If form_type column doesn't exist in pages table, add via migration:
+
+ALTER TABLE pages 
+ADD COLUMN IF NOT EXISTS form_type TEXT DEFAULT 'single';
+
+(Run this manually in Supabase SQL editor if needed)
+
+═══════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+TOOLBOX SCROLL:
+[ ] Open /studio/ggg → Borrowers form
+[ ] Look at toolbox on left
+[ ] Try to scroll inside it
+[ ] See all controls (scroll down through BASIC, INPUTS, etc.)
+[ ] Cursor changes when over scrollbar
+[ ] Smooth scrolling
+
+POPUP FORM:
+[ ] Click + next to FORMS
+[ ] Create new form
+[ ] Select Form Type: "Popup / Modal"
+[ ] Name it "Quick Add Borrower"
+[ ] Save the form
+[ ] Open published app /app/ggg
+[ ] Click on "Quick Add Borrower" in sidebar
+[ ] Form should appear as MODAL overlay (not full page)
+[ ] See dark backdrop behind it
+[ ] X button in top right to close
+[ ] Close modal returns to previous view
+
+═══════════════════════════════════════════════════════════════════
+GIT COMMIT
+═══════════════════════════════════════════════════════════════════
+
+git add -A
+git commit -m "Phase 22.5: Fix toolbox scroll and implement popup form rendering"
+git push origin main
+
+Single line. No co-author trailers.
+
+═══════════════════════════════════════════════════════════════════
+DONE CRITERIA
+═══════════════════════════════════════════════════════════════════
+
+[ ] Toolbox scrolls to show all controls
+[ ] Popup form type renders as actual modal overlay
+[ ] Has dark backdrop
+[ ] Has close button
+[ ] Form_type saves to database properly
+[ ] Tested on live site
+[ ] No new features added
+
+═══════════════════════════════════════════════════════════════════
+NOT IN THIS PHASE
+═══════════════════════════════════════════════════════════════════
+
+- Branding/theme system (Phase 23)
+- Other form types (Continuous, Split, Datasheet renderings)
+- Paint brush button
+- Macro wizard
+
+Just 2 fixes. Toolbox scroll + Popup form.

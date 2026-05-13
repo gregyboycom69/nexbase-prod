@@ -1,0 +1,366 @@
+NexBase - Phase 22 - Fix Design View Bugs (v2)
+Project: C:\Users\gregy\Projects\07_Next GS
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════
+
+DO NOT add new features. ONLY fix the 5 specific bugs listed.
+Single-line commit messages. No co-author trailers.
+Test locally before push.
+
+═══════════════════════════════════════════════════════════════════
+BUGS REPORTED BY USER TESTING
+═══════════════════════════════════════════════════════════════════
+
+1. Label control color set in Property Sheet doesn't show in 
+   Design View (only shows in Form View after save)
+   
+2. Italic text styling doesn't apply (Bold works fine)
+
+3. "Other" properties tab in Form design is BLANK 
+   (Format/Data/Event tabs have content, Other is empty)
+
+4. Toolbox panel (left side) can't scroll - can't access all controls
+   - User can see: Select, Label, Heading, TextBox, Button, ComboBox, 
+     CheckBox, DatePicker, NumberBox (visible)
+   - User CANNOT scroll to see other controls below
+
+5. Form canvas can't scroll - can't access Form Footer area
+   - Form Header is visible at top
+   - Detail section visible
+   - Form Footer is below the fold
+   - User cannot scroll down to design/access the footer
+
+═══════════════════════════════════════════════════════════════════
+FIX 22.1 - LABEL COLOR IN DESIGN VIEW
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+When user sets color on a Label control via Property Sheet,
+the change DOES save, but it doesn't show in Design View.
+Only shows after switching to Form View.
+
+INVESTIGATE:
+src/app/(app)/studio/[slug]/page.tsx or 
+src/components/controls/CtrlRender.tsx
+
+Find where Label is rendered in Design View vs Form View.
+Look for: if (ctrl.type === 'Label')
+
+The Design View rendering probably ignores ctrl.props.color or 
+uses a hardcoded color.
+
+FIX:
+Ensure Design View renders Label with the SAME styling as 
+Form View:
+
+if (ctrl.type === 'Label') {
+  return (
+    <span style={{
+      color: ctrl.props?.color || '#374151',
+      fontSize: ctrl.props?.fontSize || 14,
+      fontWeight: ctrl.props?.bold ? 700 : 400,
+      fontStyle: ctrl.props?.italic ? 'italic' : 'normal',
+      textDecoration: ctrl.props?.underline ? 'underline' : 'none',
+    }}>
+      {ctrl.props?.text || ctrl.props?.caption || 'Label'}
+    </span>
+  )
+}
+
+Make sure this rendering is identical in BOTH Design View 
+and Form View. Currently they likely differ.
+
+═══════════════════════════════════════════════════════════════════
+FIX 22.2 - ITALIC NOT WORKING
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+Bold property works correctly.
+Italic property doesn't apply to text.
+
+INVESTIGATE:
+Find where Bold is implemented (it works) and check if 
+Italic has the same logic.
+
+Search for "bold" or "italic" in:
+- src/components/PropertySheet.tsx (property UI)
+- src/app/(app)/studio/[slug]/page.tsx (rendering)
+- src/components/controls/CtrlRender.tsx (control renderer)
+
+Common bug:
+fontWeight: ctrl.props?.bold ? 700 : 400,   // works
+fontStyle: ctrl.props?.italic ? 'italic' : 'normal',  // missing!
+
+FIX:
+Wherever Bold is applied via fontWeight, also apply Italic 
+via fontStyle. Apply this to:
+- Label
+- Heading
+- TextBox text
+- Button text
+- Any other text control
+
+Make sure Italic property exists in Property Sheet for all 
+these controls.
+
+═══════════════════════════════════════════════════════════════════
+FIX 22.3 - OTHER PROPERTIES TAB IS BLANK
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+When Form is selected, Property Sheet shows tabs:
+- Format - has properties
+- Data - has properties
+- Event - has properties
+- Other - BLANK / EMPTY
+
+INVESTIGATE:
+Find Property Sheet component:
+src/components/PropertySheet.tsx
+
+Look for the "Other" tab rendering.
+
+It's probably empty because no properties are categorized 
+as "other" yet.
+
+FIX:
+Add useful "Other" properties for Form:
+
+Form "Other" tab should include:
+- Record Source (which table)
+- Default View (single/continuous)
+- Allow Edits (yes/no)
+- Allow Deletions (yes/no)
+- Allow Additions (yes/no)
+- Auto Save (yes/no)
+- Form Type (single/popup/modal)
+- Default Sort Field
+- Default Sort Direction
+
+Example UI:
+
+<PropRow 
+  label="Record Source" 
+  value={formProps.recordSource || ''} 
+  onChange={(v) => onUpdate('recordSource', v)}
+  type="select"
+  options={tables.map(t => ({ value: t.name, label: t.name }))}
+/>
+
+<PropRow 
+  label="Default View" 
+  value={formProps.defaultView || 'single'} 
+  onChange={(v) => onUpdate('defaultView', v)}
+  type="select"
+  options={[
+    { value: 'single', label: 'Single record' },
+    { value: 'continuous', label: 'Continuous (list)' },
+  ]}
+/>
+
+<PropRow 
+  label="Allow Edits" 
+  value={formProps.allowEdits ?? true} 
+  onChange={(v) => onUpdate('allowEdits', v)}
+  type="boolean"
+/>
+
+<PropRow 
+  label="Allow Deletions" 
+  value={formProps.allowDeletions ?? true} 
+  onChange={(v) => onUpdate('allowDeletions', v)}
+  type="boolean"
+/>
+
+<PropRow 
+  label="Allow Additions" 
+  value={formProps.allowAdditions ?? true} 
+  onChange={(v) => onUpdate('allowAdditions', v)}
+  type="boolean"
+/>
+
+═══════════════════════════════════════════════════════════════════
+FIX 22.4 - TOOLBOX SCROLLING
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+The toolbox (left panel) in form designer shows controls like:
+Select, Label, Heading, TextBox, Button, ComboBox, CheckBox, 
+DatePicker, NumberBox, etc.
+
+The toolbox panel has fixed height and CANNOT scroll.
+User cannot access controls that are below the visible area.
+
+INVESTIGATE:
+Find the toolbox component in:
+src/app/(app)/studio/[slug]/page.tsx
+Or src/components/Toolbox.tsx (if separate component)
+
+Look for the container div that holds all controls.
+It probably has:
+- Fixed height
+- overflow: hidden (or no overflow set)
+
+FIX:
+Make the toolbox scrollable:
+
+<div style={{
+  // existing styles
+  overflowY: 'auto',           // Add vertical scroll
+  maxHeight: 'calc(100vh - 200px)',  // Adjust height
+  // OR
+  height: '100%',
+  paddingRight: 4,              // Space for scrollbar
+}}>
+  {/* Toolbox controls */}
+</div>
+
+Make sure scroll only appears when content overflows (not always).
+
+Add scrollbar styling for clean look:
+
+style={{
+  overflowY: 'auto',
+  scrollbarWidth: 'thin',
+  scrollbarColor: '#cbd5e1 transparent',
+}}
+
+And/or via CSS:
+.toolbox::-webkit-scrollbar {
+  width: 6px;
+}
+.toolbox::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+.toolbox::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+═══════════════════════════════════════════════════════════════════
+FIX 22.5 - FORM CANVAS SCROLLING
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+Form designer canvas shows:
+- Form Header section (top)
+- Detail section (middle)
+- Form Footer section (bottom)
+
+User CANNOT scroll the canvas to access Form Footer.
+The footer is below the viewport and can't be reached.
+
+INVESTIGATE:
+Find the form canvas container in:
+src/app/(app)/studio/[slug]/page.tsx
+
+Look for the main design area where controls are placed.
+The container should have:
+- Set height (not auto)
+- overflow-y: auto
+
+FIX:
+Make the form canvas scrollable:
+
+<div style={{
+  flex: 1,
+  height: '100%',
+  overflowY: 'auto',          // KEY FIX: enable scroll
+  overflowX: 'auto',          // Horizontal too if needed
+  background: '#f8fafc',
+  padding: 20,
+}}>
+  {/* Form Header */}
+  {/* Detail Section */}
+  {/* Form Footer */}
+</div>
+
+Make sure the parent containers don't have overflow: hidden 
+that prevents this scroll from working.
+
+Verify:
+- Form Header visible at top
+- Detail section in middle
+- User can scroll down
+- Form Footer (60px) becomes visible after scroll
+- Can click on Form Footer to add controls there
+
+Add same scrollable styling as toolbox.
+
+═══════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+After deploy:
+
+[ ] Open /studio/ggg → Borrowers form
+
+LABEL COLOR TEST:
+[ ] Click a Label control
+[ ] Set color to red in Property Sheet
+[ ] Click Save Form  
+[ ] Color shows IMMEDIATELY in Design View (not just Form View)
+
+ITALIC TEST:
+[ ] Click any text control (TextBox/Label/Heading)
+[ ] Toggle Italic property
+[ ] Text shows as italic in Design View
+[ ] Text shows as italic in Form View
+[ ] Text shows as italic in published app
+
+OTHER TAB TEST:
+[ ] Click on empty form area to select Form
+[ ] Click "Other" tab in Property Sheet
+[ ] See properties (NOT blank):
+    - Record Source dropdown
+    - Default View dropdown
+    - Allow Edits toggle
+    - Allow Deletions toggle
+    - Allow Additions toggle
+
+TOOLBOX SCROLL TEST:
+[ ] Look at toolbox on left side
+[ ] Scroll inside toolbox panel
+[ ] See more controls appearing below
+[ ] Can access all controls (NumberBox, Image, etc.)
+
+CANVAS SCROLL TEST:
+[ ] Look at form design canvas
+[ ] Scroll down inside canvas
+[ ] Form Footer section becomes visible
+[ ] Can click on Form Footer area
+[ ] Can drag controls into Form Footer
+
+═══════════════════════════════════════════════════════════════════
+GIT COMMIT
+═══════════════════════════════════════════════════════════════════
+
+git add -A
+git commit -m "Phase 22: Fix design view bugs - label color, italic, other tab, scrolling"
+git push origin main
+
+Single line. No co-author trailers.
+
+═══════════════════════════════════════════════════════════════════
+DONE CRITERIA
+═══════════════════════════════════════════════════════════════════
+
+[ ] Label color shows in Design View immediately
+[ ] Italic property applies to text controls
+[ ] Other tab has useful form properties
+[ ] Toolbox scrolls to access all controls
+[ ] Canvas scrolls to access Form Footer
+[ ] All tested on live site
+[ ] No new features added (just bug fixes)
+
+═══════════════════════════════════════════════════════════════════
+NOT IN THIS PHASE
+═══════════════════════════════════════════════════════════════════
+
+Phase 23 (FUTURE): Branding/theme system with paint brush
+Phase 24 (FUTURE): Modal/popup forms
+Phase 25 (FUTURE): More property types
+
+Just fix the 5 bugs. No new features.

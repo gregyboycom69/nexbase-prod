@@ -1,0 +1,266 @@
+NexBase - Phase 22.6 v2 - Popup Forms + Form Type Property Fix
+Project: C:\Users\gregy\Projects\07_Next GS
+
+═══════════════════════════════════════════════════════════════════
+CONTEXT
+═══════════════════════════════════════════════════════════════════
+
+Phase 22.5 added popup/modal rendering for forms with form_type='popup'.
+
+Three issues to fix:
+1. Popup forms appear in sidebar navigation (should be hidden)
+2. No way to OPEN a popup form from a button
+3. Form Type property in Property Sheet "Other" tab doesn't 
+   actually update the form_type when changed
+   - User can set it but change doesn't apply
+   - Only the initial Form Type from create dialog works
+
+═══════════════════════════════════════════════════════════════════
+CRITICAL INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════
+
+DO NOT add other features. ONLY these 3 specific changes.
+Single-line commit messages. No co-author trailers.
+Test locally before push.
+
+═══════════════════════════════════════════════════════════════════
+FIX 22.6.1 - HIDE POPUP FORMS FROM SIDEBAR
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+In both studio and published app, the sidebar shows ALL forms.
+Popup forms (form_type='popup') should NOT appear in sidebar.
+
+INVESTIGATE:
+src/app/(app)/studio/[slug]/page.tsx - studio sidebar
+src/app/app/[slug]/page.tsx - published app sidebar
+src/app/preview/[slug]/page.tsx - preview sidebar
+
+Find where forms are rendered in sidebar. Look for code like:
+{forms.map(form => <SidebarItem ... />)}
+
+FIX:
+Filter forms before rendering in sidebar:
+
+const visibleForms = forms.filter(form => 
+  form.form_type !== 'popup' && form.form_type !== 'modal'
+)
+
+Then use visibleForms in the sidebar map:
+{visibleForms.map(form => ...)}
+
+Apply same filter in:
+- Studio sidebar (Forms section)
+- Published app sidebar (left navigation)
+- Preview mode sidebar
+
+EXCEPTION in studio:
+In the FORMS section of studio sidebar, popup forms should 
+still be visible (so user can edit them) but visually marked 
+as "popup" with a small badge or different icon.
+
+In studio sidebar specifically, keep popup forms visible but 
+add visual indicator:
+
+{forms.map(form => (
+  <div>
+    {form.form_type === 'popup' && (
+      <span style={{ 
+        fontSize: 10, 
+        background: '#fef3c7', 
+        color: '#92400e',
+        padding: '2px 6px',
+        borderRadius: 3,
+        marginLeft: 4,
+      }}>
+        POPUP
+      </span>
+    )}
+    {form.name}
+  </div>
+))}
+
+But in PUBLISHED APP and PREVIEW - completely hide them.
+
+═══════════════════════════════════════════════════════════════════
+FIX 22.6.2 - ADD OPEN-POPUP BUTTON ACTION
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+Button control has Action property with options:
+- none, save, new, delete, first, previous, next, last, refresh
+
+Missing: "openForm" action that opens a popup/modal form.
+
+FIX:
+Add new action option "openForm" to Button:
+
+In Property Sheet for Button, add to Action dropdown:
+{ value: 'openForm', label: 'Open Form (Popup)' }
+
+When this action is selected, show additional property:
+{ctrl.props?.action === 'openForm' && (
+  <PropRow 
+    label="Form to Open" 
+    value={ctrl.props?.targetForm || ''} 
+    onChange={(v) => onUpdate('targetForm', v)}
+    type="select"
+    options={popupForms.map(f => ({ value: f.slug, label: f.name }))}
+  />
+)}
+
+Where popupForms is filtered to only show form_type='popup' forms:
+const popupForms = forms.filter(f => f.form_type === 'popup')
+
+IMPLEMENT THE ACTION:
+In src/app/app/[slug]/page.tsx handleButtonClick function, 
+add case for 'openForm':
+
+} else if (action === 'openForm') {
+  const targetFormSlug = ctrl.props?.targetForm
+  if (!targetFormSlug) {
+    showToast('No target form configured for this button', 'warning')
+    return
+  }
+  
+  // Set state to show the popup form
+  setPopupFormSlug(targetFormSlug)
+  setShowPopup(true)
+}
+
+Add state:
+const [showPopup, setShowPopup] = useState(false)
+const [popupFormSlug, setPopupFormSlug] = useState<string | null>(null)
+
+Render the popup overlay when showPopup=true (see previous spec).
+
+═══════════════════════════════════════════════════════════════════
+FIX 22.6.3 - FORM TYPE PROPERTY SHEET CHANGE WORKS
+═══════════════════════════════════════════════════════════════════
+
+PROBLEM:
+In Property Sheet "Other" tab, when Form is selected, there's a 
+Form Type dropdown. User can change value but it doesn't actually 
+update form behavior.
+
+Form Type can only be set when CREATING a new form. After creation, 
+changing it from Property Sheet has no effect.
+
+INVESTIGATE:
+src/components/PropertySheet.tsx (or wherever properties are saved)
+src/app/(app)/studio/[slug]/page.tsx - form save logic
+
+Look for where formProps changes are saved.
+Find onUpdate('formType', v) or onUpdate('form_type', v)
+
+The change probably updates local state but doesn't persist to 
+database. Or saves with wrong column name.
+
+FIX:
+Make sure Property Sheet Form Type dropdown:
+
+1. Has correct option mapping:
+<PropRow 
+  label="Form Type" 
+  value={formProps.formType || formProps.form_type || 'single'} 
+  onChange={(v) => onUpdate('formType', v)}
+  type="select"
+  options={[
+    { value: 'single', label: 'Single Record' },
+    { value: 'continuous', label: 'Continuous (List)' },
+    { value: 'datasheet', label: 'Datasheet (Grid)' },
+    { value: 'split', label: 'Split View' },
+    { value: 'popup', label: 'Popup / Modal' },
+    { value: 'blank', label: 'Blank' },
+  ]}
+/>
+
+2. Save form props persists to database properly:
+
+When user clicks "Save Form", make sure form_type is included:
+
+const { error } = await supabase
+  .from('pages')
+  .update({
+    name: formProps.name,
+    controls: controls,
+    form_type: formProps.formType || formProps.form_type || 'single', // KEY: persist
+    record_source: formProps.recordSource,
+    navigation_buttons: formProps.navigationButtons,
+    // ... other properties
+  })
+  .eq('id', activePageId)
+
+3. After update, refresh forms list so sidebar updates:
+After save, call loadAllObjects(workspace.id) to refresh.
+
+4. Show toast confirming change:
+showToast('Form type updated to ' + newFormType, 'success')
+
+═══════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+POPUP HIDDEN FROM SIDEBAR:
+[ ] Create form "Quick Add" with Form Type = Popup
+[ ] Studio sidebar: shows "Quick Add" with POPUP badge
+[ ] Published app sidebar: "Quick Add" NOT visible
+[ ] Preview sidebar: "Quick Add" NOT visible
+
+OPEN POPUP FROM BUTTON:
+[ ] Open Borrowers form in design
+[ ] Drag Button into form
+[ ] Properties: Label="Add New", Action="Open Form (Popup)", 
+    Target="Quick Add"
+[ ] Save form, publish
+[ ] On /app/ggg, click "Add New" button
+[ ] Quick Add modal appears
+[ ] Fill, save - record persists, modal closes
+
+FORM TYPE CHANGE FROM PROPERTY SHEET:
+[ ] Create new form "Test Form" with Form Type = Single
+[ ] After created, click the form
+[ ] Click anywhere on form (to select Form itself)
+[ ] Property Sheet → Other tab
+[ ] Change Form Type to "Popup / Modal"
+[ ] Click Save Form
+[ ] Refresh page
+[ ] Verify form_type changed in database
+[ ] Sidebar: form no longer shows (because it's now popup)
+[ ] Can still find it in studio FORMS section with POPUP badge
+[ ] Open the form - now needs to be triggered by button
+
+═══════════════════════════════════════════════════════════════════
+GIT COMMIT
+═══════════════════════════════════════════════════════════════════
+
+git add -A
+git commit -m "Phase 22.6: Hide popups from sidebar, add openForm action, fix form type property"
+git push origin main
+
+Single line. No co-author trailers.
+
+═══════════════════════════════════════════════════════════════════
+DONE CRITERIA
+═══════════════════════════════════════════════════════════════════
+
+[ ] Popup forms hidden from published/preview sidebar
+[ ] Popup forms still visible in studio (with badge)
+[ ] Button has "Open Form (Popup)" action
+[ ] Clicking button opens popup modal
+[ ] Property Sheet Form Type change actually saves to DB
+[ ] Change reflects in sidebar visibility
+[ ] All tested on live site
+
+═══════════════════════════════════════════════════════════════════
+NOT IN THIS PHASE
+═══════════════════════════════════════════════════════════════════
+
+- Branding system (Phase 23)
+- Continuous form list rendering
+- Split form rendering
+- Datasheet form type rendering
+- Multiple popups stacked
+- Popup form passing parameters
+
+Just 3 specific fixes for popup forms.

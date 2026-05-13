@@ -89,7 +89,13 @@ export default function PublishedAppPage() {
 
     if (pgs && pgs.length > 0) {
       setPages(pgs)
-      setActivePageId(pgs[0].id)
+
+      const regularPages = pgs.filter(p => p.form_type !== 'popup')
+      if (regularPages.length > 0) {
+        setActivePageId(regularPages[0].id)
+      } else if (pgs.length > 0) {
+        setActivePageId(pgs[0].id)
+      }
     }
 
     setLoading(false)
@@ -870,34 +876,56 @@ export default function PublishedAppPage() {
         <div style={{ flex: 1, overflow: 'auto', padding: 24, display: 'flex', flexDirection: 'column' }}>
           {activePage?.form_type === 'popup' ? (
             // Render as modal overlay
-            <div style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(15, 23, 42, 0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1000,
-              padding: 24,
-            }}>
-              <div style={{
-                background: '#ffffff',
-                borderRadius: 12,
-                padding: 32,
-                maxWidth: 600,
-                width: '100%',
-                maxHeight: '90vh',
-                overflowY: 'auto',
-                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.25)',
-                position: 'relative',
-              }}>
+            <div
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  const regularPages = pages.filter(p => p.form_type !== 'popup')
+                  if (regularPages.length > 0) {
+                    setActivePageId(regularPages[0].id)
+                  }
+                }
+              }}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(15, 23, 42, 0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000,
+                padding: 24,
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: '#ffffff',
+                  borderRadius: 12,
+                  padding: 32,
+                  maxWidth: 600,
+                  width: '100%',
+                  maxHeight: '90vh',
+                  overflowY: 'auto',
+                  boxShadow: '0 20px 50px rgba(0, 0, 0, 0.25)',
+                  position: 'relative',
+                }}
+              >
                 {/* Close button */}
                 <button
-                  onClick={() => {
-                    // Go back to first page or previous page
-                    if (pages.length > 0) {
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const regularPages = pages.filter(p => p.form_type !== 'popup')
+                    if (regularPages.length > 0) {
+                      setActivePageId(regularPages[0].id)
+                    } else if (pages.length > 0) {
                       setActivePageId(pages[0].id)
                     }
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = '#f1f5f9'
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'transparent'
                   }}
                   style={{
                     position: 'absolute',
@@ -914,7 +942,10 @@ export default function PublishedAppPage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    zIndex: 10,
+                    borderRadius: 4,
                   }}
+                  aria-label="Close"
                 >
                   ×
                 </button>
@@ -981,6 +1012,16 @@ function PopupFormOverlay({ pageId, workspace, pages, onClose }: any) {
   useEffect(() => {
     loadPopupControls()
   }, [pageId])
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
 
   const loadPopupControls = async () => {
     const { data } = await supabase
@@ -1083,6 +1124,11 @@ function PopupFormOverlay({ pageId, workspace, pages, onClose }: any) {
 
   return (
     <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose()
+        }
+      }}
       style={{
         position: 'fixed',
         inset: 0,
@@ -1095,6 +1141,7 @@ function PopupFormOverlay({ pageId, workspace, pages, onClose }: any) {
       }}
     >
       <div
+        onClick={(e) => e.stopPropagation()}
         style={{
           background: '#ffffff',
           borderRadius: 12,
@@ -1109,7 +1156,16 @@ function PopupFormOverlay({ pageId, workspace, pages, onClose }: any) {
         }}
       >
         <button
-          onClick={onClose}
+          onClick={(e) => {
+            e.stopPropagation()
+            onClose()
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.background = '#f1f5f9'
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.background = 'transparent'
+          }}
           style={{
             position: 'absolute',
             top: 16,
@@ -1125,7 +1181,10 @@ function PopupFormOverlay({ pageId, workspace, pages, onClose }: any) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            zIndex: 10,
+            borderRadius: 4,
           }}
+          aria-label="Close"
         >
           ×
         </button>
