@@ -200,6 +200,7 @@ export default function PropertySheet({
     const typographyProps = [
       { label: 'Font Size', prop: 'fontSize', type: 'number' },
       { label: 'Bold', prop: 'bold', type: 'yesno' },
+      { label: 'Italic', prop: 'italic', type: 'yesno' },
       { label: 'Text Align', prop: 'textAlign', type: 'dropdown' },
     ]
 
@@ -278,7 +279,18 @@ export default function PropertySheet({
         { label: 'Allow Deletions', prop: 'allowDeletions', type: 'yesno' },
       ],
       event: [],
-      other: [],
+      other: [
+        'section:View Settings',
+        { label: 'Default View', prop: 'defaultView', type: 'text' },
+        { label: 'Scroll Bars', prop: 'scrollBars', type: 'yesno' },
+        { label: 'Record Selectors', prop: 'recordSelectors', type: 'yesno' },
+        { label: 'Navigation Buttons', prop: 'navigationButtons', type: 'yesno' },
+        'section:Other',
+        { label: 'Caption', prop: 'caption', type: 'text' },
+        { label: 'Auto Center', prop: 'autoCenter', type: 'yesno' },
+        { label: 'Pop Up', prop: 'popup', type: 'yesno' },
+        { label: 'Modal', prop: 'modal', type: 'yesno' },
+      ],
     }
   }
 

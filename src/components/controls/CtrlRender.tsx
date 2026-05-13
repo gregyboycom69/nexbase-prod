@@ -66,7 +66,8 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         background: 'transparent',
         color: ctrl.color || 'var(--color-text-secondary)',
         fontSize: ctrl.fontSize || 11,
-        fontWeight: 500
+        fontWeight: ctrl.bold ? 700 : 500,
+        fontStyle: ctrl.italic ? 'italic' : 'normal'
       }}>
         {ctrl.caption || 'Label'}
       </div>
@@ -79,7 +80,8 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         ...base,
         display: 'flex',
         alignItems: 'center',
-        fontWeight: 500,
+        fontWeight: ctrl.bold ? 700 : 500,
+        fontStyle: ctrl.italic ? 'italic' : 'normal',
         background: 'transparent',
         color: ctrl.color || 'var(--color-text-primary)',
         fontSize: ctrl.fontSize || 18
@@ -150,7 +152,8 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontWeight: 500,
+          fontWeight: ctrl.bold ? 700 : 500,
+          fontStyle: ctrl.italic ? 'italic' : 'normal',
           cursor: isPreview ? 'pointer' : 'default',
           border: 'none',
         }}
@@ -229,7 +232,9 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         </div>
         <span style={{
           color: ctrl.color || 'var(--color-text-primary)',
-          fontSize: ctrl.fontSize || 12
+          fontSize: ctrl.fontSize || 12,
+          fontWeight: ctrl.bold ? 700 : 400,
+          fontStyle: ctrl.italic ? 'italic' : 'normal'
         }}>{ctrl.caption || 'CheckBox'}</span>
       </div>
     )
@@ -391,7 +396,9 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
           display: 'flex',
           alignItems: 'center',
           gap: 6,
-          fontSize: 11
+          fontSize: 11,
+          fontWeight: ctrl.bold ? 700 : 400,
+          fontStyle: ctrl.italic ? 'italic' : 'normal'
         }}>
           <div style={{ width: 6, height: 6, background: ctrl.color || '#065f46', borderRadius: '50%' }} />
           <span>{ctrl.caption || 'Badge'}</span>

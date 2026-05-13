@@ -2044,7 +2044,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
       ) : (
         <div style={{ flex: 1, display: 'flex', background: '#f1f5f9' }}>
           {/* Toolbox */}
-          <div style={{ width: 72, background: '#f8fafc', borderRight: '1px solid #f1f5f9', padding: '8px 4px', overflow: 'auto' }}>
+          <div style={{ width: 72, background: '#f8fafc', borderRight: '1px solid #f1f5f9', padding: '8px 4px', overflowY: 'auto', height: '100%' }}>
             {['BASIC', 'INPUTS', 'DATA', 'LAYOUT'].map((group) => (
               <div key={group}>
                 <div style={{ fontSize: 9, color: '#94a3b8', marginTop: group !== 'BASIC' ? 12 : 0, marginBottom: 4, textAlign: 'center', fontWeight: 700 }}>
@@ -2143,7 +2143,7 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
           )}
 
           {/* Canvas */}
-          <div ref={canvasRef} style={{ flex: 1, overflow: 'auto', background: '#fff', cursor: activeTool !== 'Select' ? 'crosshair' : 'default' }} onClick={() => setContextMenu(null)}>
+          <div ref={canvasRef} style={{ flex: 1, overflow: 'auto', background: '#fff', cursor: activeTool !== 'Select' ? 'crosshair' : 'default', minHeight: 0 }} onClick={() => setContextMenu(null)}>
             {/* Form Header */}
             <div style={{ background: '#e5e7eb', borderBottom: '1px solid #d1d5db', padding: '4px 8px', fontSize: 10, color: '#6b7280', fontWeight: 600 }}>
               ▼ Form Header (60px)
@@ -2813,6 +2813,20 @@ function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: a
     )
   }
 
+  if (tab === 'other' || tab === 'all') {
+    return (
+      <>
+        <div style={{ background: '#f1f5f9', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>OTHER</div>
+        <PropRow label="Caption" value={formProps.caption || ''} onChange={(v: string) => onUpdate('caption', v)} />
+        <PropRow label="Auto Center" value={formProps.autoCenter} onChange={(v: boolean) => onUpdate('autoCenter', v)} type="yesno" />
+        <PropRow label="Pop Up" value={formProps.popup} onChange={(v: boolean) => onUpdate('popup', v)} type="yesno" />
+        <PropRow label="Modal" value={formProps.modal} onChange={(v: boolean) => onUpdate('modal', v)} type="yesno" />
+        <PropRow label="Record Selectors" value={formProps.recordSelectors} onChange={(v: boolean) => onUpdate('recordSelectors', v)} type="yesno" />
+        <PropRow label="Scroll Bars" value={formProps.scrollBars} onChange={(v: boolean) => onUpdate('scrollBars', v)} type="yesno" />
+      </>
+    )
+  }
+
   return (
     <div style={{ padding: 12, fontSize: 11, color: '#64748b', textAlign: 'center' }}>
       {tab} properties
@@ -3045,6 +3059,7 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
       <div style={{
         fontSize: props.fontSize || 13,
         fontWeight: props.bold ? 700 : 400,
+        fontStyle: props.italic ? 'italic' : 'normal',
         color: props.color || '#374151',
         background: props.bg === 'transparent' || !props.bg ? 'transparent' : props.bg,
         width: '100%',
@@ -3061,7 +3076,8 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
     return (
       <div style={{
         fontSize: props.fontSize || 20,
-        fontWeight: 800,
+        fontWeight: props.bold ? 700 : 600,
+        fontStyle: props.italic ? 'italic' : 'normal',
         color: props.color || '#0f172a',
         width: '100%',
         height: '100%',
@@ -3131,6 +3147,8 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
         width: '100%',
         height: '100%',
         fontSize: props.fontSize || 13,
+        fontWeight: props.bold ? 700 : 400,
+        fontStyle: props.italic ? 'italic' : 'normal',
         color: props.color || '#374151'
       }}>
         <input
@@ -3202,6 +3220,7 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
           borderRadius: props.radius !== undefined ? props.radius : 8,
           fontSize: props.fontSize || 14,
           fontWeight: props.bold ? 700 : 400,
+          fontStyle: props.italic ? 'italic' : 'normal',
           cursor: 'pointer',
         }}
       >
