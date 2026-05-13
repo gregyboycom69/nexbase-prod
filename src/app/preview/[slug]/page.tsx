@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Toast, { ToastMessage } from '@/components/Toast'
 import { runMacro } from '@/lib/macroEngine'
+import { PopupFormOverlay } from '@/components/PopupFormOverlay'
 
 // UUID generator for toast IDs
 const generateId = () => crypto.randomUUID()
@@ -43,6 +44,8 @@ export default function PreviewAppPage() {
   const [currentRecordIndex, setCurrentRecordIndex] = useState(0)
   const [currentRecordId, setCurrentRecordId] = useState<string | null>(null)
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null)
+  const [showPopup, setShowPopup] = useState(false)
+  const [popupPageId, setPopupPageId] = useState<string | null>(null)
 
   useEffect(() => {
     loadWorkspace()
@@ -289,6 +292,15 @@ export default function PreviewAppPage() {
     } else if (action === 'refresh') {
       await loadPageData(activePageId!)
       showToast('Data refreshed', 'success')
+    } else if (action === 'openForm') {
+      const targetForm = ctrl.props?.targetForm
+      if (targetForm) {
+        const targetPage = pages.find(p => p.slug === targetForm)
+        if (targetPage) {
+          setPopupPageId(targetPage.id)
+          setShowPopup(true)
+        }
+      }
     }
   }
 
@@ -968,6 +980,19 @@ export default function PreviewAppPage() {
           )}
         </div>
       </div>
+
+      {/* Popup Form Overlay */}
+      {showPopup && popupPageId && workspace && (
+        <PopupFormOverlay
+          pageId={popupPageId}
+          workspace={workspace}
+          pages={pages}
+          onClose={() => {
+            setShowPopup(false)
+            setPopupPageId(null)
+          }}
+        />
+      )}
     </div>
   )
 }
