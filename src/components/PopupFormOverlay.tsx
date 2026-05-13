@@ -33,13 +33,16 @@ export function PopupFormOverlay({ pageId, workspace, pages, onClose }: PopupFor
   }, [onClose])
 
   const loadPopupControls = async () => {
-    const { data } = await supabase
-      .from('controls')
+    const { data: page } = await supabase
+      .from('pages')
       .select('*')
-      .eq('page_id', pageId)
-      .order('created_at', { ascending: true })
+      .eq('id', pageId)
+      .single()
 
-    setControls(data || [])
+    if (page) {
+      // Controls are stored as JSONB array on the page itself
+      setControls(page.controls || [])
+    }
     setLoading(false)
   }
 
@@ -195,7 +198,7 @@ export function PopupFormOverlay({ pageId, workspace, pages, onClose }: PopupFor
           }}
           aria-label="Close"
         >
-          ×
+          {'\u00D7'}
         </button>
 
         {controls.map((ctrl) => (
