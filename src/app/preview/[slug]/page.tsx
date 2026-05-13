@@ -787,7 +787,7 @@ export default function PreviewAppPage() {
         </div>
 
         <div style={{ flex: 1, padding: '12px 0', overflow: 'auto' }}>
-          {pages.filter(page => page.form_type !== 'popup').map((page) => (
+          {pages.map((page) => (
             <button
               key={page.id}
               onClick={() => setActivePageId(page.id)}

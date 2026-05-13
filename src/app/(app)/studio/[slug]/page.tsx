@@ -1227,9 +1227,6 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
     } else {
       console.log('✅ Form props saved successfully')
 
-      // Refresh forms list to update sidebar (especially for form_type changes)
-      loadAllObjects(workspace.id)
-
       if (props.recordSource) {
         const { data: tableData } = await supabase
           .from('workspace_tables')
@@ -2256,7 +2253,6 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
             setPropertyTab={setPropertyTab}
             tables={tables}
             queries={queries}
-            forms={forms}
             macros={macros}
             recordSourceFields={recordSourceFields}
             onUpdateControlProp={updateControlProp}
@@ -2453,7 +2449,7 @@ function ControlWrapper({ control, selected, onSelect, onUpdate, onContextMenu }
 }
 
 // FIX 5: Completely rebuilt Property Sheet Component
-function PropertySheet({ selectedControl, formProps, propertyTab, setPropertyTab, tables, queries, forms, macros, recordSourceFields, onUpdateControlProp, onUpdateControlGeometry, onUpdateFormProp, onDelete, onSaveSingleControl }: any) {
+function PropertySheet({ selectedControl, formProps, propertyTab, setPropertyTab, tables, queries, macros, recordSourceFields, onUpdateControlProp, onUpdateControlGeometry, onUpdateFormProp, onDelete, onSaveSingleControl }: any) {
   const tabs = ['format', 'data', 'event', 'other', 'all'] as const
 
   return (
@@ -2498,7 +2494,6 @@ function PropertySheet({ selectedControl, formProps, propertyTab, setPropertyTab
             tab={propertyTab}
             tables={tables}
             queries={queries}
-            forms={forms}
             macros={macros}
             recordSourceFields={recordSourceFields}
             onUpdate={onUpdateControlProp}
@@ -2522,7 +2517,7 @@ function PropertySheet({ selectedControl, formProps, propertyTab, setPropertyTab
 }
 
 // Phase 16: Complete property sheet rewrite
-function ControlProperties({ control, tab, tables, queries, forms, macros, recordSourceFields, onUpdate, onUpdateGeometry, onDelete, onSave }: any) {
+function ControlProperties({ control, tab, tables, queries, macros, recordSourceFields, onUpdate, onUpdateGeometry, onDelete, onSave }: any) {
   const props = control.props || {}
 
   // Property Row Component - FIX 19.1: Changed text/number inputs to use onBlur with change detection
@@ -2689,17 +2684,7 @@ function ControlProperties({ control, tab, tables, queries, forms, macros, recor
         {control.type === 'Button' && (
           <>
             <PropRow label="Label" value={props.label || props.caption || 'Button'} onChange={(v: string) => onUpdate(control.id, 'label', v)} onBlur={onSave} />
-            <PropRow label="Action" value={props.action || 'none'} onChange={(v: string) => onUpdate(control.id, 'action', v)} type="select" options={['none', 'save', 'new', 'delete', 'first', 'previous', 'next', 'last', 'refresh', 'openForm']} onBlur={onSave} />
-            {props.action === 'openForm' && (
-              <PropRow
-                label="Target Form"
-                value={props.targetForm || ''}
-                onChange={(v: string) => onUpdate(control.id, 'targetForm', v)}
-                type="select"
-                options={['(none)', ...forms.filter((f: any) => f.form_type === 'popup').map((f: any) => f.slug)]}
-                onBlur={onSave}
-              />
-            )}
+            <PropRow label="Action" value={props.action || 'none'} onChange={(v: string) => onUpdate(control.id, 'action', v)} type="select" options={['none', 'save', 'new', 'delete', 'first', 'previous', 'next', 'last', 'refresh']} onBlur={onSave} />
             <PropRow label="Default" value={props.isDefault ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'isDefault', v === 'Yes')} type="select" options={['Yes', 'No']} onBlur={onSave} />
             <PropRow label="Cancel" value={props.isCancel ? 'Yes' : 'No'} onChange={(v: string) => onUpdate(control.id, 'isCancel', v === 'Yes')} type="select" options={['Yes', 'No']} onBlur={onSave} />
           </>
@@ -2832,20 +2817,6 @@ function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: a
     return (
       <>
         <div style={{ background: '#f1f5f9', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>OTHER</div>
-        <PropRow
-          label="Form Type"
-          value={formProps.formType || formProps.form_type || 'single'}
-          onChange={(v: string) => onUpdate('formType', v)}
-          type="select"
-          options={[
-            { label: 'Single Record', value: 'single' },
-            { label: 'Continuous (List)', value: 'continuous' },
-            { label: 'Datasheet (Grid)', value: 'datasheet' },
-            { label: 'Split View', value: 'split' },
-            { label: 'Popup / Modal', value: 'popup' },
-            { label: 'Blank', value: 'blank' },
-          ]}
-        />
         <PropRow label="Caption" value={formProps.caption || ''} onChange={(v: string) => onUpdate('caption', v)} />
         <PropRow label="Auto Center" value={formProps.autoCenter} onChange={(v: boolean) => onUpdate('autoCenter', v)} type="yesno" />
         <PropRow label="Pop Up" value={formProps.popup} onChange={(v: boolean) => onUpdate('popup', v)} type="yesno" />

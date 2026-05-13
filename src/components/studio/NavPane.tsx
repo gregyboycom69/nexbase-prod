@@ -205,22 +205,7 @@ export default function NavPane({
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
                     <FileText size={14} style={{ flexShrink: 0 }} />
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {form.name || form.title || form.slug}
-                    </span>
-                    {form.form_type === 'popup' && (
-                      <span style={{
-                        fontSize: 9,
-                        background: '#fef3c7',
-                        color: '#92400e',
-                        padding: '2px 5px',
-                        borderRadius: 3,
-                        fontWeight: 600,
-                        letterSpacing: '0.02em',
-                      }}>
-                        POP
-                      </span>
-                    )}
+                    {form.name || form.title || form.slug}
                   </div>
                 ))}
               {expandedSections.forms && filteredForms.length === 0 && (
