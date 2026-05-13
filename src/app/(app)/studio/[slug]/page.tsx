@@ -2042,9 +2042,9 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
           pageId={pageId}
         />
       ) : (
-        <div style={{ flex: 1, display: 'flex', background: '#f1f5f9' }}>
+        <div style={{ flex: 1, display: 'flex', background: '#f1f5f9', minHeight: 0 }}>
           {/* Toolbox */}
-          <div style={{ width: 72, background: '#f8fafc', borderRight: '1px solid #f1f5f9', padding: '8px 4px', overflowY: 'auto', height: '100%' }}>
+          <div style={{ width: 72, background: '#f8fafc', borderRight: '1px solid #f1f5f9', padding: '8px 4px', overflowY: 'auto', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
             {['BASIC', 'INPUTS', 'DATA', 'LAYOUT'].map((group) => (
               <div key={group}>
                 <div style={{ fontSize: 9, color: '#94a3b8', marginTop: group !== 'BASIC' ? 12 : 0, marginBottom: 4, textAlign: 'center', fontWeight: 700 }}>
@@ -2999,22 +2999,17 @@ function FormView({ controls, formProps, formData, setFormData, records, current
   // FIX 20.5.2: Check if there's a NavigationButtons control to avoid duplicates
   const hasNavigationButtonsControl = controls.some((c: Control) => c.type === 'NavigationButtons')
 
-  return (
-    <div style={{ flex: 1, background: '#f3f4f6', overflow: 'auto', padding: 40, position: 'relative' }}>
-      {/* Toast notifications */}
-      {toasts.map((toast: any) => (
-        <div key={toast.id} style={{ position: 'fixed', top: 20, right: 20, background: toast.type === 'success' ? '#10b981' : toast.type === 'error' ? '#ef4444' : '#3b82f6', color: '#fff', padding: '12px 20px', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 9999 }}>
-          {toast.message}
-        </div>
-      ))}
+  // Render form content
+  const renderFormContent = () => (
+    <>
       {/* Form canvas with exact same positioning as design view */}
       <div style={{
         width: canvasWidth,
         height: canvasHeight,
-        margin: '0 auto',
+        margin: formProps.form_type === 'popup' ? 0 : '0 auto',
         background: '#fff',
         borderRadius: 8,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        boxShadow: formProps.form_type === 'popup' ? 'none' : '0 4px 12px rgba(0,0,0,0.1)',
         position: 'relative'
       }}>
         {/* Render all controls at exact same x, y, w, h as design view */}
@@ -3044,6 +3039,73 @@ function FormView({ controls, formProps, formData, setFormData, records, current
           <button onClick={() => handleNavigation('last')} style={{ padding: '6px 12px', background: '#f1f5f9', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>▶|</button>
           <button onClick={() => handleNavigation('new')} style={{ padding: '6px 12px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', marginLeft: 8 }}>+ New</button>
         </div>
+      )}
+    </>
+  )
+
+  return (
+    <div style={{ flex: 1, background: '#f3f4f6', overflow: 'auto', padding: formProps.form_type === 'popup' ? 0 : 40, position: 'relative' }}>
+      {/* Toast notifications */}
+      {toasts.map((toast: any) => (
+        <div key={toast.id} style={{ position: 'fixed', top: 20, right: 20, background: toast.type === 'success' ? '#10b981' : toast.type === 'error' ? '#ef4444' : '#3b82f6', color: '#fff', padding: '12px 20px', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 9999 }}>
+          {toast.message}
+        </div>
+      ))}
+
+      {formProps.form_type === 'popup' ? (
+        // Render as modal overlay
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: 24,
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 12,
+            padding: 32,
+            maxWidth: 600,
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.25)',
+            position: 'relative',
+          }}>
+            {/* Close button */}
+            <button
+              onClick={() => {
+                // In Form View, just show message
+                alert('This is a preview of popup form. In live app, this would close the modal.')
+              }}
+              style={{
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                background: 'transparent',
+                border: 'none',
+                fontSize: 24,
+                cursor: 'pointer',
+                color: '#64748b',
+                lineHeight: 1,
+                width: 32,
+                height: 32,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              ×
+            </button>
+
+            {renderFormContent()}
+          </div>
+        </div>
+      ) : (
+        renderFormContent()
       )}
     </div>
   )

@@ -851,18 +851,87 @@ export default function PublishedAppPage() {
 
         {/* Canvas Area */}
         <div style={{ flex: 1, overflow: 'auto', padding: 24, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ background: '#fff', borderRadius: 12, padding: 32, minHeight: 600, position: 'relative', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: activePage?.record_source ? 16 : 0 }}>
-            {controls.map((ctrl) => (
-              <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
-                {renderControl(ctrl)}
+          {activePage?.form_type === 'popup' ? (
+            // Render as modal overlay
+            <div style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              padding: 24,
+            }}>
+              <div style={{
+                background: '#ffffff',
+                borderRadius: 12,
+                padding: 32,
+                maxWidth: 600,
+                width: '100%',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.25)',
+                position: 'relative',
+              }}>
+                {/* Close button */}
+                <button
+                  onClick={() => {
+                    // Go back to first page or previous page
+                    if (pages.length > 0) {
+                      setActivePageId(pages[0].id)
+                    }
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: 16,
+                    right: 16,
+                    background: 'transparent',
+                    border: 'none',
+                    fontSize: 24,
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    lineHeight: 1,
+                    width: 32,
+                    height: 32,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  ×
+                </button>
+
+                {/* Form content */}
+                <div style={{ position: 'relative', minHeight: 400 }}>
+                  {controls.map((ctrl) => (
+                    <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+                      {renderControl(ctrl)}
+                    </div>
+                  ))}
+                  {controls.length === 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: '#9ca3af', fontSize: 14 }}>
+                      No controls on this page yet.
+                    </div>
+                  )}
+                </div>
               </div>
-            ))}
-            {controls.length === 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: '#9ca3af', fontSize: 14 }}>
-                No controls on this page yet.
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            // Render as normal page
+            <div style={{ background: '#fff', borderRadius: 12, padding: 32, minHeight: 600, position: 'relative', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: activePage?.record_source ? 16 : 0 }}>
+              {controls.map((ctrl) => (
+                <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+                  {renderControl(ctrl)}
+                </div>
+              ))}
+              {controls.length === 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: '#9ca3af', fontSize: 14 }}>
+                  No controls on this page yet.
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
