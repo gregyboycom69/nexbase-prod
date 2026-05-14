@@ -33,15 +33,13 @@ export function PopupFormOverlay({ pageId, workspace, pages, onClose }: PopupFor
   }, [onClose])
 
   const loadPopupControls = async () => {
-    const { data: page } = await supabase
-      .from('pages')
+    const { data } = await supabase
+      .from('controls')
       .select('*')
-      .eq('id', pageId)
-      .single()
-
-    if (page) {
-      // Controls are stored as JSONB array on the page itself
-      setControls(page.controls || [])
+      .eq('page_id', pageId)
+      .order('display_order', { ascending: true })
+    if (data) {
+      setControls(data)
     }
     setLoading(false)
   }
