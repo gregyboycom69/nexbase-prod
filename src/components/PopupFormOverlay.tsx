@@ -18,6 +18,9 @@ export function PopupFormOverlay({ pageId, workspace, pages, onClose }: PopupFor
   const [loading, setLoading] = useState(true)
 
   const popupPage = pages.find((p: any) => p.id === pageId)
+  const popupWidth = popupPage?.width || 800
+  const popupHeight = popupPage?.height || 600
+  const popupAutoCenter = popupPage?.auto_center !== false
 
   useEffect(() => {
     loadPopupControls()
@@ -93,8 +96,8 @@ export function PopupFormOverlay({ pageId, workspace, pages, onClose }: PopupFor
         inset: 0,
         background: 'rgba(15, 23, 42, 0.5)',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        alignItems: popupAutoCenter ? 'center' : 'flex-start',
+        justifyContent: popupAutoCenter ? 'center' : 'flex-start',
         zIndex: 2000,
         padding: 24,
       }}
@@ -105,13 +108,13 @@ export function PopupFormOverlay({ pageId, workspace, pages, onClose }: PopupFor
           background: '#ffffff',
           borderRadius: 12,
           padding: 32,
-          maxWidth: 600,
-          width: '100%',
-          maxHeight: '90vh',
+          width: popupWidth,
+          height: popupHeight,
+          maxWidth: '95vw',
+          maxHeight: '95vh',
           overflowY: 'auto',
           boxShadow: '0 20px 50px rgba(0, 0, 0, 0.25)',
           position: 'relative',
-          minHeight: 400,
         }}
       >
         <button

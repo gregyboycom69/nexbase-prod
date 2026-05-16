@@ -2766,6 +2766,19 @@ function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: a
             <option>Yes</option>
             <option>No</option>
           </select>
+        ) : type === 'number' ? (
+          <input
+            type="number"
+            defaultValue={value}
+            onBlur={(e) => {
+              const numValue = parseInt(e.target.value, 10)
+              if (numValue !== value) {
+                onChange(numValue)
+              }
+            }}
+            key={`${label}-${value}`}
+            style={{ width: '100%', background: '#ffffff', color: '#1e293b', border: 'none', fontSize: 10, padding: '2px 4px' }}
+          />
         ) : (
           <input
             type="text"
@@ -2789,6 +2802,9 @@ function FormProperties({ formProps, tab, tables, queries, macros, onUpdate }: a
         <div style={{ background: '#f1f5f9', color: '#6366f1', fontSize: 9, textTransform: 'uppercase', padding: '3px 8px', fontWeight: 700 }}>FORMAT</div>
         <PropRow label="Default View" value={formProps.defaultView || 'single'} onChange={(v: string) => onUpdate('defaultView', v)} type="select" options={['single', 'continuous', 'datasheet', 'split']} />
         <PropRow label="Navigation Buttons" value={formProps.navigationButtons} onChange={(v: boolean) => onUpdate('navigationButtons', v)} type="yesno" />
+        <PropRow label="Width" value={formProps.width || 800} onChange={(v: number) => onUpdate('width', v)} type="number" />
+        <PropRow label="Height" value={formProps.height || 600} onChange={(v: number) => onUpdate('height', v)} type="number" />
+        <PropRow label="Auto Center" value={formProps.auto_center !== false} onChange={(v: boolean) => onUpdate('auto_center', v)} type="yesno" />
       </>
     )
   }
