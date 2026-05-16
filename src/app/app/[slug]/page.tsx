@@ -535,51 +535,121 @@ export default function PublishedAppPage() {
                   }}
                   aria-label="Close"
                 >
-                  ×
+                  {'\u00D7'}
                 </button>
 
                 {/* Form content */}
-                <div style={{ position: 'relative', minHeight: 400 }}>
-                  {controls.map((ctrl) => (
-                    <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
-                      <NexBaseControl
-                        ctrl={ctrl}
-                        formData={formData}
-                        setFormData={setFormData}
-                        handleButtonClick={handleButtonClick}
-                        visibleModal={visibleModal}
-                        setVisibleModal={setVisibleModal}
-                      />
-                    </div>
-                  ))}
-                  {controls.length === 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: '#9ca3af', fontSize: 14 }}>
-                      No controls on this page yet.
-                    </div>
-                  )}
+                <div>
+                  {/* Header band — 60px */}
+                  <div style={{ position: 'relative', height: 60, background: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
+                    {controls.filter((c: any) => c.section === 'header').map((ctrl) => (
+                      <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+                        <NexBaseControl
+                          ctrl={ctrl}
+                          formData={formData}
+                          setFormData={setFormData}
+                          handleButtonClick={handleButtonClick}
+                          visibleModal={visibleModal}
+                          setVisibleModal={setVisibleModal}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Detail band — flex grows */}
+                  <div style={{ position: 'relative', minHeight: 400, background: '#ffffff' }}>
+                    {controls.filter((c: any) => !c.section || c.section === 'detail').map((ctrl) => (
+                      <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+                        <NexBaseControl
+                          ctrl={ctrl}
+                          formData={formData}
+                          setFormData={setFormData}
+                          handleButtonClick={handleButtonClick}
+                          visibleModal={visibleModal}
+                          setVisibleModal={setVisibleModal}
+                        />
+                      </div>
+                    ))}
+                    {controls.length === 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: '#9ca3af', fontSize: 14 }}>
+                        No controls on this page yet.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer band — 60px */}
+                  <div style={{ position: 'relative', height: 60, background: '#f8fafc', borderTop: '1px solid #e5e7eb' }}>
+                    {controls.filter((c: any) => c.section === 'footer').map((ctrl) => (
+                      <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+                        <NexBaseControl
+                          ctrl={ctrl}
+                          formData={formData}
+                          setFormData={setFormData}
+                          handleButtonClick={handleButtonClick}
+                          visibleModal={visibleModal}
+                          setVisibleModal={setVisibleModal}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           ) : (
             // Render as normal page
             <div style={{ background: '#fff', borderRadius: 12, padding: 32, minHeight: 600, position: 'relative', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: activePage?.record_source ? 16 : 0 }}>
-              {controls.map((ctrl) => (
-                <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
-                  <NexBaseControl
-                    ctrl={ctrl}
-                    formData={formData}
-                    setFormData={setFormData}
-                    handleButtonClick={handleButtonClick}
-                    visibleModal={visibleModal}
-                    setVisibleModal={setVisibleModal}
-                  />
-                </div>
-              ))}
-              {controls.length === 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: '#9ca3af', fontSize: 14 }}>
-                  No controls on this page yet.
-                </div>
-              )}
+              {/* Header band — 60px */}
+              <div style={{ position: 'relative', height: 60, background: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
+                {controls.filter((c: any) => c.section === 'header').map((ctrl) => (
+                  <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+                    <NexBaseControl
+                      ctrl={ctrl}
+                      formData={formData}
+                      setFormData={setFormData}
+                      handleButtonClick={handleButtonClick}
+                      visibleModal={visibleModal}
+                      setVisibleModal={setVisibleModal}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Detail band — flex grows */}
+              <div style={{ position: 'relative', minHeight: 400, background: '#ffffff' }}>
+                {controls.filter((c: any) => !c.section || c.section === 'detail').map((ctrl) => (
+                  <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+                    <NexBaseControl
+                      ctrl={ctrl}
+                      formData={formData}
+                      setFormData={setFormData}
+                      handleButtonClick={handleButtonClick}
+                      visibleModal={visibleModal}
+                      setVisibleModal={setVisibleModal}
+                    />
+                  </div>
+                ))}
+                {controls.length === 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: '#9ca3af', fontSize: 14 }}>
+                    No controls on this page yet.
+                  </div>
+                )}
+              </div>
+
+              {/* Footer band — 60px */}
+              <div style={{ position: 'relative', height: 60, background: '#f8fafc', borderTop: '1px solid #e5e7eb' }}>
+                {controls.filter((c: any) => c.section === 'footer').map((ctrl) => (
+                  <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+                    <NexBaseControl
+                      ctrl={ctrl}
+                      formData={formData}
+                      setFormData={setFormData}
+                      handleButtonClick={handleButtonClick}
+                      visibleModal={visibleModal}
+                      setVisibleModal={setVisibleModal}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

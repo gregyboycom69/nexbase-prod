@@ -151,21 +151,54 @@ export function PopupFormOverlay({ pageId, workspace, pages, onClose }: PopupFor
           {'\u00D7'}
         </button>
 
-        {controls.map((ctrl) => (
-          <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
-            <NexBaseControl
-              ctrl={ctrl}
-              formData={formData}
-              setFormData={setFormData}
-              handleButtonClick={handleButtonClick}
-            />
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          {/* Header band — 60px */}
+          <div style={{ position: 'relative', height: 60, background: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
+            {controls.filter((c: any) => c.section === 'header').map((ctrl) => (
+              <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+                <NexBaseControl
+                  ctrl={ctrl}
+                  formData={formData}
+                  setFormData={setFormData}
+                  handleButtonClick={handleButtonClick}
+                />
+              </div>
+            ))}
           </div>
-        ))}
-        {controls.length === 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: '#9ca3af', fontSize: 14 }}>
-            No controls on this form
+
+          {/* Detail band — flex grows */}
+          <div style={{ flex: 1, position: 'relative', overflow: 'auto', background: '#ffffff' }}>
+            {controls.filter((c: any) => !c.section || c.section === 'detail').map((ctrl) => (
+              <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+                <NexBaseControl
+                  ctrl={ctrl}
+                  formData={formData}
+                  setFormData={setFormData}
+                  handleButtonClick={handleButtonClick}
+                />
+              </div>
+            ))}
+            {controls.length === 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: '#9ca3af', fontSize: 14 }}>
+                No controls on this form
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Footer band — 60px */}
+          <div style={{ position: 'relative', height: 60, background: '#f8fafc', borderTop: '1px solid #e5e7eb' }}>
+            {controls.filter((c: any) => c.section === 'footer').map((ctrl) => (
+              <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+                <NexBaseControl
+                  ctrl={ctrl}
+                  formData={formData}
+                  setFormData={setFormData}
+                  handleButtonClick={handleButtonClick}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

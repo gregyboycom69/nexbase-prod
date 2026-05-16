@@ -1,0 +1,139 @@
+Phase 22.13: Render controls by section bands (Header / Detail / Footer) in published forms and popup. Fixes overlap between header controls and detail controls.
+
+CONTEXT: Each control in the controls table has a `section` field with value 'header' | 'detail' | 'footer'. Studio Design View already renders 3 separate bands and filters controls by section (lines ~2156, ~2181, ~2206 in src/app/(app)/studio/[slug]/page.tsx). But /app/[slug]/page.tsx and PopupFormOverlay.tsx render ALL controls in one absolute-positioned container without filtering, causing header controls to overlap detail controls.
+
+This commit touches exactly two files:
+- src/app/app/[slug]/page.tsx (two render blocks: modal variant + normal page)
+- src/components/PopupFormOverlay.tsx (popup render block)
+
+Do NOT touch any other file (NOT Studio, NOT NexBaseControl).
+
+==================================================================
+SHARED PATTERN — what to do at every render site
+==================================================================
+
+Each existing `controls.map(...)` block currently looks like:
+
+  <div style={{ position: 'relative', minHeight: 400 }}>
+    {controls.map((ctrl) => (
+      <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+        <NexBaseControl ctrl={ctrl} ... />
+      </div>
+    ))}
+    {controls.length === 0 && (<div>No controls on this page yet.</div>)}
+  </div>
+
+Replace each such block with THREE stacked band divs:
+
+  <div>
+    {/* Header band — 60px */}
+    <div style={{ position: 'relative', height: 60, background: '#f8fafc', borderBottom: '1px solid #e5e7eb' }}>
+      {controls.filter(c => c.section === 'header').map((ctrl) => (
+        <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+          <NexBaseControl ctrl={ctrl} ... />
+        </div>
+      ))}
+    </div>
+
+    {/* Detail band — flex grows */}
+    <div style={{ position: 'relative', minHeight: 400, background: '#ffffff' }}>
+      {controls.filter(c => c.section === 'detail').map((ctrl) => (
+        <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+          <NexBaseControl ctrl={ctrl} ... />
+        </div>
+      ))}
+      {controls.length === 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400, color: '#9ca3af', fontSize: 14 }}>
+          No controls on this page yet.
+        </div>
+      )}
+    </div>
+
+    {/* Footer band — 60px */}
+    <div style={{ position: 'relative', height: 60, background: '#f8fafc', borderTop: '1px solid #e5e7eb' }}>
+      {controls.filter(c => c.section === 'footer').map((ctrl) => (
+        <div key={ctrl.id} style={{ position: 'absolute', left: ctrl.x, top: ctrl.y }}>
+          <NexBaseControl ctrl={ctrl} ... />
+        </div>
+      ))}
+    </div>
+  </div>
+
+Important details:
+- IMPORTANT: include controls where `section` is null/undefined IN THE DETAIL band as a fallback. Replace the detail filter with:
+    .filter(c => !c.section || c.section === 'detail')
+  This protects existing controls that were created before sections existed.
+- Keep the SAME NexBaseControl props that the existing block uses (formData, setFormData, handleButtonClick, visibleModal, setVisibleModal, etc.). Match exactly what's already there site-by-site.
+- The "No controls on this page yet." empty state goes ONLY in the detail band.
+- Do NOT change the OUTER wrapper div around the bands (the white card with borderRadius/padding/boxShadow). That stays unchanged. The 3 band divs go INSIDE that wrapper, replacing the current single map.
+
+==================================================================
+SITE 1 — src/app/app/[slug]/page.tsx, modal variant (~line 541)
+==================================================================
+
+Find the block that starts approximately:
+  {/* Form content */}
+  <div style={{ position: 'relative', minHeight: 400 }}>
+    {controls.map((ctrl) => (...))}
+    {controls.length === 0 && (...)}
+  </div>
+
+Replace its inner content (between the outer `<div>` and its closing `</div>`) with the 3-band pattern. Keep the NexBaseControl props from this site:
+  ctrl={ctrl}
+  formData={formData}
+  setFormData={setFormData}
+  handleButtonClick={handleButtonClick}
+  visibleModal={visibleModal}
+  setVisibleModal={setVisibleModal}
+
+Also: while you're in this block, fix the mojibake — search for "Ã—" near line 537 and replace with {'\u00D7'}.
+
+==================================================================
+SITE 2 — src/app/app/[slug]/page.tsx, normal page variant (~line 564)
+==================================================================
+
+Find the block that starts approximately:
+  // Render as normal page
+  <div style={{ background: '#fff', borderRadius: 12, padding: 32, minHeight: 600, position: 'relative', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', ... }}>
+    {controls.map((ctrl) => (...))}
+    {controls.length === 0 && (...)}
+  </div>
+
+Replace its inner content with the 3-band pattern. Same NexBaseControl props as Site 1.
+
+==================================================================
+SITE 3 — src/components/PopupFormOverlay.tsx
+==================================================================
+
+Find the block that maps controls (a single controls.map call inside the modal card). Replace with the 3-band pattern.
+
+Use these NexBaseControl props (the popup's existing set):
+  ctrl={ctrl}
+  formData={formData}
+  setFormData={setFormData}
+  handleButtonClick={handleButtonClick}
+
+The popup does NOT use visibleModal/setVisibleModal — do not add them.
+
+For the popup, the band heights should be:
+- Header band: 60px
+- Detail band: flex: 1 (fills remaining popup height between header and footer)
+- Footer band: 60px
+
+The popup's outer modal card already has a fixed height (width/height from popupPage). To make the detail band fill remaining space, wrap the 3 bands in a flex column container inside the card. Like:
+
+  <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ height: 60, ... header band styling }}>...</div>
+    <div style={{ flex: 1, position: 'relative', overflow: 'auto', ... detail band styling }}>...</div>
+    <div style={{ height: 60, ... footer band styling }}>...</div>
+  </div>
+
+==================================================================
+BUILD
+==================================================================
+
+Run npm run build. If it succeeds, stop and report back. Do NOT commit. If errors appear, fix only the errors caused by this change.
+
+Common likely errors:
+- TypeScript may complain that c.section doesn't exist on the control type. If so, treat the control as any in the filter callbacks: .filter((c: any) => !c.section || c.section === 'detail')
+- Make sure NexBaseControl prop sets are EXACTLY what each site currently uses — do not invent new props.
