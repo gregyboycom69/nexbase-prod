@@ -1028,6 +1028,9 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
         navigationButtons: page.navigation_buttons ?? true,
         defaultView: page.default_view || 'single',
         formType: page.form_type || 'regular',
+        width: page.width,
+        height: page.height,
+        auto_center: page.auto_center,
       })
 
       if (page.record_source && workspace) {
@@ -1220,6 +1223,9 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
       navigation_buttons: props.navigationButtons,
       default_view: props.defaultView,
       form_type: props.formType,
+      width: props.width,
+      height: props.height,
+      auto_center: props.auto_center,
     }).eq('id', pageId)
 
     if (error) {

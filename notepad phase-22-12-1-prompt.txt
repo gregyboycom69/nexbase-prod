@@ -1,0 +1,40 @@
+Phase 22.12.1: Add width/height/auto_center to saveFormProps whitelist and to formProps initial load.
+
+CONTEXT: Phase 22.12 added Width/Height/Auto Center inputs to the Property Sheet, but saveFormProps in src/app/(app)/studio/[slug]/page.tsx (line 1207) has a hardcoded whitelist of fields it persists, and width/height/auto_center are missing. So values appear in the UI but never reach the DB. Also, when a page loads, setFormProps only seeds recordSource — width/height/auto_center are undefined, so reopening the form always shows the fallback (800/600/Yes) regardless of saved value.
+
+This commit touches exactly one file: src/app/(app)/studio/[slug]/page.tsx
+Do NOT touch any other file.
+
+STEP 1 — Open src/app/(app)/studio/[slug]/page.tsx.
+
+STEP 2 — Find saveFormProps (around line 1207). Inside the .update({ ... }) call, add three new fields after the existing ones:
+
+  width: props.width,
+  height: props.height,
+  auto_center: props.auto_center,
+
+The whole .update block should now have 10 fields: record_source, allow_edits, allow_additions, allow_deletions, navigation_buttons, default_view, form_type, width, height, auto_center.
+
+STEP 3 — Find the setFormProps initial load (search for "setFormProps({" — should be inside a useEffect that runs when the active page loads). It currently looks like:
+
+  setFormProps({
+    recordSource: page.record_source,
+    ...
+  })
+
+Add three new fields to this object initialization:
+
+  width: page.width,
+  height: page.height,
+  auto_center: page.auto_center,
+
+So the loaded form's saved dimensions populate the Property Sheet inputs correctly on reopen.
+
+STEP 4 — Build:
+Run npm run build. If it succeeds, stop and report back. Do NOT commit. If errors appear, fix only the errors caused by this change.
+
+STEP 5 — Do NOT touch anything else:
+- Do NOT modify PopupFormOverlay.tsx
+- Do NOT modify NexBaseControl.tsx
+- Do NOT modify /app/[slug]/page.tsx
+- Do NOT modify the PropRow inputs themselves (Phase 22.12 already added them correctly)
