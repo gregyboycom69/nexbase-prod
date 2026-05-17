@@ -64,7 +64,7 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         display: 'flex',
         alignItems: 'center',
         background: 'transparent',
-        color: ctrl.color || 'var(--color-text-secondary)',
+        color: ctrl.color || ctrl.props?.color || 'var(--color-text-secondary)',
         fontSize: ctrl.fontSize || 11,
         fontWeight: ctrl.bold ? 700 : 500,
         fontStyle: ctrl.italic ? 'italic' : 'normal'
@@ -83,7 +83,7 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         fontWeight: ctrl.bold ? 700 : 500,
         fontStyle: ctrl.italic ? 'italic' : 'normal',
         background: 'transparent',
-        color: ctrl.color || 'var(--color-text-primary)',
+        color: ctrl.color || ctrl.props?.color || 'var(--color-text-primary)',
         fontSize: ctrl.fontSize || 18
       }}>
         {ctrl.caption || 'Heading'}
@@ -101,8 +101,8 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
           defaultValue={displayValue}
           style={{
             ...base,
-            background: ctrl.bg || 'var(--color-background-primary)',
-            color: ctrl.color || 'var(--color-text-primary)',
+            background: ctrl.bg || ctrl.props?.bg || 'var(--color-background-primary)',
+            color: ctrl.color || ctrl.props?.color || 'var(--color-text-primary)',
             borderRadius: ctrl.radius !== undefined ? ctrl.radius : 'var(--border-radius-md)',
             fontSize: ctrl.fontSize || 12,
             border: '0.5px solid var(--color-border-secondary)',
@@ -116,8 +116,8 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
     return (
       <div style={{
         ...base,
-        background: ctrl.bg || 'var(--color-background-primary)',
-        color: ctrl.color || 'var(--color-text-primary)',
+        background: ctrl.bg || ctrl.props?.bg || 'var(--color-background-primary)',
+        color: ctrl.color || ctrl.props?.color || 'var(--color-text-primary)',
         borderRadius: ctrl.radius !== undefined ? ctrl.radius : 'var(--border-radius-md)',
         fontSize: ctrl.fontSize || 12,
         border: '0.5px solid var(--color-border-secondary)',
@@ -139,14 +139,14 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
       onClick?.()
     }
 
-    const bgColor = ctrl.bg || '#4f46e5';
+    const bgColor = ctrl.bg || ctrl.props?.bg || '#4f46e5';
     return (
       <button
         onClick={handleClick}
         style={{
           ...base,
           background: bgColor,
-          color: ctrl.color || getContrastText(bgColor),
+          color: ctrl.color || ctrl.props?.color || getContrastText(bgColor),
           borderRadius: ctrl.radius !== undefined ? ctrl.radius : 'var(--border-radius-md)',
           fontSize: ctrl.fontSize || 12,
           display: 'flex',
@@ -177,8 +177,8 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
           defaultValue={displayValue}
           style={{
             ...base,
-            background: ctrl.bg || 'var(--color-background-primary)',
-            color: ctrl.color || 'var(--color-text-primary)',
+            background: ctrl.bg || ctrl.props?.bg || 'var(--color-background-primary)',
+            color: ctrl.color || ctrl.props?.color || 'var(--color-text-primary)',
             border: '0.5px solid var(--color-border-secondary)',
             borderLeft: '2.5px solid #4f46e5',
             borderRadius: 'var(--border-radius-md)',
@@ -196,8 +196,8 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
     return (
       <div style={{
         ...base,
-        background: ctrl.bg || 'var(--color-background-primary)',
-        color: ctrl.color || 'var(--color-text-primary)',
+        background: ctrl.bg || ctrl.props?.bg || 'var(--color-background-primary)',
+        color: ctrl.color || ctrl.props?.color || 'var(--color-text-primary)',
         border: '0.5px solid var(--color-border-secondary)',
         borderLeft: '2.5px solid #4f46e5',
         borderRadius: 'var(--border-radius-md)',
@@ -231,7 +231,7 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
           {isChecked && <span style={{ color: '#ffffff', fontSize: 12, fontWeight: 600 }}>✓</span>}
         </div>
         <span style={{
-          color: ctrl.color || 'var(--color-text-primary)',
+          color: ctrl.color || ctrl.props?.color || 'var(--color-text-primary)',
           fontSize: ctrl.fontSize || 12,
           fontWeight: ctrl.bold ? 700 : 400,
           fontStyle: ctrl.italic ? 'italic' : 'normal'
@@ -245,8 +245,8 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
     return (
       <div style={{
         ...base,
-        background: ctrl.bg || 'var(--color-background-primary)',
-        color: ctrl.color || 'var(--color-text-primary)',
+        background: ctrl.bg || ctrl.props?.bg || 'var(--color-background-primary)',
+        color: ctrl.color || ctrl.props?.color || 'var(--color-text-primary)',
         border: '0.5px solid var(--color-border-secondary)',
         borderLeft: '2.5px solid #4f46e5',
         borderRadius: 'var(--border-radius-md)',
@@ -256,7 +256,7 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         gap: 6
       }}>
         <span style={{ fontSize: 13 }}>📅</span>
-        <span style={{ color: displayValue ? (ctrl.color || 'var(--color-text-primary)') : 'var(--color-text-tertiary)', fontSize: 12, flex: 1 }}>{displayValue || 'DD/MM/YYYY'}</span>
+        <span style={{ color: displayValue ? (ctrl.color || ctrl.props?.color || 'var(--color-text-primary)') : 'var(--color-text-tertiary)', fontSize: 12, flex: 1 }}>{displayValue || 'DD/MM/YYYY'}</span>
       </div>
     )
   }
@@ -266,8 +266,8 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
     return (
       <div style={{
         ...base,
-        background: ctrl.bg || 'var(--color-background-primary)',
-        color: ctrl.color || 'var(--color-text-primary)',
+        background: ctrl.bg || ctrl.props?.bg || 'var(--color-background-primary)',
+        color: ctrl.color || ctrl.props?.color || 'var(--color-text-primary)',
         border: '0.5px solid var(--color-border-secondary)',
         borderLeft: '2.5px solid #4f46e5',
         borderRadius: 'var(--border-radius-md)',
@@ -276,7 +276,7 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         justifyContent: 'space-between',
         padding: '0 10px'
       }}>
-        <span style={{ color: ctrl.color || 'var(--color-text-primary)', fontSize: 12, textAlign: 'right', flex: 1 }}>{displayValue}</span>
+        <span style={{ color: ctrl.color || ctrl.props?.color || 'var(--color-text-primary)', fontSize: 12, textAlign: 'right', flex: 1 }}>{displayValue}</span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 1, marginLeft: 4 }}>
           <div style={{ width: 12, height: 10, background: 'var(--color-background-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, borderRadius: 2 }}>▲</div>
           <div style={{ width: 12, height: 10, background: 'var(--color-background-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, borderRadius: 2 }}>▼</div>
@@ -380,7 +380,7 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         <div style={{ flex: 1, height: 20, background: '#e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
           <div style={{ width: `${percent}%`, height: '100%', background: '#6366f1', transition: 'width 0.3s' }} />
         </div>
-        <span style={{ fontSize: 11, color: ctrl.color || '#1f2937', fontWeight: 600, minWidth: 35 }}>{percent}%</span>
+        <span style={{ fontSize: 11, color: ctrl.color || ctrl.props?.color || '#1f2937', fontWeight: 600, minWidth: 35 }}>{percent}%</span>
       </div>
     )
   }
@@ -389,8 +389,8 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
     return (
       <div style={{ ...base, background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px' }}>
         <div style={{
-          background: ctrl.bg || '#d1fae5',
-          color: ctrl.color || '#065f46',
+          background: ctrl.bg || ctrl.props?.bg || '#d1fae5',
+          color: ctrl.color || ctrl.props?.color || '#065f46',
           padding: '4px 12px',
           borderRadius: 12,
           display: 'flex',
@@ -400,7 +400,7 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
           fontWeight: ctrl.bold ? 700 : 400,
           fontStyle: ctrl.italic ? 'italic' : 'normal'
         }}>
-          <div style={{ width: 6, height: 6, background: ctrl.color || '#065f46', borderRadius: '50%' }} />
+          <div style={{ width: 6, height: 6, background: ctrl.color || ctrl.props?.color || '#065f46', borderRadius: '50%' }} />
           <span>{ctrl.caption || 'Badge'}</span>
         </div>
       </div>
@@ -411,8 +411,8 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
     return (
       <div style={{
         ...base,
-        background: ctrl.bg || '#ffffff',
-        color: ctrl.color || '#0f172a',
+        background: ctrl.bg || ctrl.props?.bg || '#ffffff',
+        color: ctrl.color || ctrl.props?.color || '#0f172a',
         border: '1px solid #e2e8f0',
         borderRadius: ctrl.radius !== undefined ? ctrl.radius : 12,
         boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
@@ -420,7 +420,7 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         flexDirection: 'column',
         overflow: 'hidden'
       }}>
-        <div style={{ padding: '12px 16px', fontSize: 11, textTransform: 'uppercase', color: ctrl.color || '#0f172a', letterSpacing: '0.05em', fontWeight: 600 }}>
+        <div style={{ padding: '12px 16px', fontSize: 11, textTransform: 'uppercase', color: ctrl.color || ctrl.props?.color || '#0f172a', letterSpacing: '0.05em', fontWeight: 600 }}>
           {ctrl.caption || 'Card Title'}
         </div>
         <div style={{ height: 1, background: '#e2e8f0' }} />

@@ -1283,8 +1283,13 @@ function FormDesigner({ pageId, pageName, workspace, tables, queries, macros, fo
 
       if (ghostRect && ghostRect.w > 10 && ghostRect.h > 10) {
         const defaultSize = DEFAULT_SIZES[activeTool] || { w: 100, h: 30 }
+        // For width: respect drag (user is drawing the shape they want), but min default
         const finalW = Math.max(ghostRect.w, defaultSize.w)
-        const finalH = Math.max(ghostRect.h, defaultSize.h)
+        // For height: text-based controls should use default; resizable boxes can be taller
+        const textBasedTypes = ['Label', 'Heading', 'TextBox', 'Button', 'ComboBox', 'DatePicker', 'NumberBox', 'CheckBox', 'Badge']
+        const finalH = textBasedTypes.includes(activeTool)
+          ? defaultSize.h
+          : Math.max(ghostRect.h, defaultSize.h)
 
         const newControl: Control = {
           id: generateId(),
@@ -3170,8 +3175,8 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
         fontSize: props.fontSize || 13,
         fontWeight: props.bold ? 700 : 400,
         fontStyle: props.italic ? 'italic' : 'normal',
-        color: props.color || '#374151',
-        background: props.bg === 'transparent' || !props.bg ? 'transparent' : props.bg,
+        color: props.color || ctrl.color || '#374151',
+        background: props.bg === 'transparent' || !props.bg ? 'transparent' : (props.bg || ctrl.bg),
         width: '100%',
         height: '100%',
         display: 'flex',
@@ -3188,7 +3193,7 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
         fontSize: props.fontSize || 20,
         fontWeight: props.bold ? 700 : 600,
         fontStyle: props.italic ? 'italic' : 'normal',
-        color: props.color || '#0f172a',
+        color: props.color || ctrl.color || '#0f172a',
         width: '100%',
         height: '100%',
         display: 'flex',
@@ -3213,8 +3218,8 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
           border: '1px solid #e2e8f0',
           borderRadius: props.radius !== undefined ? props.radius : 8,
           fontSize: props.fontSize || 14,
-          color: props.color || '#1e293b',
-          background: props.bg || '#ffffff',
+          color: props.color || ctrl.color || '#1e293b',
+          background: props.bg || ctrl.bg || '#ffffff',
           outline: 'none',
           boxSizing: 'border-box'
         }}
@@ -3235,8 +3240,8 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
           border: '1px solid #e2e8f0',
           borderRadius: 4,
           fontSize: props.fontSize || 13,
-          color: props.color || '#374151',
-          background: props.bg || '#ffffff',
+          color: props.color || ctrl.color || '#374151',
+          background: props.bg || ctrl.bg || '#ffffff',
           cursor: 'pointer',
           boxSizing: 'border-box'
         }}
@@ -3259,7 +3264,7 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
         fontSize: props.fontSize || 13,
         fontWeight: props.bold ? 700 : 400,
         fontStyle: props.italic ? 'italic' : 'normal',
-        color: props.color || '#374151'
+        color: props.color || ctrl.color || '#374151'
       }}>
         <input
           type="checkbox"
@@ -3284,8 +3289,8 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
           border: '1px solid #e2e8f0',
           borderRadius: 4,
           fontSize: props.fontSize || 13,
-          color: props.color || '#374151',
-          background: props.bg || '#ffffff',
+          color: props.color || ctrl.color || '#374151',
+          background: props.bg || ctrl.bg || '#ffffff',
           boxSizing: 'border-box'
         }}
       />
@@ -3308,8 +3313,8 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
           border: '1px solid #e2e8f0',
           borderRadius: 4,
           fontSize: props.fontSize || 13,
-          color: props.color || '#374151',
-          background: props.bg || '#ffffff',
+          color: props.color || ctrl.color || '#374151',
+          background: props.bg || ctrl.bg || '#ffffff',
           boxSizing: 'border-box'
         }}
       />
@@ -3317,7 +3322,7 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
   }
 
   if (ctrl.type === 'Button') {
-    const bgColor = props.bg || '#4f46e5';
+    const bgColor = props.bg || ctrl.bg || '#4f46e5';
     return (
       <button
         onClick={onButtonClick}
@@ -3325,7 +3330,7 @@ function RenderLiveControl({ ctrl, formData, onChange, onButtonClick }: any) {
           width: '100%',
           height: '100%',
           background: bgColor,
-          color: props.color || getContrastText(bgColor),
+          color: props.color || ctrl.color || getContrastText(bgColor),
           border: 'none',
           borderRadius: props.radius !== undefined ? props.radius : 8,
           fontSize: props.fontSize || 14,
