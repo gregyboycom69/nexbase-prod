@@ -47,7 +47,7 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
     overflow: 'hidden',
     borderRadius: ctrl.radius || 0,
     fontSize: ctrl.fontSize || 12,
-    color: ctrl.color || ctrl.props?.color || 'var(--color-text-primary)',
+    color: ctrl.color || 'var(--color-text-primary)',
     fontFamily: 'inherit',
     userSelect: 'none',
     pointerEvents: isPreview ? 'auto' : 'none',
