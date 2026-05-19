@@ -41,14 +41,6 @@ type CtrlRenderProps = {
 }
 
 export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, onClick, onMacroRun }: CtrlRenderProps) {
-  if (ctrl.type === 'Label') {
-    console.log('LABEL DEBUG:', {
-      ctrl_color: ctrl.color,
-      props_color: ctrl.props?.color,
-      full_ctrl: ctrl
-    })
-  }
-
   const base: React.CSSProperties = {
     width: '100%',
     height: '100%',
