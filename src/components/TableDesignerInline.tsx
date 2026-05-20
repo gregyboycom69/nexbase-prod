@@ -39,11 +39,13 @@ const DATA_TYPES = [
 export default function TableDesignerInline({
   workspaceId,
   tableId,
-  tableName
+  tableName,
+  allTables
 }: {
   workspaceId: string
   tableId: string
   tableName: string
+  allTables: any[]
 }) {
   const supabase = createClient()
 
@@ -287,25 +289,71 @@ export default function TableDesignerInline({
                   <option key={dt} value={dt}>{dt}</option>
                 ))}
               </select>
-              <input
-                type="text"
-                defaultValue={field.description}
-                onBlur={e => {
-                  if (e.target.value !== field.description) {
-                    updateField(field.id, { description: e.target.value })
-                  }
-                }}
-                placeholder="Description"
-                key={`desc-${field.id}-${field.description}`}
-                style={{
-                  background: theme.bg.card,
-                  border: `1px solid ${theme.border.default}`,
-                  borderRadius: theme.radius.sm,
-                  padding: '6px 10px',
-                  color: theme.text.primary,
-                  fontSize: 13
-                }}
-              />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1 }}>
+                <input
+                  type="text"
+                  defaultValue={field.description}
+                  onBlur={e => {
+                    if (e.target.value !== field.description) {
+                      updateField(field.id, { description: e.target.value })
+                    }
+                  }}
+                  placeholder="Description"
+                  key={`desc-${field.id}-${field.description}`}
+                  style={{
+                    background: theme.bg.card,
+                    border: `1px solid ${theme.border.default}`,
+                    borderRadius: theme.radius.sm,
+                    padding: '6px 10px',
+                    color: theme.text.primary,
+                    fontSize: 13,
+                    flex: 1
+                  }}
+                />
+                {field.type === 'Ref' && (
+                  <>
+                    <select
+                      value={field.refTable || ''}
+                      onChange={e => updateField(field.id, { refTable: e.target.value, refDisplay: '' })}
+                      style={{
+                        background: theme.bg.card,
+                        border: `1px solid ${theme.border.default}`,
+                        borderRadius: theme.radius.sm,
+                        padding: '6px 10px',
+                        color: theme.text.primary,
+                        fontSize: 13,
+                        minWidth: 140
+                      }}
+                    >
+                      <option value="">— pick table —</option>
+                      {(allTables || []).filter((t: any) => t.name !== tableName).map((t: any) => (
+                        <option key={t.name} value={t.name}>{t.name}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={field.refDisplay || ''}
+                      onChange={e => updateField(field.id, { refDisplay: e.target.value })}
+                      disabled={!field.refTable}
+                      style={{
+                        background: theme.bg.card,
+                        border: `1px solid ${theme.border.default}`,
+                        borderRadius: theme.radius.sm,
+                        padding: '6px 10px',
+                        color: theme.text.primary,
+                        fontSize: 13,
+                        minWidth: 140,
+                        opacity: field.refTable ? 1 : 0.5
+                      }}
+                    >
+                      <option value="">— pick display field —</option>
+                      {field.refTable && (allTables || [])
+                        .find((t: any) => t.name === field.refTable)?.fields?.map((f: any) => (
+                          <option key={f.name} value={f.name}>{f.caption || f.name}</option>
+                        ))}
+                    </select>
+                  </>
+                )}
+              </div>
               <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <input
                   type="checkbox"

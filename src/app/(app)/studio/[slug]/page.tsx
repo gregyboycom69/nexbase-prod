@@ -612,6 +612,7 @@ export default function StudioPage() {
                           workspaceId={workspace.id}
                           tableId={activeTab.objectId}
                           tableName={activeTab.name}
+                          allTables={tables}
                         />
                       )}
                       {tableViewMode === 'datasheet' && tableData && (
