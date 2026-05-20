@@ -493,7 +493,7 @@ export default function StudioPage() {
         </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minWidth: 0 }}>
         <NavPane
           tables={tables}
           queries={queries}
@@ -554,7 +554,7 @@ export default function StudioPage() {
                 ))}
               </div>
 
-              <div style={{ flex: 1, overflow: 'hidden' }}>
+              <div style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
                 {activeTab && activeTab.type === 'form' && (
                   <FormDesigner
                     pageId={activeTab.objectId}
