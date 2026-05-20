@@ -216,7 +216,8 @@ export default function DatasheetView({
         maxHeight: 'calc(100vh - 280px)',
       }}>
         <table style={{
-          width: '100%',
+          width: 'max-content',
+          minWidth: '100%',
           borderCollapse: 'collapse',
           fontSize: 14,
         }}>
