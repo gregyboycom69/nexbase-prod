@@ -36,9 +36,11 @@ export default function DatasheetView({
   const [editValue, setEditValue] = useState('')
   const [savingNewRow, setSavingNewRow] = useState(false)
   const [newRowData, setNewRowData] = useState<Record<string, string>>({})
+  const [dbFields, setDbFields] = useState<Field[]>(fields)
 
   useEffect(() => {
     loadData()
+    loadFields()
   }, [tableName, workspaceId])
 
   const loadData = async () => {
@@ -54,6 +56,18 @@ export default function DatasheetView({
       setRows(data as DataRow[])
     }
     setLoading(false)
+  }
+
+  const loadFields = async () => {
+    const { data } = await supabase
+      .from('workspace_tables')
+      .select('fields')
+      .eq('workspace_id', workspaceId)
+      .eq('name', tableName)
+      .single()
+    if (data?.fields) {
+      setDbFields(data.fields)
+    }
   }
 
   const startEdit = (rowId: string, field: string, currentValue: unknown) => {
@@ -112,7 +126,7 @@ export default function DatasheetView({
   }
 
   const validateNewRow = () => {
-    const required = fields.filter(f =>
+    const required = dbFields.filter(f =>
       f.required && f.type !== 'AutoNumber' && f.name !== 'id'
     )
     for (const field of required) {
@@ -154,7 +168,7 @@ export default function DatasheetView({
   }
 
   // Filter out auto-generated fields (like AutoNumber id)
-  const editableFields = fields.filter(
+  const editableFields = dbFields.filter(
     f => f.type !== 'AutoNumber' && f.name !== 'id'
   )
 
@@ -181,7 +195,7 @@ export default function DatasheetView({
           </p>
         </div>
         <button
-          onClick={loadData}
+          onClick={() => { loadData(); loadFields(); }}
           style={{
             background: '#f1f5f9',
             color: '#64748b',
