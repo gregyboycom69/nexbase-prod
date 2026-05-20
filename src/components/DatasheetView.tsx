@@ -8,6 +8,8 @@ interface Field {
   type: string
   caption?: string
   required?: boolean
+  refTable?: string
+  refDisplay?: string
 }
 
 interface DataRow {

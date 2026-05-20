@@ -16,6 +16,8 @@ type Field = {
   primaryKey: boolean
   maxLength?: number
   options?: string
+  refTable?: string
+  refDisplay?: string
 }
 
 type Table = {
@@ -38,6 +40,7 @@ const DATA_TYPES = [
   'URL',
   'AutoNumber',
   'Lookup',
+  'Ref',
 ]
 
 export default function TableDesigner({ workspaceId }: { workspaceId: string }) {

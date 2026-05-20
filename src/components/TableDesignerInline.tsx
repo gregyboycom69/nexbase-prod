@@ -16,6 +16,8 @@ type Field = {
   isPrimaryKey: boolean
   maxLength?: number
   options?: string
+  refTable?: string
+  refDisplay?: string
 }
 
 const DATA_TYPES = [
@@ -31,6 +33,7 @@ const DATA_TYPES = [
   'URL',
   'AutoNumber',
   'Lookup',
+  'Ref',
 ]
 
 export default function TableDesignerInline({
