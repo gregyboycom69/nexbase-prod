@@ -64,7 +64,7 @@ export default function CtrlRender({ ctrl, isPreview = false, boundData = {}, on
         display: 'flex',
         alignItems: 'center',
         background: 'transparent',
-        color: ctrl.color || ctrl.props?.color || 'var(--color-text-secondary)',
+        color: ctrl.color || ctrl.props?.color,
         fontSize: ctrl.fontSize || 11,
         fontWeight: ctrl.bold ? 700 : 500,
         fontStyle: ctrl.italic ? 'italic' : 'normal'
