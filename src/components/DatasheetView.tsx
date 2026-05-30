@@ -214,6 +214,8 @@ export default function DatasheetView({
         borderRadius: 8,
         overflow: 'auto',
         maxHeight: 'calc(100vh - 280px)',
+        width: '100%',
+        maxWidth: '100%',
       }}>
         <table style={{
           width: 'max-content',
