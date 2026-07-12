@@ -2429,7 +2429,12 @@ function ControlWrapper({ control, selected, onSelect, onUpdate, onContextMenu }
         boxSizing: 'border-box',
       }}
     >
-      <CtrlRender ctrl={{ ...sanitizeControl(control), ...sanitizeControl(control).props }} />
+      <CtrlRender ctrl={{
+        ...sanitizeControl(control),
+        ...Object.fromEntries(
+          Object.entries(sanitizeControl(control).props || {}).filter(([_, v]) => v !== undefined)
+        )
+      }} />
       {selected && (
         <>
           {[
